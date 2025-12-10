@@ -7,7 +7,7 @@ import { EarlyAccessForm } from "@/components/forms/early-access-form";
 
 export function EarlyAccessSection() {
   return (
-    <section className="relative w-full lg:px-0">
+    <section id="early" className="relative w-full lg:px-0">
       {/* Badge */}
       <div className="relative pt-[4.3125rem] mb-[2.25rem] flex justify-center items-center w-full">
         <Image
@@ -49,7 +49,7 @@ export function EarlyAccessSection() {
         ></div>
 
         {/* Content */}
-        <div className="lg:flex z-30 items-center gap-6 max-w-7xl mx-auto">
+        <div id="more" className="lg:flex z-30 items-center gap-6 max-w-7xl mx-auto">
           {/* Text */}
           <p className="font-medium lg:pl-[1.75rem] lg:text-[1.8875rem] text-[1.4875rem] flex-1 tracking-tight leading-tight lg:text-left text-center px-6">
             We believe education should never stop because of finances. Our platform helps 
