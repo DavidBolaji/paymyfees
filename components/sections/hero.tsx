@@ -5,8 +5,34 @@ import { Header } from "../layout/header";
 import HeroImage from "@/assets/images/hero-2.png";
 import Vector from "@/assets/images/vector.png";
 import SmartEducationBadge from "@/assets/images/smart_education_badge.png";
+import { useRef, useState, useEffect } from "react";
 
 export function HeroSection() {
+  const imageRef = useRef<HTMLDivElement>(null);
+  const [heroHeight, setHeroHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    const updateHeight = () => {
+      if (imageRef.current) {
+        const height = imageRef.current.offsetHeight;
+        console.log(height)
+        setHeroHeight(height - 260);
+      }
+    };
+
+    // Update height on mount and window resize
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+
+    // Use a timeout to ensure the image is loaded
+    const timer = setTimeout(updateHeight, 100);
+
+    return () => {
+      window.removeEventListener("resize", updateHeight);
+      clearTimeout(timer);
+    };
+  }, []);
+
   return (
     <>
         {/* Header */}
@@ -14,8 +40,12 @@ export function HeroSection() {
           <Header />
         </div>
       <section
-        className="relative w-full lg:h-[125vh] h-auto overflow-hidden
+        className="relative w-full h-auto overflow-hidden
         bg-[linear-gradient(160deg,_white_0%,_white_10%,_rgba(176,189,209,0.5)_100%)] z-0"
+        style={{
+          height: heroHeight ? `${heroHeight}px` : 'auto',
+          minHeight: '100vh'
+        }}
       >
 
         {/* Main Content */}
@@ -94,7 +124,10 @@ export function HeroSection() {
           </div>
 
           {/* RIGHT (DESKTOP ONLY) */}
-          <div className="w-[46rem] h-[68.93rem] relative z-10 lg:block hidden">
+          <div 
+            ref={imageRef}
+            className="w-[46rem] h-[68.93rem] relative z-10 lg:block hidden"
+          >
             <Image
               src={HeroImage}
               fill

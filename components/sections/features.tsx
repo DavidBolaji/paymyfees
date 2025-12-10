@@ -21,7 +21,7 @@ export function FeaturesSection() {
       <div className="relative z-30 flex flex-col items-center gap-[48px] md:py-[11rem] py-14 md:px-[190px] px-6 max-w-7xl mx-auto">
         {/* Section Header */}
         <div className="w-full">
-          <h2 className="text-[#292929] md:text-[2.81rem] text-[2.41rem] font-extrabold leading-[1.2em] text-center mb-4 w-full">
+          <h2 className="text-[#292929] md:text-[2.81rem] text-[2.11rem] font-extrabold leading-[1.2em] text-center mb-4 w-full">
             Why Thousands Trust PayMyFees
           </h2>
           <p className="text-[#292929] md:text-[1.56rem] text-[1.16rem] font-medium leading-[1.2em] text-center">
@@ -91,14 +91,14 @@ export function FeaturesSection() {
                   />
                 </div>
 
-                <div className="absolute right-0 -bottom-1 w-60 h-full md:hidden block">
+                {/* <div className="absolute right-0 -bottom-1 w-60 h-full md:hidden block">
                   <Image
                     src="/images/no-more.png"
                     alt="Student celebrating"
                    fill
                     className="object-contain"
                   />
-                </div>
+                </div> */}
 
                 {/* Content */}
                 <div className="relative z-10 pt-[2.75rem] md:pl-[4.75rem] pl-6 flex flex-col gap-[20px] w-full">
