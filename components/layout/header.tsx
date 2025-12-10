@@ -31,8 +31,12 @@ export function Header() {
       <nav className="flex items-center justify-between w-full max-w-7xl mx-auto">
         
         {/* Logo */}
-        <div>
+        <div className="lg:block hidden">
           <Image src={Logo} width={160} height={45} alt="Logo" />
+        </div>
+         {/* Logo Mobile */}
+        <div className="lg:hidden block">
+          <Image src={Logo} width={140} height={35} alt="Logo" />
         </div>
 
         {/* Desktop Nav (only lg and above) */}

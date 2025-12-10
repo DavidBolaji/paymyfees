@@ -12,11 +12,11 @@ export const metadata:Metadata = {
   description:
     "Fee payment application",
   openGraph: {
-    title: "",
+    title: "PaymyFees",
     description:
-      "",
+      "Fee payment application",
     url: "https://paymyfees.vercel.app",
-    siteName: "",
+    siteName: "Pay My Fees",
     images: [
       {
         url: "/images/logo/logo.png", // must be in /public
@@ -30,9 +30,9 @@ export const metadata:Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "",
+    title: "PaymyFees",
     description:
-      "",
+      "Fee payment application",
     images: ["/images/logo/logo.png"],
   },
 };

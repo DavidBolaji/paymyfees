@@ -126,7 +126,7 @@ export function CustomInput({
     if (!isDropdownOpen) return;
 
     updateDropdownPosition();
-    
+
     const handleScroll = () => updateDropdownPosition();
     const handleResize = () => updateDropdownPosition();
 
@@ -158,7 +158,7 @@ export function CustomInput({
     setSelectedCountry(country);
     setIsDropdownOpen(false);
     setSearchQuery("");
-    
+
     // Update the full phone value
     const fullNumber = `${country.dialCode}${phoneNumber}`;
     onChange?.(fullNumber);
@@ -168,7 +168,7 @@ export function CustomInput({
     // Remove non-numeric characters
     const cleanNum = num.replace(/\D/g, "");
     setPhoneNumber(cleanNum);
-    
+
     // Combine with dial code
     const fullNumber = `${selectedCountry.dialCode}${cleanNum}`;
     onChange?.(fullNumber);
@@ -234,9 +234,11 @@ export function CustomInput({
               }}
               className="flex items-center gap-2 px-3 h-full bg-[#f5f5f5] hover:bg-[#ebebeb] transition-colors border-r border-[#d1d1d1]"
             >
-              <Image 
-                src={selectedCountry.flag} 
+              <Image
+                src={selectedCountry.flag}
                 alt={selectedCountry.name}
+                width={24}
+                height={16}
                 className="w-6 h-4 object-cover rounded"
               />
               <span className="text-sm text-[#292929] font-medium">
@@ -263,15 +265,15 @@ export function CustomInput({
           {isDropdownOpen && (
             <>
               {/* Invisible overlay to catch outside clicks */}
-              <div 
-                className="fixed inset-0 z-[9998]" 
+              <div
+                className="fixed inset-0 z-[9998]"
                 onClick={() => {
                   setIsDropdownOpen(false);
                   setSearchQuery("");
                 }}
               />
               {/* Actual dropdown */}
-              <div 
+              <div
                 className="fixed bg-white border border-[#d1d1d1] rounded-lg shadow-2xl overflow-hidden z-[9999]"
                 style={{
                   top: `${dropdownPosition.top}px`,
@@ -312,8 +314,10 @@ export function CustomInput({
                         )}
                       >
                         <Image
-                          src={country.flag} 
+                          src={country.flag}
                           alt={country.name}
+                          width={24}
+                          height={16}
                           className="w-6 h-4 object-cover rounded"
                         />
                         <span className="flex-1 text-sm text-[#292929]">
