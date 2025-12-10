@@ -31,7 +31,6 @@ export const metadata = {
     title: "PayMyFees – Loans & Installments for School Fees",
     description:
       "Access short-term loans or split school fees into manageable installments. PayMyFees disburses payments directly to partner schools and issues instant receipts for peace of mind.",
-    url: "https://paymyfees-nine.vercel.app",
     siteName: "PayMyFees",
     images: [
       {
