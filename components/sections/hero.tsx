@@ -10,44 +10,55 @@ import { useRef, useState, useEffect } from "react";
 export function HeroSection() {
   const imageRef = useRef<HTMLDivElement>(null);
   const [heroHeight, setHeroHeight] = useState<number | null>(null);
+  const [isLargeScreen, setIsLargeScreen] = useState(false);
 
   useEffect(() => {
+    // Check if we're on a large screen
+    const checkScreenSize = () => {
+      setIsLargeScreen(window.innerWidth >= 1024);
+    };
+
     const updateHeight = () => {
-      if (imageRef.current) {
+      if (imageRef.current && window.innerWidth >= 1024) {
         const height = imageRef.current.offsetHeight;
-        console.log(height)
         setHeroHeight(height - 260);
       }
     };
 
-    // Update height on mount and window resize
+    // Initial checks
+    checkScreenSize();
     updateHeight();
-    window.addEventListener("resize", updateHeight);
+
+    // Combined resize handler for better performance
+    const handleResize = () => {
+      checkScreenSize();
+      updateHeight();
+    };
+
+    window.addEventListener("resize", handleResize);
 
     // Use a timeout to ensure the image is loaded
     const timer = setTimeout(updateHeight, 100);
 
     return () => {
-      window.removeEventListener("resize", updateHeight);
+      window.removeEventListener("resize", handleResize);
       clearTimeout(timer);
     };
   }, []);
 
   return (
     <>
-        {/* Header */}
-        <div className="fixed z-[99999] w-full top-0">
-          <Header />
-        </div>
+      {/* Header */}
+      <div className="fixed z-[99999] w-full top-0">
+        <Header />
+      </div>
+
       <section
-        className="relative w-full h-auto overflow-hidden
-        bg-[linear-gradient(160deg,_white_0%,_white_10%,_rgba(176,189,209,0.5)_100%)] z-0"
+        className="relative w-full h-auto overflow-hidden bg-[linear-gradient(160deg,_white_0%,_white_10%,_rgba(176,189,209,0.5)_100%)] z-0"
         style={{
-          height: heroHeight ? `${heroHeight}px` : 'auto',
-          minHeight: '100vh'
+          height: isLargeScreen && heroHeight !== null ? `${heroHeight}px` : 'auto'
         }}
       >
-
         {/* Main Content */}
         <div className="relative z-10 lg:flex lg:mt-40 max-w-7xl mx-auto">
 
@@ -78,16 +89,16 @@ export function HeroSection() {
             </div>
 
             {/* Desktop Heading */}
-            <h4 className="font-black text-[2.8375rem] lg:block hidden pl-[6.75rem] leading-tight tracking-[0.017em] text-nowrap">
+            <h1 className="font-black text-[2.8375rem] lg:block hidden pl-[6.75rem] leading-tight tracking-[0.017em] text-nowrap">
               Smart <span className="text-[#002561]">Financing</span> for Every <br />
               <span className="text-[#002561]">Student, Teacher & School.</span>
-            </h4>
+            </h1>
 
             {/* Mobile + Tablet Heading */}
-            <h4 className="font-black text-[1.6255rem] text-center lg:hidden block px-[1.5rem] leading-tight tracking-[0.017em]">
+            <h1 className="font-black text-[1.6255rem] text-center lg:hidden block px-[1.5rem] leading-tight tracking-[0.017em]">
               Smart <span className="text-[#002561]">Financing</span> for Every <br />
               <span className="text-[#002561]">Student, Teacher & School.</span>
-            </h4>
+            </h1>
 
             {/* Desktop Subtext */}
             <p className="text-[#7C7C7C] mt-[1.4125rem] lg:pl-[6.85rem] text-[1rem] lg:block hidden font-medium leading-snug">
@@ -103,11 +114,11 @@ export function HeroSection() {
 
             {/* Buttons */}
             <div className="lg:pl-[1.85rem] text-center px-6 mt-[2.75rem] space-x-[1.3125rem] flex justify-center">
-              <button className="py-[0.5375rem] lg:px-[4.59rem] px-[1.19rem] rounded-lg border-[3px] text-nowrap border-[#002561] text-[#002561] bg-white font-bold">
+              <button className="py-[0.5375rem] lg:px-[4.59rem] px-[1.19rem] rounded-lg border-[3px] text-nowrap border-[#002561] text-[#002561] bg-white font-bold hover:bg-[#002561] hover:text-white transition-colors duration-300">
                 Learn More
               </button>
 
-              <button className="py-[0.5375rem] lg:px-[4.59rem] px-[1.19rem] rounded-lg border-[3px] text-nowrap border-[#002561] text-white bg-[#002561] font-bold">
+              <button className="py-[0.5375rem] lg:px-[4.59rem] px-[1.19rem] rounded-lg border-[3px] text-nowrap border-[#002561] text-white bg-[#002561] font-bold hover:bg-white hover:text-[#002561] transition-colors duration-300">
                 Join Waitlist
               </button>
             </div>
@@ -124,7 +135,7 @@ export function HeroSection() {
           </div>
 
           {/* RIGHT (DESKTOP ONLY) */}
-          <div 
+          <div
             ref={imageRef}
             className="w-[46rem] h-[68.93rem] relative z-10 lg:block hidden"
           >
