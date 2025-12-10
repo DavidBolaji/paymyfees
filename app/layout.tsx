@@ -15,7 +15,7 @@ export const metadata:Metadata = {
     title: "PaymyFees",
     description:
       "Fee payment application",
-    url: "https://paymyfees.vercel.app",
+    url: "https://paymyfees-nine.vercel.app/",
     siteName: "Pay My Fees",
     images: [
       {
