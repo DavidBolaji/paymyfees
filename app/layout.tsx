@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import { QueryProvider } from "@/providers/query-provider";
+import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import "react-phone-input-2/lib/style.css";
 
@@ -45,7 +46,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${manrope.className} `}>
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          {children}
+            <Toaster position="bottom-left" reverseOrder={false} />
+          </QueryProvider>
       </body>
     </html>
   );

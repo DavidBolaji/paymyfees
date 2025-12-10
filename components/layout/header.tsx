@@ -29,12 +29,12 @@ export function Header() {
       `}
     >
       <nav className="flex items-center justify-between w-full max-w-7xl mx-auto">
-        
+
         {/* Logo */}
         <div className="lg:block hidden">
           <Image src={Logo} width={160} height={45} alt="Logo" />
         </div>
-         {/* Logo Mobile */}
+        {/* Logo Mobile */}
         <div className="lg:hidden block">
           <Image src={Logo} width={140} height={35} alt="Logo" />
         </div>
@@ -64,13 +64,25 @@ export function Header() {
         </ul>
 
         {/* Desktop Button */}
-        <button className="hidden lg:block px-[0.9rem] py-2 text-[1.125rem] bg-[#001d4c] text-nowrap text-white rounded-lg w-[8rem] font-medium">
+        <button
+          onClick={() => {
+            document.getElementById("early")?.scrollIntoView({
+              behavior: "smooth",
+            });
+          }}
+          className="hidden lg:block px-[0.9rem] py-2 text-[1.125rem] bg-[#001d4c] text-nowrap text-white rounded-lg w-[8rem] font-medium">
           Join Waitlist
         </button>
 
         {/* Mobile + Tablet Hamburger */}
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => {
+            setIsOpen(!isOpen)
+            document.getElementById("early")?.scrollIntoView({
+              behavior: "smooth",
+            });
+          }
+          }
           className="lg:hidden p-2"
         >
           {isOpen ? <X size={26} /> : <Image src={"/images/menu.png"} priority width={24} height={24} alt="menu" />}
@@ -78,48 +90,50 @@ export function Header() {
       </nav>
 
       {/* Mobile + Tablet Menu */}
-      {isOpen && (
-        <div className="lg:hidden mt-5 bg-white/90 backdrop-blur-xl rounded-xl p-5 space-y-4 animate-in fade-in slide-in-from-top-5 duration-300 shadow-lg">
-          <Link
-            href=""
-            className="block text-[1.125rem] font-semibold text-[#292929]"
-            onClick={() => setIsOpen(false)}
-          >
-            How it works
-          </Link>
+      {
+        isOpen && (
+          <div className="lg:hidden mt-5 bg-white/90 backdrop-blur-xl rounded-xl p-5 space-y-4 animate-in fade-in slide-in-from-top-5 duration-300 shadow-lg">
+            <Link
+              href=""
+              className="block text-[1.125rem] font-semibold text-[#292929]"
+              onClick={() => setIsOpen(false)}
+            >
+              How it works
+            </Link>
 
-          <Link
-            href=""
-            className="block text-[1.125rem] font-semibold text-[#292929]"
-            onClick={() => setIsOpen(false)}
-          >
-            For Students
-          </Link>
+            <Link
+              href=""
+              className="block text-[1.125rem] font-semibold text-[#292929]"
+              onClick={() => setIsOpen(false)}
+            >
+              For Students
+            </Link>
 
-          <Link
-            href=""
-            className="block text-[1.125rem] font-semibold text-[#292929]"
-            onClick={() => setIsOpen(false)}
-          >
-            For Schools
-          </Link>
+            <Link
+              href=""
+              className="block text-[1.125rem] font-semibold text-[#292929]"
+              onClick={() => setIsOpen(false)}
+            >
+              For Schools
+            </Link>
 
-          <Link
-            href=""
-            className="block text-[1.125rem] font-semibold text-[#292929]"
-            onClick={() => setIsOpen(false)}
-          >
-            Contact Us
-          </Link>
+            <Link
+              href=""
+              className="block text-[1.125rem] font-semibold text-[#292929]"
+              onClick={() => setIsOpen(false)}
+            >
+              Contact Us
+            </Link>
 
-          <button
-            onClick={() => setIsOpen(false)}
-            className="w-full px-4 py-3 text-[1.125rem] bg-[#001d4c] text-white rounded-lg font-medium"
-          >
-            Join Waitlist
-          </button>
-        </div>
-      )}
-    </header>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="w-full px-4 py-3 text-[1.125rem] bg-[#001d4c] text-white rounded-lg font-medium"
+            >
+              Join Waitlist
+            </button>
+          </div>
+        )
+      }
+    </header >
   );
 }

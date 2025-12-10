@@ -114,11 +114,23 @@ export function HeroSection() {
 
             {/* Buttons */}
             <div className="lg:pl-[1.85rem] text-center px-6 mt-[2.75rem] space-x-[1.3125rem] flex justify-center">
-              <button className="py-[0.5375rem] lg:px-[4.59rem] px-[1.19rem] rounded-lg border-[3px] text-nowrap border-[#002561] text-[#002561] bg-white font-bold hover:bg-[#002561] hover:text-white transition-colors duration-300">
+              <button
+                onClick={() => {
+                  document.getElementById("more")?.scrollIntoView({
+                    behavior: "smooth",
+                  });
+                }}
+                className="py-[0.5375rem] lg:px-[4.59rem] px-[1.19rem] rounded-lg border-[3px] text-nowrap border-[#002561] text-[#002561] bg-white font-bold hover:bg-[#002561] hover:text-white transition-colors duration-300">
                 Learn More
               </button>
 
-              <button className="py-[0.5375rem] lg:px-[4.59rem] px-[1.19rem] rounded-lg border-[3px] text-nowrap border-[#002561] text-white bg-[#002561] font-bold hover:bg-white hover:text-[#002561] transition-colors duration-300">
+              <button
+                onClick={() => {
+                  document.getElementById("early")?.scrollIntoView({
+                    behavior: "smooth",
+                  });
+                }}
+                className="py-[0.5375rem] lg:px-[4.59rem] px-[1.19rem] rounded-lg border-[3px] text-nowrap border-[#002561] text-white bg-[#002561] font-bold hover:bg-white hover:text-[#002561] transition-colors duration-300">
                 Join Waitlist
               </button>
             </div>
