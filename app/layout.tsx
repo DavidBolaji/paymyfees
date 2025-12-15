@@ -25,7 +25,7 @@ export const metadata = {
   authors: [{ name: "PayMyFees Team" }],
   creator: "PayMyFees",
   publisher: "PayMyFees",
-  metadataBase: new URL("https://paymyfees-nine.vercel.app"),
+  metadataBase: new URL("https://www.paymyfees.co"),
   applicationName: "PayMyFees",
   openGraph: {
     title: "PayMyFees – Loans & Installments for School Fees",
@@ -34,7 +34,7 @@ export const metadata = {
     siteName: "PayMyFees",
     images: [
       {
-        url: "/images/logo/logo.png",
+        url: "/images/logo.png",
         width: 1200,
         height: 630,
         alt: "PayMyFees Logo",
