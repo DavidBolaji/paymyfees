@@ -7,12 +7,16 @@ export function CTASection() {
     <section className="py-20 relative px-6 bg-[linear-gradient(160deg,_white_30%,_white_0%,_rgba(0,41,107,0.2)_100%)]
          ">
       <div className="max-w-4xl z-10 overflow-hidden relative mx-auto rounded-3xl bg-[#00173B] px-4 sm:px-6 lg:px-8">
-        <div className="
+        <div className="md:block hidden
           bg-cover bg-center bg-no-repeat absolute inset-0 z-0 pointer-events-none
         "
           style={{ backgroundImage: "url('/images/grid.png')" }}
         ></div>
-
+ <div className="md:hidden block
+          bg-cover bg-center bg-no-repeat absolute inset-0 z-0 pointer-events-none
+        "
+          style={{ backgroundImage: "url('/images/grid-mobile.png')" }}
+        ></div>
 
         <div className="text-center relative z-10 text-white md:pt-[5.625rem] pt-10 mb-12">
           <h2 className="text-3xl lg:text-4xl font-bold mb-4">
