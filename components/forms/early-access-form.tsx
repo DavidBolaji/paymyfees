@@ -21,8 +21,27 @@ export function EarlyAccessForm({ white = false }: { white?: boolean }) {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  // Validation helper
+  const isFormValid = () => {
+    return (
+      form.role.trim() !== "" &&
+      form.fullName.trim() !== "" &&
+      form.email.trim() !== "" &&
+      form.phone.trim() !== "" &&
+      form.institution.trim() !== "" &&
+      form.loanAmount.trim() !== ""
+    );
+  };
+
   const handleSubmit = async (e: any) => {
     e.preventDefault();
+    
+    // Validate form before submission
+    if (!isFormValid()) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -128,9 +147,9 @@ export function EarlyAccessForm({ white = false }: { white?: boolean }) {
       <div className="pt-[2.375rem] w-full pb-6 relative z-0">
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !isFormValid()}
           className={`bg-[#002561] w-full font-bold py-[0.9375rem] rounded-lg text-white ${
-            loading ? "opacity-50 cursor-not-allowed" : ""
+            loading || !isFormValid() ? "opacity-50 cursor-not-allowed" : ""
           }`}
         >
           {loading ? "Submitting..." : "Join Waitlist"}
