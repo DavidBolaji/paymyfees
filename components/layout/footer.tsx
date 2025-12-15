@@ -74,10 +74,10 @@ export function Footer() {
               <div className="flex-col flex flex-[0.4]">
                 <h3 className="text-white text-[20px] font-bold mb-2">Get In Touch</h3>
                 <a href="mailto:support@paymyfees.com" className="text-white text-[15px] leading-[2em] hover:opacity-80">
-                  support@paymyfees.com
+                   support@paymyfees.co
                 </a>
                 <a href="tel:+447454703690" className="text-white text-[15px] leading-[2em] hover:opacity-80">
-                  +44 7454 703690
+                  +234 803 585 1047
                 </a>
               </div>
             </div>
