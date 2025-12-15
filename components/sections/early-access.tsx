@@ -49,23 +49,25 @@ export function EarlyAccessSection() {
         ></div>
 
         {/* Content */}
-        <div id="more" className="lg:flex z-30 items-center gap-6 max-w-7xl mx-auto">
+        <div id="more" className="md:grid grid-cols-2 max-w-7xl items-start mx-auto z-30 gap-2">
           {/* Text */}
-          <p className="font-medium lg:pl-[1.75rem] lg:text-[1.8875rem] text-[1.4875rem] flex-1 tracking-tight leading-tight lg:text-left text-center px-6">
-            We believe education should never stop because of finances. Our platform helps 
-            <span className="text-[#002561]"> students pay tuition in full </span> or in flexible plans, 
-            <span className="text-[#002561]"> enables schools to access verified funding </span> 
-            that keeps operations steady while also providing funding to teachers.
-          </p>
+          <div className="">
+            <p className="font-medium lg:pl-[1.75rem] lg:text-[1.8875rem] text-[1.4875rem] flex-1 tracking-tight leading-tight lg:text-left text-center px-6">
+              We believe education should never stop because of finances. Our platform helps
+              <span className="text-[#002561]"> students pay tuition in full </span> or in flexible plans,
+              <span className="text-[#002561]"> enables schools to access verified funding </span>
+              that keeps operations steady while also providing funding to teachers.
+            </p>
+          </div>
 
           {/* Image */}
-          <div className="flex-1 relative h-full flex justify-center lg:block mt-6 lg:mt-0">
+          <div className="relative">
             <Image
               src={LinkedStar}
               alt="Linked Star"
               width={643}
               height={372}
-              className="lg:-translate-y-20 -translate-y-28 lg:scale-100 scale-90 object-contain"
+              className="md:px-20 md:-mt-20 p-10 h-full w-full"
             />
           </div>
         </div>
