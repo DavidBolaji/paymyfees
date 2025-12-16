@@ -18,7 +18,7 @@ export function FeaturesSection() {
 
 
       {/* Main Content */}
-      <div className="relative z-30 flex flex-col items-center gap-[48px] md:py-[11rem] py-14 md:px-[190px] px-6 max-w-7xl mx-auto">
+      <div id="works" className="relative z-30 flex flex-col items-center gap-[48px] md:py-[11rem] py-14 md:px-[190px] px-6 max-w-7xl mx-auto">
         {/* Section Header */}
         <div className="w-full">
           <h2 className="text-[#292929] md:text-[2.81rem] text-[2.11rem] font-extrabold leading-[1.2em] text-center mb-4 w-full">
