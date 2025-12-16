@@ -6,7 +6,7 @@ import Link from "next/link"
 
 export function Footer() {
   return (
-    <footer className="relative w-full lg:h-[535px] overflow-hidden">
+    <footer id="contact" className="relative w-full lg:h-[535px] overflow-hidden">
       {/* Pattern Background */}
       <div
         className="
@@ -76,8 +76,11 @@ export function Footer() {
                 <a href="mailto:support@paymyfees.com" className="text-white text-[15px] leading-[2em] hover:opacity-80">
                    support@paymyfees.co
                 </a>
-                <a href="tel:+447454703690" className="text-white text-[15px] leading-[2em] hover:opacity-80">
+                <a href="tel:+2348035851047" className="text-white text-[15px] leading-[2em] hover:opacity-80">
                   +234 803 585 1047
+                </a>
+                <a href="tel:+07448290042" className="text-white text-[15px] leading-[2em] hover:opacity-80">
+                  07448290042
                 </a>
               </div>
             </div>
@@ -116,11 +119,14 @@ export function Footer() {
           {/* Desktop Contact */}
           <div className="lg:flex hidden flex-col gap-[7px] w-[178px]">
             <h3 className="text-white text-[20px] font-bold mb-2">Get In Touch</h3>
-            <a href="mailto:support@paymyfees.com" className="text-white text-[15px] leading-[2em] hover:opacity-80">
-              support@paymyfees.com
+            <a href="mailto:support@paymyfees.co" className="text-white text-[15px] leading-[2em] hover:opacity-80">
+              support@paymyfees.co
             </a>
-            <a href="tel:+447454703690" className="text-white text-[15px] leading-[2em] hover:opacity-80">
-              +44 7454 703690
+            <a href="tel:+2348035851047" className="text-white text-[15px] leading-[2em] hover:opacity-80">
+              +234 803 585 1047
+            </a>
+            <a href="tel:+07448290042" className="text-white text-[15px] leading-[2em] hover:opacity-80">
+              07448290042
             </a>
           </div>
 

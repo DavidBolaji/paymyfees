@@ -1,10 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+
 import Logo from "@/assets/images/logo/logo.png";
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { X } from "lucide-react";
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
@@ -42,24 +42,48 @@ export function Header() {
         {/* Desktop Nav (only lg and above) */}
         <ul className="hidden lg:inline-flex space-x-[1.3125rem]">
           <li>
-            <Link className="font-semibold text-[#292929] text-[1.125rem]" href="">
+            <button
+              onClick={() => {
+                document.getElementById("works")?.scrollIntoView({
+                  behavior: "smooth",
+                });
+              }}
+              className="font-semibold text-[#292929] text-[1.125rem]">
               How it works
-            </Link>
+            </button>
           </li>
           <li>
-            <Link className="font-semibold text-[#292929] text-[1.125rem]" href="">
+            <button
+              onClick={() => {
+                document.getElementById("early")?.scrollIntoView({
+                  behavior: "smooth",
+                });
+              }}
+              className="font-semibold text-[#292929] text-[1.125rem]">
               For Students
-            </Link>
+            </button>
           </li>
-          <li>
-            <Link className="font-semibold text-[#292929] text-[1.125rem]" href="">
+          <li
+            onClick={() => {
+              document.getElementById("early")?.scrollIntoView({
+                behavior: "smooth",
+              });
+            }}
+          >
+            <button className="font-semibold text-[#292929] text-[1.125rem]">
               For Schools
-            </Link>
+            </button>
           </li>
           <li>
-            <Link className="font-semibold text-[#292929] text-[1.125rem]" href="">
+            <button className="font-semibold text-[#292929] text-[1.125rem] cursor-pointer"
+              onClick={() => {
+                document.getElementById("contact")?.scrollIntoView({
+                  behavior: "smooth",
+                });
+              }}
+            >
               Contact Us
-            </Link>
+            </button>
           </li>
         </ul>
 
@@ -70,7 +94,7 @@ export function Header() {
               behavior: "smooth",
             });
           }}
-          className="hidden lg:block px-[0.9rem] py-2 text-[1.125rem] bg-[#001d4c] text-nowrap text-white rounded-lg w-[8rem] font-medium">
+          className="hidden cursor-pointer lg:block px-[0.9rem] py-2 text-[1.125rem] bg-[#001d4c] text-nowrap text-white rounded-lg w-[8rem] font-medium">
           Join Waitlist
         </button>
 
@@ -93,40 +117,68 @@ export function Header() {
       {
         isOpen && (
           <div className="lg:hidden mt-5 bg-white/90 backdrop-blur-xl rounded-xl p-5 space-y-4 animate-in fade-in slide-in-from-top-5 duration-300 shadow-lg">
-            <Link
-              href=""
-              className="block text-[1.125rem] font-semibold text-[#292929]"
-              onClick={() => setIsOpen(false)}
+            <button
+
+              className="block text-[1.125rem] cursor-pointer font-semibold text-[#292929]"
+              onClick={() => {
+                setIsOpen(false)
+                document.getElementById("works")?.scrollIntoView({
+                  behavior: "smooth",
+                });
+              }}
             >
               How it works
-            </Link>
-
-            <Link
-              href=""
-              className="block text-[1.125rem] font-semibold text-[#292929]"
-              onClick={() => setIsOpen(false)}
-            >
-              For Students
-            </Link>
-
-            <Link
-              href=""
-              className="block text-[1.125rem] font-semibold text-[#292929]"
-              onClick={() => setIsOpen(false)}
-            >
-              For Schools
-            </Link>
-
-            <Link
-              href=""
-              className="block text-[1.125rem] font-semibold text-[#292929]"
-              onClick={() => setIsOpen(false)}
-            >
-              Contact Us
-            </Link>
+            </button>
 
             <button
-              onClick={() => setIsOpen(false)}
+
+              className="block text-[1.125rem] cursor-pointer font-semibold text-[#292929]"
+              onClick={() => {
+                setIsOpen(false)
+
+                document.getElementById("early")?.scrollIntoView({
+                  behavior: "smooth",
+                });
+              }}
+            >
+              For Students
+            </button>
+
+            <button
+
+              className="block text-[1.125rem] cursor-pointer font-semibold text-[#292929]"
+              onClick={() => {
+                setIsOpen(false)
+                document.getElementById("early")?.scrollIntoView({
+                  behavior: "smooth",
+                });
+              }}
+            >
+              For Schools
+            </button>
+
+            <button
+
+              className="block text-[1.125rem] cursor-pointer font-semibold text-[#292929]"
+              onClick={() => {
+                setIsOpen(false)
+
+                document.getElementById("contact")?.scrollIntoView({
+                  behavior: "smooth",
+                });
+              }}
+            >
+              Contact Us
+            </button>
+
+            <button
+              onClick={() => {
+                setIsOpen(false)
+
+                document.getElementById("early")?.scrollIntoView({
+                  behavior: "smooth",
+                });
+              }}
               className="w-full px-4 py-3 text-[1.125rem] bg-[#001d4c] text-white rounded-lg font-medium"
             >
               Join Waitlist
