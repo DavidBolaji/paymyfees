@@ -9,6 +9,23 @@ html {
 body {
   overflow-x: hidden;
   scroll-behavior: smooth;
+  /* Hide scrollbar for webkit browsers (Chrome, Safari, Edge) */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+body::-webkit-scrollbar {
+  display: none; /* Hide scrollbar for webkit browsers */
+}
+
+/* Apply hidden scrollbar to all elements by default */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Hide scrollbar for webkit browsers */
 }
 
 /* PHONE INPUT FIXES */

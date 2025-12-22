@@ -1,6 +1,7 @@
 "use client";
 
 import { CustomInput } from "@/components/ui/custom-input";
+import { WaitlistSuccessModal } from "@/components/ui/waitlist-success-modal";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
@@ -15,6 +16,7 @@ export function EarlyAccessForm({ white = false }: { white?: boolean }) {
   });
 
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Helper to update form fields
   const updateField = (key: string, value: string) => {
@@ -56,7 +58,7 @@ export function EarlyAccessForm({ white = false }: { white?: boolean }) {
       const data = await res.json();
 
       if (data.success) {
-        toast.success("Successfully added to the waitlist!");
+        setShowSuccessModal(true);
         setForm({
           role: "",
           fullName: "",
@@ -155,6 +157,12 @@ export function EarlyAccessForm({ white = false }: { white?: boolean }) {
           {loading ? "Submitting..." : "Join Waitlist"}
         </button>
       </div>
+
+      {/* Waitlist Success Modal */}
+      <WaitlistSuccessModal 
+        isOpen={showSuccessModal} 
+        onClose={() => setShowSuccessModal(false)} 
+      />
     </form>
   );
 }

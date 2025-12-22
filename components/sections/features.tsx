@@ -58,7 +58,7 @@ export function FeaturesSection() {
                   Secure, transparent & effortless cash flow.
                 </p>
                 <p className="text-[#525252] text-[15px] font-normal leading-[1.2em]">
-                  Experience financial freedom built on trust and clarity. Our platform ensures secure and transparent transactions. Every payment, transfer, and update is traceable, protected, and crystal clear so you always know where your money goes and how it&apos;s working for you.
+                  All loans and repayments on PayMyFees are securely processed, fully traceable, and clearly communicated with no hidden charges.
                 </p>
               </div>
 
@@ -113,7 +113,7 @@ export function FeaturesSection() {
                       Get instant funding for your tuition, No more worries
                     </p>
                     <p className="text-[#525252] text-[15px] font-normal leading-[1.2em]">
-                      With PayMyFees you don&apos;t have to worry too much about how you will meet up with tuition payment for your studies. We make it easy, no stress no hazel
+                      With PayMyFees you don&apos;t have to worry too much about how you will meet up with tuition payment for your studies. We make it easy, no stress no hassle
                     </p>
 
                     <button className="flex items-center gap-[8px] px-[42px] py-[15px] bg-[#00296B] rounded-[16px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.15)] text-white text-[14px] font-bold leading-[1.366em] w-fit mt-4 hover:opacity-90 transition-opacity">
