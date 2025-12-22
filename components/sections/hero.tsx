@@ -93,6 +93,7 @@ export function HeroSection() {
               Smart <span className="text-[#002561]">Financing</span> for Every <br />
               <span className="text-[#002561]">Student, Teacher & School.</span>
             </h1>
+            
 
             {/* Mobile + Tablet Heading */}
             <h1 className="font-black text-[1.6255rem] text-center lg:hidden block px-[1.5rem] leading-tight tracking-[0.017em]">
@@ -102,14 +103,14 @@ export function HeroSection() {
 
             {/* Desktop Subtext */}
             <p className="text-[#7C7C7C] mt-[1.4125rem] lg:pl-[6.85rem] text-[1rem] lg:block hidden font-medium leading-snug">
-              We&apos;re redefining access to learning helping every student, every teacher and <br />
-              institution achieve their goals through smart, inclusive financial solutions.
+              We&apos;re redefining access to learning, helping every student, every teacher and <br />
+              institution achieve their goals through smart, and inclusive financial solutions.
             </p>
 
             {/* Mobile + Tablet Subtext */}
             <p className="text-[#7C7C7C] lg:hidden block mt-[1.4125rem] text-center px-[1.5rem] text-[1rem] font-medium leading-snug max-w-96 mx-auto">
-              We&apos;re redefining access to learning helping every student, every teacher and
-              institution achieve their goals through smart, inclusive financial solutions.
+              We&apos;re redefining access to learning, helping every student, every teacher and <br />
+              institution achieve their goals through smart, and inclusive financial solutions.
             </p>
 
             {/* Buttons */}

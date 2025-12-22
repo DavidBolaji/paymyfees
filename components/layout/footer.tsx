@@ -79,8 +79,8 @@ export function Footer() {
                 <a href="tel:+2348035851047" className="text-white text-[15px] leading-[2em] hover:opacity-80">
                   +234 803 585 1047
                 </a>
-                <a href="tel:+07448290042" className="text-white text-[15px] leading-[2em] hover:opacity-80">
-                  07448290042
+                <a href="tel:+447448290042" className="text-white text-[15px] leading-[2em] hover:opacity-80">
+                  +44 7448 290042
                 </a>
               </div>
             </div>
@@ -125,8 +125,8 @@ export function Footer() {
             <a href="tel:+2348035851047" className="text-white text-[15px] leading-[2em] hover:opacity-80">
               +234 803 585 1047
             </a>
-            <a href="tel:+07448290042" className="text-white text-[15px] leading-[2em] hover:opacity-80">
-              07448290042
+            <a href="tel:+447448290042" className="text-white text-[15px] leading-[2em] hover:opacity-80">
+              +44 7448 290042
             </a>
           </div>
 

@@ -1,16 +1,41 @@
 import { Manrope } from "next/font/google";
 import { QueryProvider } from "@/providers/query-provider";
+import { NavigationProvider } from "@/components/providers/navigation-provider";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import "react-phone-input-2/lib/style.css";
 
 
-const manrope = Manrope({ subsets: ["latin"], weight: ["400","500", "600", "700", "800"]  });
+const manrope = Manrope({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
 
 export const metadata = {
   title: "PayMyFees – School Fee Loans & Installment Payments",
   description:
     "PayMyFees helps parents pay school fees directly to partner schools using flexible installment plans or short-term loans. Fast disbursement to schools, transparent repayment options, and instant receipts for every transaction.",
+  icons: {
+    icon: [
+      {
+        url: "/images/logo.png",
+        sizes: "16x16",
+        type: "image/png",
+      },
+      {
+        url: "/images/logo.png",
+        sizes: "32x32",
+        type: "image/png",
+      },
+      {
+        url: "/images/logo.png",
+        sizes: "48x48",
+        type: "image/png",
+      },
+      {
+        url: "/images/logo.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+    ],
+  },
   keywords: [
     "PayMyFees",
     "school fee loans",
@@ -79,9 +104,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${manrope.className} `}>
         <QueryProvider>
-          {children}
-            <Toaster position="bottom-left" reverseOrder={false} />
-          </QueryProvider>
+          <NavigationProvider>
+            {children}
+          </NavigationProvider>
+          <Toaster position="bottom-left" reverseOrder={false} />
+        </QueryProvider>
       </body>
     </html>
   );
