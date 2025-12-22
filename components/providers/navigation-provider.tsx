@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 
 interface NavigationProviderProps {
   children: React.ReactNode;
 }
 
-export function NavigationProvider({ children }: NavigationProviderProps) {
+function NavigationProviderInner({ children }: NavigationProviderProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const pathname = usePathname();
@@ -72,5 +72,13 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
       )}
       {children}
     </>
+  );
+}
+
+export function NavigationProvider({ children }: NavigationProviderProps) {
+  return (
+    <Suspense fallback={children}>
+      <NavigationProviderInner>{children}</NavigationProviderInner>
+    </Suspense>
   );
 }

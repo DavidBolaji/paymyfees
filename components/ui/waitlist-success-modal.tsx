@@ -23,12 +23,12 @@ export function WaitlistSuccessModal({ isOpen, onClose }: WaitlistSuccessModalPr
         <div className="max-w-sm mx-auto">
           {/* Title with emoji */}
           <h2 className="text-[27px] font-black text-[#292D32] mb-4 leading-[1.2em]">
-            You're on the Waitlist 🎉
+            You&aposre on the Waitlist 🎉
           </h2>
           
           {/* Main message */}
           <p className="text-[15px] font-medium text-[#7C7C7C] mb-6 leading-[1.4em]">
-            Thanks for joining PayMyFees. We'll notify you as we get closer to launch in Q2 2026.
+            Thanks for joining PayMyFees. We&aposll notify you as we get closer to launch in January 2026.
           </p>
           
           {/* Disclaimer */}
