@@ -95,3 +95,8 @@ export async function submitSchoolVerification(data: {
 export async function getVerificationStatus() {
   return apiRequest('/school-verification/status');
 }
+
+// Payment plan operations
+export async function getPaymentPlan() {
+  return apiRequest('/payment-plan');
+}

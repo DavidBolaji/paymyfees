@@ -7,6 +7,7 @@ interface StatCardProps {
   title: string;
   value: string;
   subtitle?: string;
+  footer?: string;
   variant?: 'default' | 'primary' | 'success' | 'warning';
   trend?: 'up' | 'down';
   className?: string;
@@ -16,8 +17,8 @@ export function StatCard({
   title, 
   value, 
   subtitle, 
+  footer,
   variant = 'default', 
-  trend,
   className 
 }: StatCardProps) {
   const isActive = variant === 'primary';
@@ -25,7 +26,7 @@ export function StatCard({
   return (
     <div 
       className={cn(
-        "p-6 shadow-sm relative overflow-hidden",
+        "p-6 shadow-sm relative overflow-hidden h-[141px]",
         className
       )}
       style={{
@@ -52,7 +53,7 @@ export function StatCard({
       <div className="pr-14">
         {/* Title */}
         <h3 className={cn(
-          "text-base font-medium mb-4",
+          "text-base font-medium mb-4 text-nowrap",
           isActive ? "text-white" : "text-gray-700"
         )}>
           {title}
@@ -60,19 +61,27 @@ export function StatCard({
 
         {/* Value */}
         <div className={cn(
-          "text-3xl font-bold mb-2",
+          "text-3xl font-bold mb-[1.125rem]",
           isActive ? "text-white" : "text-gray-900"
         )}>
-          {value}
+          {value} 
+          {subtitle && (
+            <span className={cn(
+              "text-xs ml-2",
+              isActive ? "text-white/80" : "text-gray-600"
+            )}>
+              {subtitle}
+            </span>
+          )}
         </div>
         
-        {/* Subtitle */}
-        {subtitle && (
+        {/* Footer */}
+        {footer && (
           <p className={cn(
-            "text-sm",
+            "text-[0.6875rem] absolute font-semibold left-6 right-6 text-nowrap",
             isActive ? "text-white/80" : "text-gray-600"
           )}>
-            {subtitle}
+            {footer}
           </p>
         )}
       </div>

@@ -27,7 +27,7 @@ export function InstantActions({
   className
 }: InstantActionsProps) {
   return (
-    <div className={cn("bg-white rounded-xl border border-gray-200 shadow-sm px-3 py-4", className)}>
+    <div className={cn("bg-white h-full rounded-xl border border-gray-200 shadow-sm px-3 py-4", className)}>
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div>
@@ -51,19 +51,19 @@ export function InstantActions({
           <button
             key={action.id}
             onClick={action.onClick}
-            className="w-full flex items-start gap-3 p-0 text-left hover:bg-gray-50 rounded-lg transition-colors group"
+            className="w-full flex items-stretch gap-3 p-0 text-left hover:bg-gray-50 rounded-lg transition-colors group"
           >
             {/* Icon Container */}
-            <div className="w-12 h-12 bg-[#00296B] rounded-xl mt-2 flex items-center justify-center flex-shrink-0">
+            <div className="w-14 h-16 mt-2 bg-[#00296B] rounded-xl flex items-center justify-center flex-shrink-0">
               <action.icon className="w-6 h-6 text-white" />
             </div>
             
             {/* Content */}
             <div className="flex-1 min-w-0 pt-1">
-              <h3 className="font-medium text-gray-900 mb-1 group-hover:text-[#00296B] transition-colors">
+              <h3 className="font-semibold text-[1.125rem] text-gray-900 mb-[0.1875rem] group-hover:text-[#00296B] transition-colors">
                 {action.title}
               </h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
+              <p className="text-[0.6875rem] text-gray-600 leading-relaxed font-medium">
                 {action.description}
               </p>
             </div>

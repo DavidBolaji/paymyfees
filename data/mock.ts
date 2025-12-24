@@ -4,7 +4,9 @@ import type {
   TransactionItem, 
   ProgressStep, 
   ChartDataItem, 
-  DashboardStats 
+  DashboardStats,
+  PaymentPlan,
+  PaymentInstallment
 } from './types';
 
 export const loanHistoryData: LoanHistoryItem[] = [
@@ -144,15 +146,15 @@ export const fetchDashboardStats = async (): Promise<DashboardStats> => {
     activePlan: {
       current: 3,
       total: 5,
-      planType: 'Pay in 5 months plan'
+      planType: 'Flex Plan'
     },
     balance: {
       amount: 90000,
-      description: 'Your outstanding loan balance'
+      description: 'Balance'
     },
     wallet: {
       amount: 50000,
-      description: 'Available for loan repayment'
+      description: 'Available'
     }
   };
 };
@@ -289,3 +291,127 @@ export const recentTransactionsDataFull = recentTransactionsData.map((transactio
   balance: 50000 + (index * 5000),
   actions: 'View Receipt'
 }));
+
+// Payment plan mock data
+export const paymentPlanData: PaymentPlan = {
+  planType: 'Flex Plan',
+  planDuration: '6 Months',
+  totalTuition: 75000,
+  schoolName: 'Day School',
+  currentStatus: 'active',
+  paymentsCompleted: 3,
+  totalPayments: 6,
+  progress: 50,
+  totalPaid: 37500,
+  outstanding: 37500,
+  nextRepayment: 12500,
+  nextPaymentDate: 'January 12, 2026',
+  installments: [
+    {
+      installmentNumber: 1,
+      amount: 12500,
+      dueDate: 'Oct 12, 2025',
+      status: 'paid'
+    },
+    {
+      installmentNumber: 2,
+      amount: 12500,
+      dueDate: 'Oct 12, 2025',
+      status: 'paid'
+    },
+    {
+      installmentNumber: 3,
+      amount: 12500,
+      dueDate: 'Nov 12, 2025',
+      status: 'pending'
+    },
+    {
+      installmentNumber: 4,
+      amount: 12500,
+      dueDate: 'Dec 12, 2025',
+      status: 'pending'
+    },
+    {
+      installmentNumber: 5,
+      amount: 12500,
+      dueDate: 'Jan 12, 2026',
+      status: 'pending'
+    },
+    {
+      installmentNumber: 6,
+      amount: 12500,
+      dueDate: 'Feb 12, 2026',
+      status: 'pending'
+    }
+  ]
+};
+
+// Overdue payment plan mock data
+export const overduePaymentPlanData: PaymentPlan = {
+  planType: 'Flex Plan',
+  planDuration: '6 Months',
+  totalTuition: 75000,
+  schoolName: 'Day School',
+  currentStatus: 'overdue',
+  paymentsCompleted: 3,
+  totalPayments: 6,
+  progress: 50,
+  totalPaid: 37500,
+  outstanding: 37500,
+  nextRepayment: 17500,
+  nextPaymentDate: 'January 12, 2026',
+  overdueAmount: 17500,
+  overdueDays: 10,
+  installments: [
+    {
+      installmentNumber: 1,
+      amount: 12500,
+      dueDate: 'Oct 12, 2025',
+      status: 'paid'
+    },
+    {
+      installmentNumber: 2,
+      amount: 12500,
+      dueDate: 'Oct 12, 2025',
+      status: 'paid'
+    },
+    {
+      installmentNumber: 3,
+      amount: 12500,
+      dueDate: 'Nov 12, 2025',
+      status: 'overdue'
+    },
+    {
+      installmentNumber: 4,
+      amount: 12500,
+      dueDate: 'Dec 12, 2025',
+      status: 'pending'
+    },
+    {
+      installmentNumber: 5,
+      amount: 12500,
+      dueDate: 'Jan 12, 2026',
+      status: 'pending'
+    },
+    {
+      installmentNumber: 6,
+      amount: 12500,
+      dueDate: 'Feb 12, 2026',
+      status: 'pending'
+    }
+  ]
+};
+
+export const fetchPaymentPlan = async (): Promise<PaymentPlan | null> => {
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // Simulate different states - you can change this to test different scenarios
+  const scenarios = [
+    paymentPlanData,        // Active plan
+    overduePaymentPlanData, // Overdue plan
+    null                    // No plan
+  ];
+  
+  // Return active plan by default (change index to test other scenarios)
+  return scenarios[0];
+};
