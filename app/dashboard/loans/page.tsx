@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { BackNavigation } from '@/components/dashboard/back-navigation';
 import { DataTable } from '@/components/dashboard/data-table';
-import { LoanDisbursementDrawer } from '@/components/dashboard';
-import { fetchLoanHistory, LOAN_HISTORY_COLUMNS_FULL, loanHistoryDataFull } from '@/data';
+
+import { fetchLoanHistory, LOAN_HISTORY_COLUMNS_SIMPLE, loanHistoryData } from '@/data';
+import { LoanDisbursementDrawer } from '@/components/dashboard/detail-drawer';
 
 export default function LoansPage() {
   const [loanHistory, setLoanHistory] = useState<any[]>([]);
@@ -16,7 +17,7 @@ export default function LoansPage() {
     const loadData = async () => {
       try {
         await fetchLoanHistory();
-        setLoanHistory(loanHistoryDataFull);
+        setLoanHistory(loanHistoryData);
       } catch (error) {
         console.error('Error loading loan history:', error);
       } finally {
@@ -29,9 +30,9 @@ export default function LoansPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex justify-center items-center h-full">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="mx-auto mb-4 border-4 border-blue-600 border-t-transparent rounded-full w-8 h-8 animate-spin"></div>
           <p className="text-gray-600">Loading loan history...</p>
         </div>
       </div>
@@ -41,11 +42,11 @@ export default function LoansPage() {
   return (
     <>
     <div className="p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="mx-auto max-w-7xl">
         <BackNavigation href="/dashboard" label="Back to Dashboard" />
         
         <div className="mb-6">
-          <h1 className="text-[#191919] font-semibold text-[1.6875rem] mb-2">
+          <h1 className="mb-2 font-semibold text-[#191919] text-[1.6875rem]">
             Loan / Disbursement History
           </h1>
           <p className="text-[#5F5F5F] text-base">
@@ -55,7 +56,7 @@ export default function LoansPage() {
 
         <DataTable
           title="All Loans"
-          columns={LOAN_HISTORY_COLUMNS_FULL}
+          columns={LOAN_HISTORY_COLUMNS_SIMPLE}
           data={loanHistory}
           onRowClick={(loan) => {
             setSelectedLoan(loan);

@@ -32,6 +32,7 @@ export interface ProgressStep {
   id: string;
   title: string;
   status: 'completed' | 'active' | 'upcoming';
+  subtitle?: string;
 }
 
 export interface EarlyAccessFormData {
@@ -41,6 +42,31 @@ export interface EarlyAccessFormData {
   phone: string;
   institution: string;
   loanAmount: string;
+}
+
+export interface PaymentPlan {
+  planType: string;
+  planDuration: string;
+  totalTuition: number;
+  schoolName: string;
+  currentStatus: 'active' | 'overdue' | 'completed';
+  paymentsCompleted: number;
+  totalPayments: number;
+  progress: number;
+  totalPaid: number;
+  outstanding: number;
+  nextRepayment: number;
+  nextPaymentDate?: string;
+  overdueAmount?: number;
+  overdueDays?: number;
+  installments: PaymentInstallment[];
+}
+
+export interface PaymentInstallment {
+  installmentNumber: number;
+  amount: number;
+  dueDate: string;
+  status: 'paid' | 'pending' | 'overdue';
 }
 
 // Table component types

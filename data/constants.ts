@@ -49,7 +49,16 @@ export const LOAN_HISTORY_COLUMNS: TableColumn[] = [
   { key: 'tuitionAmount', label: 'TUITION AMOUNT' },
   { key: 'repaymentPlan', label: 'REPAYMENT PLAN' },
   { key: 'status', label: 'STATUS' },
-  { key: 'contributedTo', label: 'CONTRIBUTED TO' },
+  { key: 'contributedTo', label: 'DISBURSED TO' },
+  { key: 'date', label: 'DATE' }
+];
+
+export const LOAN_HISTORY_COLUMNS_SIMPLE: TableColumn[] = [
+  { key: 'loanId', label: 'LOAN ID' },
+  { key: 'tuitionAmount', label: 'TUITION AMOUNT' },
+  { key: 'repaymentPlan', label: 'REPAYMENT PLAN' },
+  { key: 'status', label: 'STATUS' },
+  { key: 'contributedTo', label: 'DISBURSED TO' },
   { key: 'date', label: 'DATE' }
 ];
 
@@ -58,7 +67,7 @@ export const LOAN_HISTORY_COLUMNS_FULL: TableColumn[] = [
   { key: 'tuitionAmount', label: 'TUITION AMOUNT' },
   { key: 'repaymentPlan', label: 'REPAYMENT PLAN' },
   { key: 'status', label: 'STATUS' },
-  { key: 'contributedTo', label: 'CONTRIBUTED TO' },
+  { key: 'contributedTo', label: 'DISBURSED TO' },
   { key: 'date', label: 'DATE' },
   { key: 'amountPaid', label: 'AMOUNT PAID' },
   { key: 'balance', label: 'BALANCE' },
@@ -92,6 +101,13 @@ export const WALLET_TRANSACTION_COLUMNS: TableColumn[] = [
   { key: 'description', label: 'DESCRIPTION' },
   { key: 'amount', label: 'AMOUNT' },
   { key: 'type', label: 'TYPE' },
+  { key: 'status', label: 'STATUS' }
+];
+
+export const INSTALLMENT_COLUMNS: TableColumn[] = [
+  { key: 'installment', label: 'INSTALLMENT' },
+  { key: 'amount', label: 'AMOUNT' },
+  { key: 'dueDate', label: 'DUE DATE' },
   { key: 'status', label: 'STATUS' }
 ];
 

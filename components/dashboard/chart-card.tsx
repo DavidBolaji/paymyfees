@@ -48,7 +48,7 @@ export function ChartCard({
   };
 
   return (
-    <div className={cn("bg-white rounded-[1 border border-gray-200 shadow-sm", className)}>
+    <div className={cn("bg-white rounded-lg border border-gray-200 shadow-sm", className)}>
       {/* Header */}
       <div className="p-6 pb-4">
         <div className="flex items-start justify-between mb-6">

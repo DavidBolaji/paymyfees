@@ -1,12 +1,14 @@
-export { Sidebar } from './sidebar';
-export { Header } from './header';
+// Dashboard component exports
 export { StatCard } from './stat-card';
 export { DataTable } from './data-table';
-export { StatusBadge } from './status-badge';
 export { ProgressTracker } from './progress-tracker';
-export { QuickActionCard } from './quick-action-card';
 export { InstantActions } from './instant-actions';
 export { ChartCard } from './chart-card';
-export { DashboardLayout } from './dashboard-layout';
+export { ViewPaymentPlan } from './view-payment-plan';
+export { PaymentPlanStats } from './payment-plan-stats';
+export { PaymentProgress } from './payment-progress';
+export { PaymentAlert } from './payment-alert';
+export { InstallmentTable } from './installment-table';
+export { EmptyPaymentPlan } from './empty-payment-plan';
 export { BackNavigation } from './back-navigation';
-export { DetailDrawer, LoanDisbursementDrawer, TransactionDrawer } from './detail-drawer';
+export { InfoCard } from './info-card';

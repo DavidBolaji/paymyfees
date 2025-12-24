@@ -26,6 +26,7 @@ interface DataTableProps {
   viewAllHref?: string;
   className?: string;
   onRowClick?: (item: TableData) => void;
+  itemsPerPage?: number;
 }
 
 export function DataTable({
@@ -37,11 +38,11 @@ export function DataTable({
   pagination = true,
   viewAllHref,
   className,
-  onRowClick
+  onRowClick,
+  itemsPerPage = 10
 }: DataTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
 
   // Filter data based on search term
   const filteredData = data.filter(item =>
@@ -72,7 +73,7 @@ export function DataTable({
   };
 
   return (
-    <div className={cn("bg-white rounded-xl border border-gray-200 shadow-sm", className)}>
+    <div className={cn("bg-white h-full rounded-xl border border-gray-200 shadow-sm", className)}>
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between">
@@ -138,12 +139,12 @@ export function DataTable({
                 key={index} 
                 onClick={() => onRowClick?.(item)}
                 className={cn(
-                  "hover:bg-gray-50 transition-colors",
+                  "hover:bg-gray-50 transition-colors text-[#7C7C7C]",
                   onRowClick && "cursor-pointer"
                 )}
               >
                 {columns.map((column) => (
-                  <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                  <td key={column.key} className="px-6 py-4 whitespace-nowrap font-medium text-sm text-gray-700 text-[0.9375rem] ">
                     {renderCellContent(item, column)}
                   </td>
                 ))}
@@ -160,44 +161,70 @@ export function DataTable({
             Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredData.length)} of {filteredData.length} Records
           </div>
           
-          <div className="flex items-center gap-1">
+          <div className="flex items-center">
             <button
               onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
-              className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-10 h-10 border border-gray-300 rounded-l-md flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             
-            {/* Page Numbers */}
-            {[1, 2, 3].map((pageNum) => (
-              <button
-                key={pageNum}
-                onClick={() => setCurrentPage(pageNum)}
-                className={cn(
-                  "w-8 h-8 text-sm rounded-md flex items-center justify-center",
-                  currentPage === pageNum
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-600 hover:bg-gray-100"
-                )}
-              >
-                {pageNum}
-              </button>
-            ))}
-            
-            <span className="px-2 text-gray-400">...</span>
-            
-            <button 
-              onClick={() => setCurrentPage(totalPages)}
-              className="w-8 h-8 text-sm text-gray-600 hover:bg-gray-100 rounded-md flex items-center justify-center"
+            {/* Fixed Pagination Format: 1 2 3 ... 20 */}
+            <button
+              onClick={() => setCurrentPage(1)}
+              className={cn(
+                "w-10 h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-sm font-medium",
+                currentPage === 1
+                  ? "bg-gray-900 text-white border-gray-900"
+                  : "text-gray-600 hover:bg-gray-50"
+              )}
             >
-              {Math.max(20, totalPages)}
+              1
             </button>
             
             <button
-              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-              className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => setCurrentPage(2)}
+              className={cn(
+                "w-10 h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-sm font-medium",
+                currentPage === 2
+                  ? "bg-gray-900 text-white border-gray-900"
+                  : "text-gray-600 hover:bg-gray-50"
+              )}
+            >
+              2
+            </button>
+            
+            <button
+              onClick={() => setCurrentPage(3)}
+              className={cn(
+                "w-10 h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-sm font-medium",
+                currentPage === 3
+                  ? "bg-gray-900 text-white border-gray-900"
+                  : "text-gray-600 hover:bg-gray-50"
+              )}
+            >
+              3
+            </button>
+            
+            <span className="px-2 text-gray-400 border-t border-b border-gray-300 h-10 flex items-center">...</span>
+            
+            <button
+              onClick={() => setCurrentPage(20)}
+              className={cn(
+                "w-10 h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-sm font-medium",
+                currentPage === 20
+                  ? "bg-gray-900 text-white border-gray-900"
+                  : "text-gray-600 hover:bg-gray-50"
+              )}
+            >
+              20
+            </button>
+            
+            <button
+              onClick={() => setCurrentPage(Math.min(20, currentPage + 1))}
+              disabled={currentPage === 20}
+              className="w-10 h-10 border border-gray-300 rounded-r-md flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

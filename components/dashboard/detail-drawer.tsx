@@ -68,7 +68,7 @@ export function DetailDrawer({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="fixed inset-0 bg-[#292929CC] z-[100]"
+            className="z-[100] fixed inset-0 bg-[#292929CC]"
             onClick={onClose}
           />
 
@@ -78,38 +78,38 @@ export function DetailDrawer({
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="fixed top-0 right-0 h-full w-full max-w-[540px] bg-white z-[101] shadow-2xl"
+            className="top-0 right-0 z-[101] fixed bg-white shadow-2xl w-full max-w-[540px] h-full"
           >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-[#191919] font-semibold text-[1.25rem]">
+        <div className="flex justify-between items-center p-6 border-gray-200 border-b">
+          <h2 className="font-semibold text-[#191919] text-[1.25rem]">
             {title}
           </h2>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-lg border-2 border-[#002561] flex items-center justify-center hover:bg-gray-50 transition-colors"
+            className="flex justify-center items-center hover:bg-gray-50 border-[#002561] border-2 rounded-lg w-10 h-10 transition-colors"
           >
             <X className="w-5 h-5 text-[#002561]" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto h-[calc(100%-180px)] p-6">
+        <div className="p-6 h-[calc(100%-180px)] overflow-y-auto">
           {sections.map((section, sectionIndex) => (
             <div key={sectionIndex} className="mb-8">
-              <h3 className="text-[#7C7C7C] font-medium text-[0.875rem] mb-4">
+              <h3 className="mb-4 font-medium text-[#7C7C7C] text-[0.875rem]">
                 {section.title}
               </h3>
               <div className="space-y-3">
                 {section.items.map((item, itemIndex) => (
                   <div
                     key={itemIndex}
-                    className="flex items-start justify-between"
+                    className="flex justify-between items-start"
                   >
                     <span className="text-[#7C7C7C] text-[0.875rem]">
                       {item.label}:
                     </span>
-                    <span className="text-[#191919] text-[0.875rem] font-medium text-right">
+                    <span className="font-medium text-[#191919] text-[0.875rem] text-right">
                       {item.value}
                     </span>
                   </div>
@@ -121,7 +121,7 @@ export function DetailDrawer({
 
         {/* Actions Footer */}
         {actions.length > 0 && (
-          <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-200 bg-white">
+          <div className="right-0 bottom-0 left-0 absolute bg-white p-6 border-gray-200 border-t">
             <div className="flex gap-4">
               {actions.map((action, index) => (
                 <button
@@ -311,7 +311,10 @@ export function TransactionDrawer({
     },
     {
       label: 'View Repayment Timeline',
-      onClick: () => console.log('View timeline'),
+      onClick: () => {
+        onClose();
+        window.location.href = `/dashboard/timeline`;
+      },
       variant: 'secondary'
     }
   ];
