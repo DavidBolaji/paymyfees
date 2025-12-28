@@ -139,10 +139,10 @@ export function FeaturesSection() {
                       Fast Loan Approvals
                     </h3>
                     <p className="font-bold text-[#292929] text-[17px] leading-[1.2em]">
-                      Verified loans in minutes, Super fast.
+                      Verify loans  quickly, Super fast.
                     </p>
                     <p className="font-normal text-[#525252] text-[15px] leading-[1.2em]">
-                      Accessing the funds you need for education has never been faster. With PayMyFees, students and schools can apply for verified loans, get instant eligibility checks, and receive approvals within minutes.
+                      Accessing the funds you need for education has never been faster. With PayMyFees, students and schools can apply for verified loans, get instant eligibility checks, and receive quick approvals.
                     </p>
                   </div>
 
