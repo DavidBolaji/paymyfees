@@ -5,26 +5,21 @@ import Image from "next/image"
 export function FeaturesSection() {
   return (
     <section className="relative md:py-[2rem]">
-      <div className="
-          bg-cover bg-center bg-no-repeat absolute inset-0 z-20 opacity-10 pointer-events-none
-        "
+      <div className="z-20 absolute inset-0 bg-cover bg-no-repeat bg-center opacity-10 pointer-events-none"
         style={{ backgroundImage: "url('/images/shapes.png')" }}
       ></div>
-      <div className="
-        absolute inset-0 bg-[linear-gradient(160deg,_white_0%,_white_0%,_rgba(0,41,107,1)_100%)]
-          z-10
-        "
+      <div className="z-10 absolute inset-0 bg-[linear-gradient(160deg,_white_0%,_white_0%,_rgba(0,41,107,1)_100%)]"
       ></div>
 
 
       {/* Main Content */}
-      <div id="works" className="relative z-30 flex flex-col items-center gap-[48px] md:py-[11rem] py-14 md:px-[190px] px-6 max-w-7xl mx-auto">
+      <div id="works" className="z-30 relative flex flex-col items-center gap-[48px] mx-auto px-6 md:px-[190px] py-14 md:py-[11rem] max-w-7xl">
         {/* Section Header */}
         <div className="w-full">
-          <h2 className="text-[#292929] md:text-[2.81rem] text-[2.11rem] font-extrabold leading-[1.2em] text-center mb-4 w-full">
+          <h2 className="mb-4 w-full font-extrabold text-[#292929] text-[2.11rem] md:text-[2.81rem] text-center leading-[1.2em]">
             Why Thousands Trust PayMyFees
           </h2>
-          <p className="text-[#292929] md:text-[1.56rem] text-[1.16rem] font-medium leading-[1.2em] text-center">
+          <p className="font-medium text-[#292929] text-[1.16rem] md:text-[1.56rem] text-center leading-[1.2em]">
             Seamless payments and funding built for education
           </p>
         </div>
@@ -32,12 +27,12 @@ export function FeaturesSection() {
         {/* Features Grid */}
         <div className="flex gap-[45px]">
           {/* First Row */}
-          <div className="flex lg:flex-row flex-col gap-[19px] ">
+          <div className="flex lg:flex-row flex-col gap-[19px]">
             {/* Secure & Transparent Card */}
-            <div className="lg:w-[390px] h-[641px] bg-[#E6EAF0] rounded-[12px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.2)] relative">
+            <div className="relative bg-[#E6EAF0] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.2)] rounded-[12px] lg:w-[390px] h-[641px]">
               {/* Decorative Element */}
               <div className="px-6 pt-6 pb-[1.06rem]">
-                <div className="relative  w-full h-[201px] bg-[#B0BDD1] rounded-[12px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.1)]">
+                <div className="relative bg-[#B0BDD1] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.1)] rounded-[12px] w-full h-[201px]">
                  
                   <Image
                     src="/images/chain-lock-clip.png"
@@ -50,21 +45,21 @@ export function FeaturesSection() {
               </div>
 
               {/* Content */}
-              <div className="px-[1.06rem] flex flex-col gap-[15px]">
-                <h3 className="text-[#292929] text-[33px] font-bold leading-[1.2em]">
+              <div className="flex flex-col gap-[15px] px-[1.06rem]">
+                <h3 className="font-bold text-[#292929] text-[33px] leading-[1.2em]">
                   Secure & Transparent
                 </h3>
-                <p className="text-[#292929] text-[17px] font-bold leading-[1.2em]">
+                <p className="font-bold text-[#292929] text-[17px] leading-[1.2em]">
                   Secure, transparent & effortless cash flow.
                 </p>
-                <p className="text-[#525252] text-[15px] font-normal leading-[1.2em]">
+                <p className="font-normal text-[#525252] text-[15px] leading-[1.2em]">
                   All loans and repayments on PayMyFees are securely processed, fully traceable, and clearly communicated with no hidden charges.
                 </p>
               </div>
 
               {/* Icon */}
-              <div className="relative md:mt-8 h-auto flex justify-center">
-                <div className="bg-[#B0BDD1] absolute mt-6 w-16 h-16 rounded-full" />
+              <div className="relative flex justify-center md:mt-8 h-auto">
+                <div className="absolute bg-[#B0BDD1] mt-6 rounded-full w-16 h-16" />
                 <Image
                   src="/images/lock-and-key-cartoon.png"
                   alt="Security icon"
@@ -79,9 +74,9 @@ export function FeaturesSection() {
             {/* Right Column */}
             <div className="flex flex-col gap-[19px] lg:w-[788px]">
               {/* No More School Fee Wahala Card */}
-              <div className="bg-[#E6EAF0] rounded-[25px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.2)] md:h-[19.93rem] h-[22.81rem] relative overflow-hidden">
+              <div className="relative bg-[#E6EAF0] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.2)] rounded-[25px] h-[22.81rem] md:h-[19.93rem] overflow-hidden">
                 {/* Background Image */}
-                <div className="absolute right-[-50px] top-[-20px] w-[563px] h-[563px] md:block hidden">
+                <div className="hidden md:block top-[-20px] right-[-50px] absolute w-[563px] h-[563px]">
                   <Image
                     src="/images/cartoon_no_more.png"
                     alt="Student celebrating"
@@ -91,7 +86,7 @@ export function FeaturesSection() {
                   />
                 </div>
 
-                {/* <div className="absolute right-0 -bottom-1 w-60 h-full md:hidden block">
+                {/* <div className="md:hidden block right-0 -bottom-1 absolute w-60 h-full">
                   <Image
                     src="/images/no-more.png"
                     alt="Student celebrating"
@@ -101,22 +96,21 @@ export function FeaturesSection() {
                 </div> */}
 
                 {/* Content */}
-                <div className="relative z-10 pt-[2.75rem] md:pl-[4.75rem] pl-6 flex flex-col gap-[20px] w-full">
-                  <div className="md:max-w-[27.05rem]
-                  max-w-[18.05rem] space-y-5">
-                    <h3 className="text-[#292929] text-[30px] font-bold leading-[1.2em]">
+                <div className="z-10 relative flex flex-col gap-[20px] pt-[2.75rem] pl-6 md:pl-[4.75rem] w-full">
+                  <div className="space-y-5 max-w-[18.05rem] md:max-w-[27.05rem]">
+                    <h3 className="font-bold text-[#292929] text-[30px] leading-[1.2em]">
                       No More School Fee
                       <br />
                       Wahala!
                     </h3>
-                    <p className="text-[#292929] text-[17px] font-bold leading-[1.2em]">
+                    <p className="font-bold text-[#292929] text-[17px] leading-[1.2em]">
                       Get instant funding for your tuition, No more worries
                     </p>
-                    <p className="text-[#525252] text-[15px] font-normal leading-[1.2em]">
-                      With PayMyFees you don&apos;t have to worry too much about how you will meet up with tuition payment for your studies. We make it easy, no stress no hassle
+                    <p className="font-normal text-[#525252] text-[15px] leading-[1.2em]">
+                      With PayMyFees you don&apos;t have to worry too much about how you will meet up with tuition payment for your studies. We make it easy, no stress, no hassle
                     </p>
 
-                    <button className="flex items-center gap-[8px] px-[42px] py-[15px] bg-[#00296B] rounded-[16px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.15)] text-white text-[14px] font-bold leading-[1.366em] w-fit mt-4 hover:opacity-90 transition-opacity">
+                    <button className="flex items-center gap-[8px] bg-[#00296B] hover:opacity-90 shadow-[0px_4px_4px_0px_rgba(0,0,0,0.15)] mt-4 px-[42px] py-[15px] rounded-[16px] w-fit font-bold text-[14px] text-white leading-[1.366em] transition-opacity">
                       Learn More
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                         <path d="M8.5 12H15.5M15.5 12L12.5 9M15.5 12L12.5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -126,7 +120,7 @@ export function FeaturesSection() {
                 </div>
 
                 {/* Decorative Dollar Icon */}
-                <div className="absolute -left-[84px] bottom-0 w-[195px] h-[190px]">
+                <div className="bottom-0 -left-[84px] absolute w-[195px] h-[190px]">
                   <Image
                     src="/images/dollar_layer.png"
                     alt=""
@@ -139,47 +133,47 @@ export function FeaturesSection() {
               {/* Bottom Row - Two Cards */}
               <div className="flex md:flex-row flex-col gap-[1rem] md:px-0">
                 {/* Fast Loan Approvals */}
-                <div className="md:w-[386px] md:h-[303px] bg-[#E6EAF0] rounded-[12px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.2)] p-[20px] relative overflow-hidden">
+                <div className="relative bg-[#E6EAF0] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.2)] p-[20px] rounded-[12px] md:w-[386px] md:h-[303px] overflow-hidden">
                   <div className="flex flex-col gap-[15px] mt-[42px]">
-                    <h3 className="text-[#292929] text-[33px] font-bold leading-[1.2em]">
+                    <h3 className="font-bold text-[#292929] text-[33px] leading-[1.2em]">
                       Fast Loan Approvals
                     </h3>
-                    <p className="text-[#292929] text-[17px] font-bold leading-[1.2em]">
+                    <p className="font-bold text-[#292929] text-[17px] leading-[1.2em]">
                       Verified loans in minutes, Super fast.
                     </p>
-                    <p className="text-[#525252] text-[15px] font-normal leading-[1.2em]">
+                    <p className="font-normal text-[#525252] text-[15px] leading-[1.2em]">
                       Accessing the funds you need for education has never been faster. With PayMyFees, students and schools can apply for verified loans, get instant eligibility checks, and receive approvals within minutes.
                     </p>
                   </div>
 
                   {/* Icon */}
-                  <div className="absolute top-0 -right-8 overflow-hidden w-[146px] h-[142px] rotate-180">
+                  <div className="top-0 -right-8 absolute w-[146px] h-[142px] overflow-hidden rotate-180">
                     <Image
                       src="/images/dollar_layer.png"
                       alt="Fast approval icon"
                      fill
                      priority
-                    // className="absolute top-0 right-0"
+                    // className="top-0 right-0 absolute"
                     />
                   </div>
                 </div>
 
                 {/* Flexible Repayment */}
-                <div className="md:w-[386px] md:h-[303px] bg-[#E6EAF0] overflow-hidden rounded-[12px] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.2)] p-[1rem] relative">
-                  <div className="flex flex-col gap-[15px] md:pb-0 pb-10 mt-[45px]">
-                    <h3 className="text-[#292929] text-[33px] font-bold leading-[1.2em]">
+                <div className="relative bg-[#E6EAF0] shadow-[0px_4px_4px_0px_rgba(0,0,0,0.2)] p-[1rem] rounded-[12px] md:w-[386px] md:h-[303px] overflow-hidden">
+                  <div className="flex flex-col gap-[15px] mt-[45px] pb-10 md:pb-0">
+                    <h3 className="font-bold text-[#292929] text-[33px] leading-[1.2em]">
                       Flexible Repayment
                     </h3>
-                    <p className="text-[#292929] text-[17px] font-bold leading-[1.2em]">
+                    <p className="font-bold text-[#292929] text-[17px] leading-[1.2em]">
                       Choose plans that match your income or term.
                     </p>
-                    <p className="text-[#525252] text-[15px] font-normal leading-[1.2em] relative z-20">
+                    <p className="z-20 relative font-normal text-[#525252] text-[15px] leading-[1.2em]">
                       Enjoy flexible payment options designed around your lifestyle. With PayMyFees, you can select plans that fit your income level, study duration, or repayment comfort.
                     </p>
                   </div>
 
                   {/* Image */}
-                  <div className="absolute -bottom-8 left-[2.31rem] w-[169px] h-[105px]">
+                  <div className="-bottom-8 left-[2.31rem] absolute w-[169px] h-[105px]">
                     <Image
                       src="/images/trending.png"
                       alt="Flexible payment icon"

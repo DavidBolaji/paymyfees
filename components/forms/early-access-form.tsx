@@ -79,7 +79,7 @@ export function EarlyAccessForm({ white = false }: { white?: boolean }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full space-y-4 relative z-50">
+    <form onSubmit={handleSubmit} className="z-50 relative space-y-4 w-full">
       {/* Role and Name */}
       <div className="flex md:flex-row flex-col gap-5">
         <CustomInput
@@ -88,6 +88,7 @@ export function EarlyAccessForm({ white = false }: { white?: boolean }) {
           white={white}
           value={form.role}
           options={[
+            { value: "parent", label: "Parent" },
             { value: "student", label: "Student" },
             { value: "teacher", label: "Teacher" },
             { value: "school", label: "School" },
@@ -146,7 +147,7 @@ export function EarlyAccessForm({ white = false }: { white?: boolean }) {
         />
       </div>
 
-      <div className="pt-[2.375rem] w-full pb-6 relative z-0">
+      <div className="z-0 relative pt-[2.375rem] pb-6 w-full">
         <button
           type="submit"
           disabled={loading || !isFormValid()}
