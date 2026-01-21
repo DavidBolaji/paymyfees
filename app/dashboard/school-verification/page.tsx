@@ -19,7 +19,7 @@ export default function SchoolVerificationPage() {
 
   return (
     <div className="p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="">
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">School Verification</h1>

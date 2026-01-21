@@ -112,7 +112,7 @@ export default function FullLoanInformationPage() {
 
   return (
     <div className="bg-[#F6F6F6] p-6 min-h-full">
-      <div className="mx-auto max-w-7xl">
+      <div className="">
         {/* Back Navigation */}
         <BackNavigation
           href="/dashboard"

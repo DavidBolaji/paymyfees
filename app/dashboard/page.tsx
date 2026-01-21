@@ -116,7 +116,7 @@ export default function DashboardPage() {
   return (
     <>
       <div className="p-6">
-        <div className="mx-auto max-w-7xl">
+        <div className="">
           <h2 className='mb-[0.56rem] font-semibold text-[#191919] text-[1.6875rem]'>Dashboard</h2>
           <h2 className='mb-[1.375rem] font-semibold text-[#5F5F5F] text-[1.6875rem]'>Welcome Back, Aanu</h2>
           {/* Stats Grid */}
@@ -214,6 +214,8 @@ export default function DashboardPage() {
                       router.push('/dashboard/apply-loan');
                     } else if (action.id === 'view-payment-plan') {
                       router.push('/dashboard/view-payment-plan');
+                    } else if (action.id === 'fund-wallet') {
+                      router.push('/dashboard/wallet');
                     } else {
                       console.log(action.title);
                     }

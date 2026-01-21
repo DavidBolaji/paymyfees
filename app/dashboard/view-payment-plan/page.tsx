@@ -38,7 +38,7 @@ export default function ViewPaymentPlanPage() {
 
   return (
     <div className="p-6">
-      <div className="mx-auto max-w-7xl">
+      <div className="">
         {/* Back Navigation */}
         <BackNavigation href="/dashboard" label="Back to Dashboard" />
 

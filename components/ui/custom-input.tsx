@@ -1,7 +1,6 @@
-
 "use client";
 
-import { ChevronDown, Search } from "lucide-react";
+import { ChevronDown, Search, Eye, EyeOff } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -20,13 +19,16 @@ interface Country {
 
 interface CustomInputProps {
   label: string;
-  type?: "text" | "email" | "number" | "select" | "phone";
+  type?: "text" | "email" | "number" | "select" | "phone" | "password";
   value?: string;
   placeholder?: string;
   onChange?: (value: string) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
   options?: Option[];
   price?: boolean;
   white?: boolean;
+  error?: boolean;
 }
 
 // Comprehensive country list with SVG flags and dial codes
@@ -84,15 +86,19 @@ export function CustomInput({
   value = "",
   placeholder,
   onChange,
+  onFocus,
+  onBlur,
   options = [],
   price = false,
   white,
+  error = false,
 }: CustomInputProps) {
-  const [selectedCountry, setSelectedCountry] = useState<Country>(countries[0]);
+  const [selectedCountry, setSelectedCountry] = useState<Country | undefined>(countries[0]);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [showPassword, setShowPassword] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -170,7 +176,7 @@ export function CustomInput({
     setPhoneNumber(cleanNum);
 
     // Combine with dial code
-    const fullNumber = `${selectedCountry.dialCode}${cleanNum}`;
+    const fullNumber = `${selectedCountry?.dialCode}${cleanNum}`;
     onChange?.(fullNumber);
   };
 
@@ -178,6 +184,10 @@ export function CustomInput({
     const digits = raw.replace(/\D/g, "");
     const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
     onChange?.(formatted);
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -197,12 +207,12 @@ export function CustomInput({
           <select
             value={value}
             onChange={(e) => onChange?.(e.target.value)}
-            className="
-              w-full h-12 px-3 pr-10 
-              rounded-lg border border-[#d1d1d1] bg-[#f5f5f5]
-              focus:outline-none appearance-none
-              text-[#292929]
-            "
+            onFocus={onFocus}
+            onBlur={onBlur}
+            className={cn(
+              "w-full h-12 px-3 pr-10 rounded-lg border bg-[#f5f5f5] focus:outline-none appearance-none text-[#292929]",
+              error ? "border-red-500" : "border-[#d1d1d1]"
+            )}
           >
             <option value="" className="text-gray-400">
               Select {label}
@@ -222,7 +232,10 @@ export function CustomInput({
       {/* CUSTOM PHONE INPUT */}
       {type === "phone" && (
         <div className="relative z-10" ref={dropdownRef}>
-          <div className="flex items-center w-full h-12 rounded-lg border border-[#d1d1d1] bg-[#f5f5f5] overflow-hidden">
+          <div className={cn(
+            "flex items-center w-full h-12 rounded-lg border bg-[#f5f5f5] overflow-hidden",
+            error ? "border-red-500" : "border-[#d1d1d1]"
+          )}>
             {/* Country Selector Button */}
             <button
               type="button"
@@ -235,14 +248,14 @@ export function CustomInput({
               className="flex items-center gap-2 px-3 h-full bg-[#f5f5f5] hover:bg-[#ebebeb] transition-colors border-r border-[#d1d1d1]"
             >
               <Image
-                src={selectedCountry.flag}
-                alt={selectedCountry.name}
+                src={selectedCountry!.flag}
+                alt={selectedCountry!.name}
                 width={24}
                 height={16}
                 className="w-6 h-4 object-cover rounded"
               />
               <span className="text-sm text-[#292929] font-medium">
-                {selectedCountry.dialCode}
+                {selectedCountry?.dialCode}
               </span>
               <ChevronDown
                 className={cn("w-4 h-4 text-gray-500 transition-transform", {
@@ -256,6 +269,8 @@ export function CustomInput({
               type="text"
               value={phoneNumber}
               onChange={(e) => handlePhoneNumberChange(e.target.value)}
+              onFocus={onFocus}
+              onBlur={onBlur}
               placeholder={placeholder || "Phone number"}
               className="flex-1 h-full px-3 bg-[#f5f5f5] text-[#292929] placeholder:text-gray-400 focus:outline-none"
             />
@@ -309,7 +324,7 @@ export function CustomInput({
                         className={cn(
                           "w-full flex items-center gap-3 px-4 py-3 hover:bg-[#f5f5f5] transition-colors text-left",
                           {
-                            "bg-[#f5f5f5]": selectedCountry.code === country.code,
+                            "bg-[#f5f5f5]": selectedCountry?.code === country.code,
                           }
                         )}
                       >
@@ -340,24 +355,47 @@ export function CustomInput({
         </div>
       )}
 
+      {/* PASSWORD INPUT */}
+      {type === "password" && (
+        <div className="relative">
+          <input
+            type={showPassword ? "text" : "password"}
+            value={value}
+            onChange={(e) => onChange?.(e.target.value)}
+            onFocus={onFocus}
+            onBlur={onBlur}
+            placeholder={placeholder}
+            className={cn(
+              "w-full h-12 px-3 pr-10 rounded-lg border bg-[#f5f5f5] focus:outline-none text-[#292929] relative z-0 placeholder:text-gray-400",
+              error ? "border-red-500" : "border-[#d1d1d1]"
+            )}
+          />
+          <button
+            type="button"
+            onClick={togglePasswordVisibility}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 z-10"
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
+        </div>
+      )}
+
       {/* TEXT / EMAIL / NUMBER */}
       {(type === "text" || type === "email" || type === "number") && (
         <input
-          type="text"
+          type={type}
           value={value}
           onChange={(e) => {
             if (price) return handlePriceChange(e.target.value);
             onChange?.(e.target.value);
           }}
+          onFocus={onFocus}
+          onBlur={onBlur}
           placeholder={placeholder}
-          className="
-            w-full h-12 px-3 rounded-lg 
-            border border-[#d1d1d1] bg-[#f5f5f5]
-            focus:outline-none text-[#292929] relative z-0 placeholder:text-gray-400
-            [appearance:textfield]
-            [&::-webkit-outer-spin-button]:appearance-none
-            [&::-webkit-inner-spin-button]:appearance-none
-          "
+          className={cn(
+            "w-full h-12 px-3 rounded-lg border bg-[#f5f5f5] focus:outline-none text-[#292929] relative z-0 placeholder:text-gray-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
+            error ? "border-red-500" : "border-[#d1d1d1]"
+          )}
         />
       )}
     </div>

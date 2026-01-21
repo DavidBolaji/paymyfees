@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to <%= appName %></title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f9f9f9;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    .header {
+      text-align: center;
+      padding: 20px 0;
+      border-bottom: 1px solid #eaeaea;
+    }
+    .logo {
+      max-width: 150px;
+      height: auto;
+    }
+    .content {
+      padding: 30px 20px;
+    }
+    .button {
+      display: inline-block;
+      padding: 12px 24px;
+      background-color: #00296B;
+      color: #ffffff !important;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px;
+      font-size: 12px;
+      color: #888;
+      border-top: 1px solid #eaeaea;
+    }
+    .features {
+      margin: 30px 0;
+    }
+    .feature {
+      margin-bottom: 15px;
+      display: flex;
+      align-items: flex-start;
+    }
+    .feature-icon {
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+      color: #00296B;
+    }
+    .help {
+      margin-top: 30px;
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="<%= appUrl %>/assets/images/logo/logo.png" alt="<%= appName %> Logo" class="logo">
+    </div>
+    
+    <div class="content">
+      <h1>Welcome to <%= appName %>!</h1>
+      
+      <p>Hello <%= fullName %>,</p>
+      
+      <p>Thank you for joining <%= appName %>. Your account has been successfully created and is now ready to use. We're excited to have you on board!</p>
+      
+      <div style="text-align: center;">
+        <a href="<%= loginUrl %>" class="button">Log In to Your Account</a>
+      </div>
+      
+      <div class="features">
+        <h2>What you can do with <%= appName %>:</h2>
+        
+        <div class="feature">
+          <div class="feature-icon">✓</div>
+          <div>Apply for school fee loans with flexible repayment options</div>
+        </div>
+        
+        <div class="feature">
+          <div class="feature-icon">✓</div>
+          <div>Track your loan applications and repayments in real-time</div>
+        </div>
+        
+        <div class="feature">
+          <div class="feature-icon">✓</div>
+          <div>Manage multiple student profiles under one account</div>
+        </div>
+        
+        <div class="feature">
+          <div class="feature-icon">✓</div>
+          <div>Access educational resources and financial planning tools</div>
+        </div>
+      </div>
+      
+      <div class="help">
+        <p>If you have any questions or need assistance, our support team is here to help.</p>
+        
+        <p>Contact us at <a href="mailto:support@paymyfees.com">support@paymyfees.com</a></p>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <p>&copy; <%= new Date().getFullYear() %> <%= appName %>. All rights reserved.</p>
+      <p>Finance Your Education, Stress Free</p>
+    </div>
+  </div>
+</body>
+</html>
