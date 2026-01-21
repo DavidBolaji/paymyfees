@@ -212,6 +212,20 @@ export const walletTransactionsData = [
     amount: -20000,
     type: 'debit',
     status: 'completed'
+  },
+  {
+    date: 'Jan 10, 2025',
+    description: 'Fund Wallet Top-Up',
+    amount: 40000,
+    type: 'credit',
+    status: 'pending'
+  },
+  {
+    date: 'Jan 12, 2025',
+    description: 'Wallet Debit for Payment',
+    amount: -10000,
+    type: 'debit',
+    status: 'completed'
   }
 ];
 

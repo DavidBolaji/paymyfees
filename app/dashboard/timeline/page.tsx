@@ -122,7 +122,7 @@ export default function TimelinePage() {
 
     return (
         <div className="bg-[#F8F9FA] p-6 min-h-screen">
-            <div className="mx-auto max-w-6xl">
+            <div className="">
                 <BackNavigation href="/dashboard" label="Back to Dashboard" />
                 {/* Header */}
                 <h1 className="mb-8 font-semibold text-[#5F5F5F] text-[1.5rem]">

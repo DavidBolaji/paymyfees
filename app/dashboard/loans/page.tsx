@@ -42,7 +42,7 @@ export default function LoansPage() {
   return (
     <>
     <div className="p-6">
-      <div className="mx-auto max-w-7xl">
+      <div className="">
         <BackNavigation href="/dashboard" label="Back to Dashboard" />
         
         <div className="mb-6">
