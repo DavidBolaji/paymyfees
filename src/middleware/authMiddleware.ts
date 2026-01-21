@@ -1,0 +1,180 @@
+/**
+ * Authentication Middleware for API Routes
+ * Verifies JWT tokens and extracts user information
+ */
+
+import { NextResponse } from 'next/server';
+import { requireAuth, requireParent, requireSchool, requireAdmin } from '@/src/middleware/auth';
+import { UnauthorizedError, ForbiddenError } from '@/src/types/errors';
+import { logger } from '@/src/utils/logger';
+
+/**
+ * Authentication middleware result
+ */
+export interface AuthMiddlewareResult {
+  success: boolean;
+  userId?: string;
+  role?: string;
+  response?: NextResponse;
+}
+
+/**
+ * General authentication middleware
+ * Verifies JWT token and returns user ID if valid
+ */
+export async function authMiddleware(req: Request): Promise<AuthMiddlewareResult> {
+  try {
+    const user = await requireAuth(req);
+    
+    return {
+      success: true,
+      userId: user.id,
+      role: user.role
+    };
+  } catch (error) {
+    logger.warn({ msg: 'Authentication failed', error: (error as Error).message });
+    
+    const response = NextResponse.json(
+      {
+        success: false,
+        error: 'Authentication required',
+        message: 'Please log in to access this resource',
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 401 }
+    );
+    
+    return {
+      success: false,
+      response
+    };
+  }
+}
+
+/**
+ * Parent authentication middleware
+ * Verifies JWT token and ensures user has PARENT role
+ */
+export async function parentAuthMiddleware(req: Request): Promise<AuthMiddlewareResult> {
+  try {
+    const user = await requireParent(req);
+    
+    return {
+      success: true,
+      userId: user.id,
+      role: user.role
+    };
+  } catch (error) {
+    logger.warn({ msg: 'Parent authentication failed', error: (error as Error).message });
+    
+    const status = error instanceof UnauthorizedError ? 401 : 403;
+    const message = error instanceof UnauthorizedError 
+      ? 'Authentication required' 
+      : 'Parent access required';
+    
+    const response = NextResponse.json(
+      {
+        success: false,
+        error: message,
+        message: error instanceof UnauthorizedError 
+          ? 'Please log in to access this resource' 
+          : 'This resource is only accessible to parents',
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status }
+    );
+    
+    return {
+      success: false,
+      response
+    };
+  }
+}
+
+/**
+ * School authentication middleware
+ * Verifies JWT token and ensures user has SCHOOL role
+ */
+export async function schoolAuthMiddleware(req: Request): Promise<AuthMiddlewareResult> {
+  try {
+    const user = await requireSchool(req);
+    
+    return {
+      success: true,
+      userId: user.id,
+      role: user.role
+    };
+  } catch (error) {
+    logger.warn({ msg: 'School authentication failed', error: (error as Error).message });
+    
+    const status = error instanceof UnauthorizedError ? 401 : 403;
+    const message = error instanceof UnauthorizedError 
+      ? 'Authentication required' 
+      : 'School access required';
+    
+    const response = NextResponse.json(
+      {
+        success: false,
+        error: message,
+        message: error instanceof UnauthorizedError 
+          ? 'Please log in to access this resource' 
+          : 'This resource is only accessible to schools',
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status }
+    );
+    
+    return {
+      success: false,
+      response
+    };
+  }
+}
+
+/**
+ * Admin authentication middleware
+ * Verifies JWT token and ensures user has ADMIN role
+ */
+export async function adminAuthMiddleware(req: Request): Promise<AuthMiddlewareResult> {
+  try {
+    const user = await requireAdmin(req);
+    
+    return {
+      success: true,
+      userId: user.id,
+      role: user.role
+    };
+  } catch (error) {
+    logger.warn({ msg: 'Admin authentication failed', error: (error as Error).message });
+    
+    const status = error instanceof UnauthorizedError ? 401 : 403;
+    const message = error instanceof UnauthorizedError 
+      ? 'Authentication required' 
+      : 'Admin access required';
+    
+    const response = NextResponse.json(
+      {
+        success: false,
+        error: message,
+        message: error instanceof UnauthorizedError 
+          ? 'Please log in to access this resource' 
+          : 'This resource is only accessible to administrators',
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status }
+    );
+    
+    return {
+      success: false,
+      response
+    };
+  }
+}
