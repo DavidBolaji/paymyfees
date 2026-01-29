@@ -1,34 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { BackNavigation } from '@/components/dashboard/back-navigation';
 import { DataTable } from '@/components/dashboard/data-table';
-// import { TransactionDrawer } from '@/components/dashboard';
-import { fetchRecentTransactions, TRANSACTION_COLUMNS_FULL, recentTransactionsDataFull } from '@/data';
+
+import {  TRANSACTION_COLUMNS } from '@/data';
 import { TransactionDrawer } from '@/components/dashboard/detail-drawer';
+import useTransaction from '@/hooks/useTransaction';
 
 export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {transactions, paginationInfo: tpaginationInfo, loading: transactionLoading} = useTransaction()
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        await fetchRecentTransactions();
-        setTransactions(recentTransactionsDataFull);
-      } catch (error) {
-        console.error('Error loading transactions:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
 
-    loadData();
-  }, []);
-
-  if (loading) {
+  if (transactionLoading) {
     return (
       <div className="flex justify-center items-center h-full">
         <div className="text-center">
@@ -41,36 +27,40 @@ export default function TransactionsPage() {
 
   return (
     <>
-    <div className="p-6">
-      <div className="">
-        <BackNavigation href="/dashboard" label="Back to Dashboard" />
-        
-        <div className="mb-6">
-          <h1 className="mb-2 font-semibold text-[#191919] text-[1.6875rem]">
-            Transaction History
-          </h1>
-          <p className="text-[#5F5F5F] text-base">
-            View all your payment transactions and activity
-          </p>
+      <div className="p-6">
+        <div className="">
+          <BackNavigation href="/dashboard" label="Back to Dashboard" />
+
+          <div className="mb-6">
+            <h1 className="mb-2 font-semibold text-[#191919] text-[1.6875rem]">
+              Transaction History
+            </h1>
+            <p className="text-[#5F5F5F] text-base">
+              View all your payment transactions and activity
+            </p>
+          </div>
+
+          <DataTable
+            title="All Transactions"
+            columns={TRANSACTION_COLUMNS}
+            data={transactions}
+            onPageChange={() => { }}
+            paginationInfo={tpaginationInfo}
+            itemsPerPage={10}
+            isLoading={transactionLoading}
+            onRowClick={(transaction) => {
+              setSelectedTransaction(transaction);
+              setIsDrawerOpen(true);
+            }}
+          />
         </div>
-
-        <DataTable
-          title="All Transactions"
-          columns={TRANSACTION_COLUMNS_FULL}
-          data={transactions}
-          onRowClick={(transaction) => {
-            setSelectedTransaction(transaction);
-            setIsDrawerOpen(true);
-          }}
-        />
       </div>
-    </div>
 
-    <TransactionDrawer
-      isOpen={isDrawerOpen}
-      onClose={() => setIsDrawerOpen(false)}
-      transaction={selectedTransaction}
-    />
+      <TransactionDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        transaction={selectedTransaction}
+      />
     </>
   );
 }

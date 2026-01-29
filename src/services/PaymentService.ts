@@ -61,7 +61,7 @@ export class PaymentService implements IPaymentService {
    * Create a new payment
    */
   async createPayment(input: CreatePaymentInput): Promise<PaymentDTO> {
-    logger.info({ msg: 'Creating payment', userId: input.userId, loanId: input.loanId, amount: input.amount });
+    console.log({ msg: 'Creating payment', userId: input.userId, loanId: input.loanId, amount: input.amount });
 
     // Verify loan exists and belongs to user
     const loan = await this.loanService.getLoanById(input.loanId);
@@ -163,7 +163,7 @@ export class PaymentService implements IPaymentService {
         return payment;
       });
 
-      logger.info({ msg: 'Payment created successfully', paymentId: result.id, loanId: input.loanId });
+      console.log({ msg: 'Payment created successfully', paymentId: result.id, loanId: input.loanId });
       return toPaymentDTO(result);
     } else {
       // For other payment methods (CARD, BANK_TRANSFER, etc.)
@@ -176,7 +176,7 @@ export class PaymentService implements IPaymentService {
    * Process payment (for external payment methods)
    */
   async processPayment(input: ProcessPaymentInput): Promise<PaymentDTO> {
-    logger.info({ msg: 'Processing payment', paymentId: input.paymentId });
+    console.log({ msg: 'Processing payment', paymentId: input.paymentId });
 
     // Find payment
     const payment = await this.getPaymentById(input.paymentId);
@@ -230,7 +230,7 @@ export class PaymentService implements IPaymentService {
       return result;
     });
 
-    logger.info({ msg: 'Payment processed', paymentId: input.paymentId, status: input.status });
+    console.log({ msg: 'Payment processed', paymentId: input.paymentId, status: input.status });
     return toPaymentDTO(updatedPayment);
   }
 
@@ -238,7 +238,7 @@ export class PaymentService implements IPaymentService {
    * Get payment by ID
    */
   async getPaymentById(id: string): Promise<PaymentDTO> {
-    logger.info({ msg: 'Getting payment by ID', paymentId: id });
+    console.log({ msg: 'Getting payment by ID', paymentId: id });
 
     const payment = await executePaymentProcessing(async (tx) => {
       return await tx.payment.findUnique({
@@ -266,7 +266,7 @@ export class PaymentService implements IPaymentService {
    * Get payments by loan ID
    */
   async getPaymentsByLoanId(loanId: string): Promise<PaymentDTO[]> {
-    logger.info({ msg: 'Getting payments by loan ID', loanId });
+    console.log({ msg: 'Getting payments by loan ID', loanId });
 
     const payments = await executePaymentProcessing(async (tx) => {
       return await tx.payment.findMany({
@@ -285,7 +285,7 @@ export class PaymentService implements IPaymentService {
    * Generate receipt for payment
    */
   async generateReceipt(paymentId: string): Promise<{ receiptUrl: string; payment: PaymentDTO }> {
-    logger.info({ msg: 'Generating receipt', paymentId });
+    console.log({ msg: 'Generating receipt', paymentId });
 
     const payment = await this.getPaymentById(paymentId);
 

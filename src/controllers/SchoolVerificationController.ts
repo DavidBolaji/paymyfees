@@ -26,7 +26,7 @@ export class SchoolVerificationController {
    * POST /api/school-verification
    */
   async submitVerificationRequest(req: Request, userId: string): Promise<NextResponse> {
-    logger.info({ msg: 'Submitting verification request', userId });
+    console.log({ msg: 'Submitting verification request', userId });
     
     try {
       const data = await req.json();
@@ -57,7 +57,7 @@ export class SchoolVerificationController {
         );
       }
 
-      logger.error({
+      console.error({
         msg: 'Error submitting verification request',
         userId,
         error: (error as Error).message,
@@ -82,7 +82,7 @@ export class SchoolVerificationController {
    * GET /api/school-verification/status
    */
   async getVerificationStatus(_req: Request, userId: string): Promise<NextResponse> {
-    logger.info({ msg: 'Getting verification status', userId });
+    console.log({ msg: 'Getting verification status', userId });
     
     try {
       const status = await this.schoolVerificationService.getVerificationStatus(userId);
@@ -97,7 +97,7 @@ export class SchoolVerificationController {
 
       return NextResponse.json(response, { status: 200 });
     } catch (error) {
-      logger.error({
+      console.error({
         msg: 'Error getting verification status',
         userId,
         error: (error as Error).message,

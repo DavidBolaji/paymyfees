@@ -26,7 +26,7 @@ export function StatCard({
   return (
     <div 
       className={cn(
-        "p-6 shadow-sm relative overflow-hidden h-[141px]",
+        "py-6 px-4 shadow-sm relative overflow-hidden h-[148px]",
         className
       )}
       style={{
@@ -53,7 +53,7 @@ export function StatCard({
       <div className="pr-14">
         {/* Title */}
         <h3 className={cn(
-          "text-base font-medium mb-4 text-nowrap",
+          "text-sm font-medium mb-4 text-nowrap",
           isActive ? "text-white" : "text-gray-700"
         )}>
           {title}
@@ -78,7 +78,7 @@ export function StatCard({
         {/* Footer */}
         {footer && (
           <p className={cn(
-            "text-[0.6875rem] absolute font-semibold left-6 right-6 text-nowrap",
+            "text-[0.6875rem] absolute font-semibold left-4 right-6 text-nowrap",
             isActive ? "text-white/80" : "text-gray-600"
           )}>
             {footer}

@@ -9,7 +9,8 @@ import {
   UserRole, 
   PaymentMethod, 
   SupportTicketPriority,
-  DocumentType 
+  DocumentType, 
+  ResidencyStatus
 } from '@prisma/client';
 
 // ============================================
@@ -46,7 +47,8 @@ export const registerSchema = z.object({
   role: z.nativeEnum(UserRole),
   fullName: z.string().min(2, 'Full name must be at least 2 characters').max(100),
   email: emailSchema,
-  phone: phoneSchema,
+//phone: phoneSchema,
+  country: z.string().min(2, 'Country field must be provided'),
   password: passwordSchema,
   confirmPassword: z.string(),
   mode: z.enum(['otp', 'link'], {
@@ -107,64 +109,78 @@ export const updateParentProfileSchema = z.object({
 // Loan Application Schemas
 // ============================================
 
-export const createLoanSchema = z.object({
-  schoolName: z.string().min(2, 'School name is required').max(200),
-  academicSession: z.string().min(4, 'Academic session is required').max(50),
-  term: z.enum(['First Term', 'Second Term', 'Third Term'], {
-    message: 'Invalid term',
-  }),
-  loanAmount: z.number()
-    .positive('Loan amount must be positive')
-    .min(1000, 'Minimum loan amount is ₦1,000')
-    .max(10000000, 'Maximum loan amount is ₦10,000,000'),
-  repaymentMonths: z.number()
-    .int('Repayment months must be an integer')
-    .min(1, 'Minimum repayment period is 1 month')
-    .max(12, 'Maximum repayment period is 12 months'),
-  studentId: idSchema,
+/**
+ * Base loan schema (common fields)
+ */
+const baseLoanSchema = z.object({
+  studentId: z.string().uuid('Invalid student ID'),
+  residencyStatus: z.nativeEnum(ResidencyStatus),
+  loanAmount: z.number().min(1000, 'Minimum loan amount is ₦1,000').max(10000000, 'Maximum loan amount is ₦10,000,000'),
+  repaymentMonths: z.number().min(1, 'Minimum repayment period is 1 month').max(12, 'Maximum repayment period is 12 months'),
+  uploadedFiles: z.array(z.object({
+    name: z.string(),
+    url: z.string(),
+    size: z.number(),
+    type: z.string()
+  })).min(1, 'At least one document is required'),
   consents: z.object({
-    schoolDetails: z.boolean().refine((val) => val === true, {
-      message: 'You must consent to school details verification',
-    }),
-    directPayment: z.boolean().refine((val) => val === true, {
-      message: 'You must consent to direct payment to school',
-    }),
-    terms: z.boolean().refine((val) => val === true, {
-      message: 'You must accept terms and conditions',
-    }),
-  }),
+    schoolDetails: z.boolean().refine(val => val === true, 'You must confirm school details'),
+    directPayment: z.boolean().refine(val => val === true, 'You must agree to direct payment'),
+    terms: z.boolean().refine(val => val === true, 'You must accept terms and conditions')
+  })
 });
 
-export const updateLoanStatusSchema = z.object({
-  status: z.enum([
-    'PENDING',
-    'UNDER_REVIEW',
-    'APPROVED',
-    'REJECTED',
-    'DISBURSED',
-    'ACTIVE',
-    'COMPLETED',
-    'DEFAULTED',
-    'CANCELLED',
-  ]),
-  approvedBy: z.string().optional(),
-  rejectionReason: z.string().max(1000).optional(),
-  notes: z.string().max(2000).optional(),
+/**
+ * Local student loan schema
+ */
+export const localLoanSchema = baseLoanSchema.extend({
+  residencyStatus: z.literal(ResidencyStatus.LOCAL),
+  schoolName: z.string().min(1, 'School name is required'),
+  academicSession: z.string().min(1, 'Academic session is required'),
+  term: z.string().min(1, 'Term is required')
 });
 
+/**
+ * International student loan schema
+ */
+export const internationalLoanSchema = baseLoanSchema.extend({
+  residencyStatus: z.literal(ResidencyStatus.INTERNATIONAL),
+  schoolName: z.string().min(1, 'School name is required'),
+  countryOfStudy: z.string().min(1, 'Country of study is required'),
+  programCourseOfStudy: z.string().min(1, 'Program/Course of study is required'),
+  academicSession: z.string().min(1, 'Academic session is required'),
+  
+  // Employment & Income Details
+  employmentStatus: z.enum(['Employed (Full-time)', 'Employed (Part-time)', 'Self-Employed', 'Unemployed', 'Student']),
+  companyName: z.string().optional(),
+  jobTitleRole: z.string().optional(),
+  monthlyNetIncome: z.number().min(0, 'Monthly income must be positive').optional(),
+  paymentFrequency: z.enum(['Weekly', 'Bi-weekly', 'Monthly', 'Annually']).optional(),
+  
+  // Loan Disbursement Details
+  accountHolderName: z.string().min(1, 'Account holder name is required'),
+  bankName: z.string().min(1, 'Bank name is required'),
+  accountNumber: z.string().min(10, 'Account number must be at least 10 digits').max(20, 'Account number too long'),
+  countryOfBankAccount: z.string().min(1, 'Country of bank account is required')
+});
+
+/**
+ * Union schema for all loan types
+ */
+export const createLoanSchema = z.discriminatedUnion('residencyStatus', [
+  localLoanSchema,
+  internationalLoanSchema
+]);
+
+
+/**
+ * Loan query schema (for filtering)
+ */
 export const loanQuerySchema = z.object({
-  status: z.enum([
-    'PENDING',
-    'UNDER_REVIEW',
-    'APPROVED',
-    'REJECTED',
-    'DISBURSED',
-    'ACTIVE',
-    'COMPLETED',
-    'DEFAULTED',
-    'CANCELLED',
-  ]).optional(),
-  ...paginationSchema.shape,
+  status: z.string().optional(),
+  page: z.string().default('1'),
+  limit: z.string().default('10'),
+  residencyStatus: z.nativeEnum(ResidencyStatus).optional()
 });
 
 // ============================================
@@ -355,6 +371,8 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export type VerificationMode = 'otp' | 'link';
 export type LoginInput = z.infer<typeof loginSchema>;
 export type UpdateUserProfileInput = z.infer<typeof updateUserProfileSchema>;
+export type LocalLoanInput = z.infer<typeof localLoanSchema>;
+export type InternationalLoanInput = z.infer<typeof internationalLoanSchema>;
 export type CreateLoanInput = z.infer<typeof createLoanSchema>;
 export type CreateStudentInput = z.infer<typeof createStudentSchema>;
 export type FundWalletInput = z.infer<typeof fundWalletSchema>;

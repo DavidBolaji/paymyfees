@@ -46,7 +46,7 @@ export class TransactionService implements ITransactionService {
    * Get transaction by ID
    */
   async getTransactionById(id: string): Promise<TransactionDTO> {
-    logger.info({ msg: 'Getting transaction by ID', transactionId: id });
+    console.log({ msg: 'Getting transaction by ID', transactionId: id });
 
     const transaction = await this.transactionRepository.findById(id);
 
@@ -65,7 +65,7 @@ export class TransactionService implements ITransactionService {
     filters?: TransactionFilters,
     pagination?: PaginationParams
   ): Promise<{ transactions: TransactionDTO[]; total: number; page: number; limit: number }> {
-    logger.info({ msg: 'Getting transactions by user ID', userId, filters });
+    console.log({ msg: 'Getting transactions by user ID', userId, filters });
 
     const { transactions, total } = await this.transactionRepository.findByUserId(
       userId,

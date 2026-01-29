@@ -3,25 +3,27 @@
 import { LoadingHourGlassIcon } from '@/assets/icons/LoadingHourGlassIcon';
 
 import { CloseCircleIcon } from '@/assets/icons/CloseCircleIcon';
-import { useState } from 'react';
 import { SentIcon } from '@/assets/icons/SentIcon';
+import useLoan from '@/hooks/useLoan';
+import { LoanStatus } from '@prisma/client';
 
-type ApplicationState = 'pending' | 'approved' | 'no-history' | 'denied';
 
 
 export function ApplicationStatus() {
   // This would normally come from API/state management
-  const [applicationState] = useState<ApplicationState>('approved');
+   const { currentLoan } = useLoan()
+   console.log(currentLoan?.status)
 
-  if (applicationState === 'no-history') {
+
+  if (!currentLoan) {
     return (
       <div className="flex flex-col justify-center items-center py-20 text-center">
-        <div className="flex justify-center items-center bg-blue-50 mb-8 rounded-full w-16 h-16">
-          <LoadingHourGlassIcon />
+        <div className="flex justify-center items-center bg-blue-50 mb-8 rounded-full w-24 h-24">
+          <LoadingHourGlassIcon size={56}/>
         </div>
         
         <h3 className="mb-4 font-semibold text-[#292D32] text-[27px]">
-          No loan history yet.!
+          No loan history yet.
         </h3>
         
         <p className="max-w-md text-[#7C7C7C] text-[15px] leading-relaxed">
@@ -31,7 +33,9 @@ export function ApplicationStatus() {
     );
   }
 
-  if (applicationState === 'approved') {
+  if (currentLoan.status === LoanStatus.APPROVED || 
+      currentLoan.status === LoanStatus.DISBURSED || 
+      currentLoan.status === LoanStatus.ACTIVE) {
     return (
       <div className="flex flex-col justify-center items-center py-20 text-center">
         <div className="flex justify-center items-center bg-blue-50 mb-3 rounded-full w-16 h-16">
@@ -56,7 +60,7 @@ export function ApplicationStatus() {
     );
   }
 
-  if (applicationState === 'denied') {
+  if (currentLoan.status === LoanStatus.REJECTED) {
     return (
       <div className="flex flex-col justify-center items-center py-20 text-center">
         <div className="flex justify-center items-center bg-[#FEE6E6] mb-3 rounded-full w-16 h-16">

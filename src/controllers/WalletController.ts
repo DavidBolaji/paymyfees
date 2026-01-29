@@ -1,42 +1,60 @@
 /**
- * Wallet Controller
+ * Wallet Controller (Updated with Paystack Integration)
  * HTTP request/response handling for wallet endpoints
- * Implements controller layer with proper status codes and response formatting
  */
 
 import { NextResponse } from 'next/server';
 import { WalletService, IWalletService } from '@/src/services/WalletService';
-import { fundWalletSchema, paginationSchema } from '@/src/validation/schemas';
+import { paginationSchema } from '@/src/validation/schemas';
+import { z } from 'zod';
 import { ApiResponse } from '@/src/types';
-import { logger } from '@/src/utils/logger';
 import { AuthUser } from '@/src/middleware/auth';
+import { PaymentMethod } from '@prisma/client';
+import { IUserService, UserService } from '../services/UserService';
+
+/**
+ * Initialize Payment Schema
+ */
+const initializePaymentSchema = z.object({
+  amount: z.number().positive('Amount must be positive'),
+  paymentMethod: z.enum(['BANK_TRANSFER', 'CARD_PAYMENT', 'USSD_CODE']),
+  currency: z.string().optional().default('NGN'),
+  note: z.string().optional(),
+  callbackUrl: z.string().url().optional(),
+});
 
 /**
  * Wallet Controller
- * Handles HTTP layer for wallet operations
  */
 export class WalletController {
   private walletService: IWalletService;
+  private userService: IUserService
 
-  constructor(walletService?: IWalletService) {
+  constructor(walletService?: IWalletService, userService?: IUserService) {
     this.walletService = walletService || new WalletService();
+    this.userService = userService || new UserService();
   }
 
   /**
    * Get wallet balance
    * GET /api/wallet/balance
    */
-  async getBalance(req: Request, user: AuthUser): Promise<NextResponse> {
-    logger.info({ msg: 'Getting wallet balance', userId: user.id });
+  async getBalance(_req: Request, user: AuthUser): Promise<NextResponse> {
+    console.log({ msg: 'Getting wallet balance', userId: user.id });
     
-    const balance = await this.walletService.getBalance(user.id);
+    const walletDetails = await this.walletService.getWalletDetails(user.id);
+    const upcomingRepayment = await this.walletService.getUpcomingRepayment(user.id);
+    const fundingHistory = await this.walletService.getFundingHistory(user.id);
 
     const response: ApiResponse = {
       success: true,
       data: {
-        balance,
-        currency: 'NGN',
+        balance: walletDetails.balance,
+        currency: walletDetails.currency,
         lastUpdated: new Date().toISOString(),
+        autoDebitEnabled: walletDetails.autoDebitEnabled,
+        upcomingRepayment,
+        fundingHistory,
       },
       metadata: {
         timestamp: new Date().toISOString(),
@@ -47,35 +65,46 @@ export class WalletController {
   }
 
   /**
-   * Fund wallet
-   * POST /api/wallet/fund
+   * Initialize payment
+   * POST /api/wallet/initialize-payment
    */
-  async fundWallet(req: Request, user: AuthUser): Promise<NextResponse> {
+  async initializePayment(req: Request, user: AuthUser): Promise<NextResponse> {
     const body = await req.json();
-    const validatedData = fundWalletSchema.parse(body);
+    const validatedData = initializePaymentSchema.parse(body);
 
-    // Generate payment reference
-    const reference = `PMF-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-    // Execute business logic
-    const result = await this.walletService.fundWallet({
-      userId: user.id,
-      amount: validatedData.amount,
-      paymentMethod: validatedData.paymentMethod,
-      reference,
+    console.log({ 
+      msg: 'Initializing payment', 
+      userId: user.id, 
+      amount: validatedData.amount 
     });
 
-    logger.info({ msg: 'Wallet funding initiated', userId: user.id, reference });
+    const card_map: {[key: string]: PaymentMethod} = {
+      BANK_TRANSFER: "BANK_TRANSFER",
+      CARD_PAYMENT: "CARD",
+      USSD_CODE: "USSD",
+      WALLET: "WALLET"
+    }
+
+    const userEmail = await this.userService.getUserProfile(user.id)
+
+    // Initialize payment with Paystack
+    const result = await this.walletService.initializePayment({
+      userId: user.id,
+      amount: validatedData.amount,
+      paymentMethod: card_map[validatedData.paymentMethod] as PaymentMethod,
+      currency: validatedData.currency,
+      note: validatedData.note,
+      userEmail: userEmail.email,
+      callbackUrl: validatedData.callbackUrl || `${process.env.NEXT_PUBLIC_APP_URL}/wallet/payment-callback`,
+    });
 
     const response: ApiResponse = {
       success: true,
       data: {
-        transactionId: result.transaction.id,
+        paymentUrl: result.paymentUrl,
+        reference: result.reference,
+        accessCode: result.accessCode,
         amount: validatedData.amount,
-        reference,
-        newBalance: Number(result.wallet.balance),
-        // In production, return payment gateway URL
-        paymentUrl: `https://payment-gateway.com/pay/${reference}`,
       },
       metadata: {
         timestamp: new Date().toISOString(),
@@ -86,22 +115,22 @@ export class WalletController {
   }
 
   /**
-   * Verify payment
-   * GET /api/wallet/verify/:reference
+   * Verify payment and fund wallet
+   * GET /api/wallet/verify-payment/:reference
    */
-  async verifyPayment(req: Request, reference: string, user: AuthUser): Promise<NextResponse> {
-    logger.info({ msg: 'Verifying payment', reference, userId: user.id });
+  async verifyPayment(_req: Request, reference: string, user: AuthUser): Promise<NextResponse> {
+    console.log({ msg: 'Verifying payment', reference, userId: user.id });
 
-    const result = await this.walletService.verifyPayment(reference, user.id);
+    const result = await this.walletService.verifyAndFundWallet(reference, user.id);
 
     const response: ApiResponse = {
       success: true,
       data: {
-        verified: result.success,
-        transactionId: result.transaction?.id,
-        status: result.transaction?.status,
-        amount: result.transaction?.amount,
-        newBalance: result.transaction?.balanceAfter,
+        verified: true,
+        transactionId: result.transaction.id,
+        status: result.transaction.status,
+        amount: result.transaction.amount,
+        newBalance: result.wallet.balance,
       },
       metadata: {
         timestamp: new Date().toISOString(),
@@ -109,6 +138,58 @@ export class WalletController {
     };
 
     return NextResponse.json(response, { status: 200 });
+  }
+
+  /**
+   * Paystack webhook callback
+   * POST /api/wallet/webhook
+   */
+  async handleWebhook(req: Request): Promise<NextResponse> {
+    console.log({ msg: 'Received Paystack webhook' });
+
+    try {
+      const body = await req.json();
+      const signature = req.headers.get('x-paystack-signature');
+
+      // Verify webhook signature
+      const secret = process.env.PAYSTACK_SECRET_KEY || '';
+      const crypto = require('crypto');
+      const hash = crypto
+        .createHmac('sha512', secret)
+        .update(JSON.stringify(body))
+        .digest('hex');
+
+      if (hash !== signature) {
+        console.warn({ msg: 'Invalid webhook signature' });
+        return NextResponse.json(
+          { success: false, message: 'Invalid signature' },
+          { status: 400 }
+        );
+      }
+
+      // Handle webhook event
+      const event = body.event;
+      const data = body.data;
+
+      if (event === 'charge.success') {
+        const reference = data.reference;
+        const userId = data.metadata?.userId;
+
+        if (userId && reference) {
+          // Verify and fund wallet
+          await this.walletService.verifyAndFundWallet(reference, userId);
+          console.log({ msg: 'Webhook processed successfully', reference, userId });
+        }
+      }
+
+      return NextResponse.json({ success: true }, { status: 200 });
+    } catch (error) {
+      console.error('Webhook processing error:', error);
+      return NextResponse.json(
+        { success: false, message: 'Webhook processing failed' },
+        { status: 500 }
+      );
+    }
   }
 
   /**
@@ -122,7 +203,7 @@ export class WalletController {
       limit: searchParams.get('limit') || '10',
     });
 
-    logger.info({ 
+    console.log({ 
       msg: 'Getting wallet transactions', 
       userId: user.id, 
       page: pagination.page, 
@@ -159,6 +240,29 @@ export class WalletController {
           hasPrevious: result.page > 1,
         },
       },
+      metadata: {
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    return NextResponse.json(response, { status: 200 });
+  }
+
+  /**
+   * Get wallet chart data
+   * GET /api/wallet/chart
+   */
+  async getWalletChartData(req: Request, user: AuthUser): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const period = searchParams.get('period') || '6months';
+    
+    console.log({ msg: 'Getting wallet chart data', userId: user.id, period });
+    
+    const chartData = await this.walletService.getWalletChartData(user.id, period);
+    
+    const response: ApiResponse = {
+      success: true,
+      data: chartData,
       metadata: {
         timestamp: new Date().toISOString(),
       },

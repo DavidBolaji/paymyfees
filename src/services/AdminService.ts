@@ -78,7 +78,7 @@ export class AdminService implements IAdminService {
    * Get admin analytics data
    */
   async getAnalytics(): Promise<AdminAnalyticsData> {
-    logger.info({ msg: 'Getting admin analytics data' });
+    console.log({ msg: 'Getting admin analytics data' });
 
     // Get loan statistics
     const loanStats = await this.adminRepository.getLoanStats();
@@ -126,7 +126,7 @@ export class AdminService implements IAdminService {
    * Get loan applications for admin review
    */
   async getLoanApplications(): Promise<LoanApplication[]> {
-    logger.info({ msg: 'Getting loan applications for admin review' });
+    console.log({ msg: 'Getting loan applications for admin review' });
 
     // Get loan applications from repository
     const applications = await this.adminRepository.getLoanApplications();

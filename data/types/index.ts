@@ -1,18 +1,30 @@
+import { LoanStatus } from "@prisma/client";
+
 // Data type definitions
 export interface DashboardStats {
-  upcomingPayment: { amount: number; dueDate: string };
-  activePlan: { current: number; total: number; planType: string };
+  upcomingPayment: { amount: number; dueDate: string } | null;
+  activePlan: { current: number; total: number; planType: string } | null;
   balance: { amount: number; description: string };
   wallet: { amount: number; description: string };
+}
+
+export interface RepaymentProgress {
+  progress: string;
+  totalPaid: string;
+  outstanding: string;
+  nextRepayment: string;
+  nextRepaymentDate: string;
+  percentageCompleted: number;
 }
 
 export interface LoanHistoryItem {
   loanId: string;
   tuitionAmount: number;
   repaymentPlan: string;
-  status: 'ongoing' | 'completed' | 'pending' | 'cancelled';
+  status: LoanStatus
   contributedTo: string;
   date: string;
+  repaymentProgress?: RepaymentProgress;
 }
 
 export interface TransactionItem {

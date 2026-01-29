@@ -6,8 +6,8 @@
 
 import { prisma } from '@/src/database/prisma';
 import { User } from '@prisma/client';
-import { ConflictError } from '@/src/types/errors';
-import { UserDTO, CreateUserInput } from '@/src/types';
+
+import { UserDTO } from '@/src/types';
 
 /**
  * User Repository Interface
@@ -16,7 +16,7 @@ export interface IUserRepository {
   getUserById(id: string): Promise<UserDTO | null>;
   updateUser(id: string, data: Partial<User>): Promise<UserDTO>;
   // other methods...
-  create(input: CreateUserInput): Promise<UserDTO>;
+  // create(input: CreateUserInput): Promise<UserDTO>;
   findById(id: string): Promise<UserDTO | null>;
   findByEmail(email: string): Promise<User | null>;
   findByPhone(phone: string): Promise<User | null>;
@@ -45,7 +45,7 @@ export class UserRepository implements IUserRepository {
   }
   /**
    * Create a new user
-   */
+  
   async create(input: CreateUserInput): Promise<UserDTO> {
     // Check for existing email
     const existingEmail = await this.findByEmail(input.email);
@@ -62,7 +62,7 @@ export class UserRepository implements IUserRepository {
     const user = await prisma.user.create({
       data: {
         email: input.email,
-        phone: input.phone,
+        // phone: input.phone,
         password: input.password,
         role: input.role,
         fullName: input.fullName,
@@ -72,7 +72,7 @@ export class UserRepository implements IUserRepository {
 
     return this.toDTO(user);
   }
-
+ */
   /**
    * Find user by ID
    */
@@ -140,7 +140,7 @@ export class UserRepository implements IUserRepository {
     return {
       id: user.id,
       email: user.email,
-      phone: user.phone,
+      // phone: user.phone,
       role: user.role,
       fullName: user.fullName,
       profileImage: user.profileImage,

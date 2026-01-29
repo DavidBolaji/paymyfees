@@ -27,7 +27,7 @@ export class TransactionController {
    * GET /api/transactions
    */
   async getTransactions(req: Request, user: AuthUser): Promise<NextResponse> {
-    logger.info({ msg: 'Get transactions', userId: user.id });
+    console.log({ msg: 'Get transactions', userId: user.id });
 
     const { searchParams } = new URL(req.url);
     const queryParams = transactionQuerySchema.parse({
@@ -89,13 +89,13 @@ export class TransactionController {
    * GET /api/transactions/:transactionId
    */
   async getTransactionById(_req: Request, transactionId: string, user: AuthUser): Promise<NextResponse> {
-    logger.info({ msg: 'Get transaction details', transactionId, userId: user.id });
+    console.log({ msg: 'Get transaction details', transactionId, userId: user.id });
 
     const transaction = await this.transactionService.getTransactionById(transactionId);
 
     // Verify transaction belongs to user
     if (transaction.userId !== user.id) {
-      logger.warn({ msg: 'Unauthorized transaction access attempt', transactionId, userId: user.id });
+      console.warn({ msg: 'Unauthorized transaction access attempt', transactionId, userId: user.id });
       
       return NextResponse.json(
         {

@@ -1,9 +1,10 @@
 import { Manrope } from "next/font/google";
-import { QueryProvider } from "@/providers/query-provider";
+
 import { NavigationProvider } from "@/components/providers/navigation-provider";
 import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import "react-phone-input-2/lib/style.css";
+import AuthGate from "@/providers/query-provider";
 
 
 const manrope = Manrope({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"] });
@@ -103,12 +104,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${manrope.className} `}>
-        <QueryProvider>
+        <AuthGate>
           <NavigationProvider>
             {children}
           </NavigationProvider>
           <Toaster position="bottom-left" reverseOrder={false} />
-        </QueryProvider>
+        </AuthGate>
       </body>
     </html>
   );

@@ -2,6 +2,8 @@ import { SupportController } from '@/src/controllers/SupportController';
 import { asyncHandler } from '@/src/middleware/errorHandler';
 import { lenientRateLimiter } from '@/src/middleware/rateLimiter';
 import { authMiddleware } from '@/src/middleware/authMiddleware';
+import { NextResponse } from 'next/server';
+import { UserRole } from '@prisma/client';
 
 const supportController = new SupportController();
 
@@ -37,6 +39,25 @@ export const POST = asyncHandler(async (req: Request) => {
     return authResult.response;
   }
 
+  // Check if user role is available
+  if (!authResult.role) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Unauthorized',
+        message: 'User role not found',
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 401 }
+    );
+  }
+
   // Delegate to controller
-  return await supportController.createTicket(req, authResult.userId!);
+  return await supportController.createTicket(
+    req,
+    authResult.userId!,
+    authResult.role as UserRole
+  );
 });

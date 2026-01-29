@@ -1,6 +1,5 @@
 import { UserService, IUserService } from '@/src/services/UserService';
 import { ValidationError, NotFoundError } from '@/src/types/errors';
-import { logger } from '@/src/utils/logger';
 import { NextResponse } from 'next/server';
 import { ApiResponse } from '@/src/types';
 
@@ -20,7 +19,7 @@ export class UserController {
    * GET /api/user/profile
    */
   async getProfile(_req: Request, userId: string): Promise<NextResponse> {
-    logger.info({ msg: 'Getting user profile', userId });
+    console.log({ msg: 'Getting user profile', userId });
 
     try {
       const profile = await this.userService.getUserProfile(userId);
@@ -49,7 +48,7 @@ export class UserController {
         );
       }
 
-      logger.error({
+      console.error({
         msg: 'Error getting user profile',
         userId,
         error: (error as Error).message,
@@ -74,7 +73,7 @@ export class UserController {
    * PUT /api/user/profile
    */
   async updateProfile(req: Request, userId: string): Promise<NextResponse> {
-    logger.info({ msg: 'Updating user profile', userId });
+    console.log({ msg: 'Updating user profile', userId });
 
     try {
       const data = await req.json();
@@ -105,7 +104,7 @@ export class UserController {
         );
       }
 
-      logger.error({
+      console.error({
         msg: 'Error updating user profile',
         userId,
         error: (error as Error).message,

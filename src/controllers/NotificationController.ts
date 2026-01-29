@@ -25,7 +25,7 @@ export class NotificationController {
    * GET /api/notifications
    */
   async getNotifications(_req: Request, userId: string | undefined): Promise<NextResponse> {
-    logger.info({ msg: 'Getting notifications', userId });
+    console.log({ msg: 'Getting notifications', userId });
     
     if (!userId) {
       return NextResponse.json(
@@ -59,7 +59,7 @@ export class NotificationController {
    * PUT /api/notifications/:notificationId/read
    */
   async markNotificationAsRead(_req: Request, notificationId: string, userId: string | undefined): Promise<NextResponse> {
-    logger.info({ msg: 'Marking notification as read', notificationId, userId });
+    console.log({ msg: 'Marking notification as read', notificationId, userId });
     
     if (!userId) {
       return NextResponse.json(
@@ -116,7 +116,7 @@ export class NotificationController {
         );
       }
       
-      logger.error({ 
+      console.error({ 
         msg: 'Error marking notification as read', 
         notificationId, 
         userId, 
@@ -142,7 +142,7 @@ export class NotificationController {
    * PUT /api/notifications/read-all
    */
   async markAllNotificationsAsRead(_req: Request, userId: string | undefined): Promise<NextResponse> {
-    logger.info({ msg: 'Marking all notifications as read', userId });
+    console.log({ msg: 'Marking all notifications as read', userId });
     
     if (!userId) {
       return NextResponse.json(
@@ -172,7 +172,7 @@ export class NotificationController {
       
       return NextResponse.json(response, { status: 200 });
     } catch (error) {
-      logger.error({ 
+      console.error({ 
         msg: 'Error marking all notifications as read', 
         userId, 
         error: (error as Error).message 

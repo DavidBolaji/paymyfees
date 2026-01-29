@@ -26,7 +26,7 @@ export class NotificationRepository implements INotificationRepository {
    * Get all notifications for a user
    */
   async getUserNotifications(userId: string): Promise<Notification[]> {
-    logger.info({ msg: 'Fetching user notifications from database', userId });
+    console.log({ msg: 'Fetching user notifications from database', userId });
     
     try {
       const notifications = await prisma.notification.findMany({
@@ -40,7 +40,7 @@ export class NotificationRepository implements INotificationRepository {
       
       return notifications;
     } catch (error) {
-      logger.error({ 
+      console.error({ 
         msg: 'Error fetching user notifications', 
         userId,
         error: (error as Error).message 
@@ -53,7 +53,7 @@ export class NotificationRepository implements INotificationRepository {
    * Get a notification by ID
    */
   async getNotificationById(notificationId: string): Promise<Notification | null> {
-    logger.info({ msg: 'Fetching notification by ID', notificationId });
+    console.log({ msg: 'Fetching notification by ID', notificationId });
     
     try {
       const notification = await prisma.notification.findUnique({
@@ -64,7 +64,7 @@ export class NotificationRepository implements INotificationRepository {
       
       return notification;
     } catch (error) {
-      logger.error({ 
+      console.error({ 
         msg: 'Error fetching notification by ID', 
         notificationId,
         error: (error as Error).message 
@@ -77,7 +77,7 @@ export class NotificationRepository implements INotificationRepository {
    * Mark a notification as read
    */
   async markAsRead(notificationId: string, userId: string): Promise<Notification> {
-    logger.info({ msg: 'Marking notification as read', notificationId, userId });
+    console.log({ msg: 'Marking notification as read', notificationId, userId });
     
     try {
       const updatedNotification = await prisma.notification.update({
@@ -93,7 +93,7 @@ export class NotificationRepository implements INotificationRepository {
       
       return updatedNotification;
     } catch (error) {
-      logger.error({ 
+      console.error({ 
         msg: 'Error marking notification as read', 
         notificationId,
         userId,
@@ -107,7 +107,7 @@ export class NotificationRepository implements INotificationRepository {
    * Mark all notifications as read for a user
    */
   async markAllAsRead(userId: string): Promise<Prisma.BatchPayload> {
-    logger.info({ msg: 'Marking all notifications as read', userId });
+    console.log({ msg: 'Marking all notifications as read', userId });
     
     try {
       const result = await prisma.notification.updateMany({
@@ -123,7 +123,7 @@ export class NotificationRepository implements INotificationRepository {
       
       return result;
     } catch (error) {
-      logger.error({ 
+      console.error({ 
         msg: 'Error marking all notifications as read', 
         userId,
         error: (error as Error).message 
@@ -136,7 +136,7 @@ export class NotificationRepository implements INotificationRepository {
    * Create a new notification
    */
   async createNotification(data: Prisma.NotificationCreateInput): Promise<Notification> {
-    logger.info({ msg: 'Creating new notification', userId: data.user?.connect?.id });
+    console.log({ msg: 'Creating new notification', userId: data.user?.connect?.id });
     
     try {
       const notification = await prisma.notification.create({
@@ -145,7 +145,7 @@ export class NotificationRepository implements INotificationRepository {
       
       return notification;
     } catch (error) {
-      logger.error({ 
+      console.error({ 
         msg: 'Error creating notification', 
         userId: data.user?.connect?.id,
         error: (error as Error).message 

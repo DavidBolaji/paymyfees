@@ -5,10 +5,13 @@ import { cn } from '@/lib/utils';
 import { ApplyForLoanForm } from './apply-for-loan-form';
 import { ApplicationStatus } from './application-status';
 import { LoanHistory } from './loan-history';
+import useAuthStore from '@/src/authStore';
+import { ApplyForLoanFormInt } from './apply-for-loan-form-int';
 
 type TabType = 'apply' | 'status' | 'history';
 
 export function ApplyForLoanTabs() {
+  const { user } = useAuthStore()
   const [activeTab, setActiveTab] = useState<TabType>('apply');
 
   const tabs = [
@@ -41,12 +44,15 @@ export function ApplyForLoanTabs() {
       <div className="py-6">
         {activeTab === 'apply' && (
           <div className="">
-           <ApplyForLoanForm />
+            {user?.residencyStatus === "LOCAL" ?
+              <ApplyForLoanForm /> :
+              <ApplyForLoanFormInt />
+            }
           </div>
         )}
         {activeTab === 'status' && (
           <div className="py-8 text-center">
-           <ApplicationStatus />
+            <ApplicationStatus />
           </div>
         )}
         {activeTab === 'history' && (

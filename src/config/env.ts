@@ -5,12 +5,10 @@
 
 import { z } from 'zod';
 
-const envSchema = z.object({
+// Base environment schema with common variables
+const baseEnvSchema = {
   // Node Environment
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  
-  // Database
-  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   
   // Authentication
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
@@ -62,15 +60,68 @@ const envSchema = z.object({
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: z.string().default('900000'), // 15 minutes
   RATE_LIMIT_MAX_REQUESTS: z.string().default('100'),
-});
+  
+  // Direct Database URL (for migrations)
+  DIRECT_URL: z.string().optional(),
+};
+
+// Environment-specific configurations
+const envConfigs = {
+  // Local development environment
+  development: {
+    ...baseEnvSchema,
+    DATABASE_URL: z.string().min(1, 'DATABASE_URL is required for development'),
+  },
+  
+  // Staging environment
+  staging: {
+    ...baseEnvSchema,
+    NODE_ENV: z.literal('production'), // Staging uses production mode but with different configs
+    DATABASE_URL: z.string().min(1, 'DATABASE_URL is required for staging'),
+  },
+  
+  // Production environment
+  production: {
+    ...baseEnvSchema,
+    DATABASE_URL: z.string().min(1, 'DATABASE_URL is required for production'),
+  },
+  
+  // Test environment
+  test: {
+    ...baseEnvSchema,
+    DATABASE_URL: z.string().min(1, 'DATABASE_URL is required for testing'),
+  },
+};
+
+// Determine which environment to use
+const getEnvConfig = () => {
+  // Default to development
+  const environment = process.env.APP_ENV || process.env.NODE_ENV || 'development';
+  
+  switch (environment) {
+    case 'staging':
+      return z.object(envConfigs.staging);
+    case 'production':
+      return z.object(envConfigs.production);
+    case 'test':
+      return z.object(envConfigs.test);
+    case 'development':
+    default:
+      return z.object(envConfigs.development);
+  }
+};
+
+const envSchema = getEnvConfig();
 
 export type EnvConfig = z.infer<typeof envSchema>;
 
 class EnvironmentConfig {
   private static instance: EnvironmentConfig;
   private config: EnvConfig;
+  private currentEnv: string;
 
   private constructor() {
+    this.currentEnv = process.env.APP_ENV || process.env.NODE_ENV || 'development';
     this.config = this.validateEnv();
   }
 
@@ -106,16 +157,24 @@ class EnvironmentConfig {
     return { ...this.config };
   }
 
+  public getCurrentEnvironment(): string {
+    return this.currentEnv;
+  }
+
   public isDevelopment(): boolean {
-    return this.config.NODE_ENV === 'development';
+    return this.currentEnv === 'development';
+  }
+
+  public isStaging(): boolean {
+    return this.currentEnv === 'staging';
   }
 
   public isProduction(): boolean {
-    return this.config.NODE_ENV === 'production';
+    return this.currentEnv === 'production';
   }
 
   public isTest(): boolean {
-    return this.config.NODE_ENV === 'test';
+    return this.currentEnv === 'test';
   }
 }
 

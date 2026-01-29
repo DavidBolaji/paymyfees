@@ -2,12 +2,10 @@
  * Transactions API Route
  * GET /api/transactions
  */
-
-import { NextResponse } from 'next/server';
 import { TransactionController } from '@/src/controllers/TransactionController';
 import { asyncHandler } from '@/src/middleware/errorHandler';
 import { lenientRateLimiter } from '@/src/middleware/rateLimiter';
-import { parentAuthMiddleware } from '@/src/middleware/authMiddleware';
+import { studentAuthMiddleware } from '@/src/middleware/authMiddleware';
 import { UserRole } from '@prisma/client';
 
 const transactionController = new TransactionController();
@@ -21,7 +19,7 @@ export const GET = asyncHandler(async (req: Request) => {
   await lenientRateLimiter(req);
 
   // Authenticate user
-  const authResult = await parentAuthMiddleware(req);
+  const authResult = await studentAuthMiddleware(req);
   if (!authResult.success) {
     return authResult.response!;
   }

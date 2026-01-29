@@ -14,7 +14,8 @@ import {
   DocumentType,
   NotificationType,
   SupportTicketStatus,
-  SupportTicketPriority
+  SupportTicketPriority,
+  ResidencyStatus
 } from '@prisma/client';
 
 // ============================================
@@ -56,12 +57,13 @@ export interface PaginationParams {
 export interface UserDTO {
   id: string;
   email: string;
-  phone: string;
+  // phone: string;
   role: UserRole;
   fullName: string;
   profileImage: string | null;
   emailVerified: boolean;
   phoneVerified: boolean;
+  residencyStatus: ResidencyStatus;
   isActive: boolean;
   lastLogin: Date | null;
   createdAt: Date;
@@ -70,7 +72,8 @@ export interface UserDTO {
 
 export interface CreateUserInput {
   email: string;
-  phone: string;
+  //phone: string;
+  country: string;
   password: string;
   role: UserRole;
   fullName: string;
@@ -213,11 +216,65 @@ export interface CreateStudentInput {
 // Loan Types
 // ============================================
 
+/**
+ * Base fields common to all loan types
+ */
+interface BaseLoanInput {
+  userId: string;
+  // studentId: string;
+  schoolId: string;
+  loanAmount: number;
+  repaymentMonths: number;
+  residencyStatus: ResidencyStatus;
+}
+
+/**
+ * Local student loan input
+ */
+export interface LocalLoanInput extends BaseLoanInput {
+  residencyStatus: ResidencyStatus;
+  schoolName: string;
+  academicSession: string;
+  term: string;
+}
+
+/**
+ * International student loan input
+ */
+export interface InternationalLoanInput extends BaseLoanInput {
+  residencyStatus: ResidencyStatus;
+  schoolName: string;
+  countryOfStudy: string;
+  programCourseOfStudy: string;
+  academicSession: string;
+  
+  // Employment & Income Details
+  employmentStatus?: string;
+  companyName?: string;
+  jobTitleRole?: string;
+  monthlyNetIncome?: number;
+  paymentFrequency?: string;
+  
+  // Loan Disbursement Details
+  accountHolderName: string;
+  bankName: string;
+  accountNumber: string;
+  countryOfBankAccount: string;
+}
+
+/**
+ * Union type for loan creation
+ */
+export type CreateLoanInput = LocalLoanInput | InternationalLoanInput;
+
+/**
+ * Loan DTO (Data Transfer Object)
+ */
 export interface LoanDTO {
   id: string;
   loanNumber: string;
   userId: string;
-  studentId: string;
+  // studentId: string;
   schoolId: string;
   loanAmount: number;
   interestRate: number;
@@ -227,35 +284,42 @@ export interface LoanDTO {
   repaymentMonths: number;
   schoolName: string;
   academicSession: string;
-  term: string;
+  term?: string;
+  residencyStatus: ResidencyStatus;
+  
+  // International student specific fields
+  countryOfStudy?: string;
+  programCourseOfStudy?: string;
+  employmentStatus?: string;
+  companyName?: string;
+  jobTitleRole?: string;
+  monthlyNetIncome?: number;
+  paymentFrequency?: string;
+  accountHolderName?: string;
+  bankName?: string;
+  accountNumber?: string;
+  countryOfBankAccount?: string;
+  
   status: LoanStatus;
   amountDisbursed: number;
   amountRepaid: number;
   outstandingBalance: number;
   applicationDate: Date;
-  approvalDate: Date | null;
-  disbursementDate: Date | null;
-  firstPaymentDate: Date | null;
-  lastPaymentDate: Date | null;
-  completionDate: Date | null;
-  approvedBy: string | null;
-  rejectionReason: string | null;
-  notes: string | null;
+  approvalDate?: Date | null;
+  disbursementDate?: Date | null;
+  firstPaymentDate?: Date | null;
+  lastPaymentDate?: Date | null;
+  completionDate?: Date | null;
+  approvedBy?: string | null;
+  rejectionReason?: string | null;
+  notes?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface CreateLoanInput {
-  userId: string;
-  studentId: string;
-  schoolId: string;
-  loanAmount: number;
-  repaymentMonths: number;
-  schoolName: string;
-  academicSession: string;
-  term: string;
-}
-
+/**
+ * Update loan status input
+ */
 export interface UpdateLoanStatusInput {
   loanId: string;
   status: LoanStatus;
@@ -264,6 +328,9 @@ export interface UpdateLoanStatusInput {
   notes?: string;
 }
 
+/**
+ * Loan calculation result
+ */
 export interface LoanCalculation {
   loanAmount: number;
   interestRate: number;
@@ -272,6 +339,15 @@ export interface LoanCalculation {
   monthlyPayment: number;
   repaymentMonths: number;
 }
+
+/**
+ * Pagination parameters
+ */
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+}
+
 
 // ============================================
 // Installment Types
@@ -685,6 +761,40 @@ export interface ITransactionRepository {
   create(input: CreateTransactionInput & { transactionReference: string }): Promise<TransactionDTO>;
   findById(id: string): Promise<TransactionDTO | null>;
   findByUserId(userId: string, filters: TransactionFilters, pagination: PaginationParams): Promise<{ transactions: TransactionDTO[]; total: number }>;
+}
+
+
+// ============================================
+// Timeline Type Definitions
+// ============================================
+
+export interface TimelineProgressOverview {
+  progress: string;
+  totalPaid: string;
+  outstanding: string;
+  nextRepayment: string;
+  nextRepaymentDate: string;
+  percentageCompleted: number;
+}
+
+export interface RepaymentStage {
+  label: string;
+  value: string;
+  isPaid: boolean;
+}
+
+export interface TimelineStep {
+  id: string;
+  title: string;
+  subtitle?: string;
+  status: 'completed' | 'upcoming';
+}
+
+export interface TimelineData {
+  progressOverview: TimelineProgressOverview;
+  repaymentStages: RepaymentStage[];
+  detailedTimeline: TimelineStep[];
+  disbursementReceiptUrl?: string;
 }
 
 // ============================================

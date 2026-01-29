@@ -47,9 +47,28 @@ export const saveVerificationToken = async (
         expiresAt,
       },
     });
-    logger.info(`Verification ${type} saved for user ${userId}`);
+    try {
+      console.log({
+        message: `Verification ${type} saved for user ${userId}`,
+        userId,
+        type
+      });
+    } catch (loggingError) {
+      // Fallback to simple console logging if structured logging fails
+      console.info(`Verification ${type} saved for user ${userId}`);
+    }
   } catch (error) {
-    logger.error(`Error saving verification ${type} for user ${userId}`);
+    try {
+      console.error({
+        message: `Error saving verification ${type} for user ${userId}`,
+        userId,
+        type,
+        errorMessage: error instanceof Error ? error.message : String(error)
+      });
+    } catch (loggingError) {
+      // Fallback to simple console logging if structured logging fails
+      console.error(`Error saving verification ${type} for user ${userId}: ${error}`);
+    }
     throw error;
   }
 };
@@ -81,7 +100,18 @@ export const createVerification = async (
       return { otp, expiresAt };
     }
   } catch (error) {
-    logger.error(`Error creating verification for user ${userId} with mode ${mode}`);
+    // Use a safer logging approach to avoid worker thread issues
+    try {
+      console.error({
+        message: `Error creating verification for user ${userId} with mode ${mode}`,
+        userId,
+        mode,
+        errorMessage: error instanceof Error ? error.message : String(error)
+      });
+    } catch (loggingError) {
+      // Fallback to simple string logging if structured logging fails
+      console.error(`Error creating verification for user ${userId} with mode ${mode}: ${error}`);
+    }
     throw error;
   }
 };
@@ -90,7 +120,6 @@ export const createVerification = async (
  * Verify token or OTP
  */
 export const verifyToken = async (
-  userId: string,
   tokenOrOtp: string,
   mode: 'link' | 'otp'
 ): Promise<boolean> => {
@@ -98,20 +127,36 @@ export const verifyToken = async (
     // Find token in database
     const verification = await prisma.verificationToken.findFirst({
       where: {
-        userId,
         token: tokenOrOtp,
         type: mode,
       },
+
     });
 
     // Check if token exists and is not expired
     if (!verification) {
-      logger.warn(`Invalid verification ${mode} for user ${userId}`);
+      try {
+        console.warn({
+          message: `Invalid verification ${mode} for user`,
+          mode
+        });
+      } catch (loggingError) {
+        // Fallback to simple console logging if structured logging fails
+        console.warn(`Invalid verification ${mode} for user }`);
+      }
       return false;
     }
 
     if (verification.expiresAt < new Date()) {
-      logger.warn(`Expired verification ${mode} for user ${userId}`);
+      try {
+        console.warn({
+          message: `Expired verification ${mode} for user `,
+          mode
+        });
+      } catch (loggingError) {
+        // Fallback to simple console logging if structured logging fails
+        console.warn(`Expired verification ${mode} for user ${verification.userId}`);
+      }
       return false;
     }
 
@@ -122,14 +167,101 @@ export const verifyToken = async (
 
     // Update user's email verification status
     await prisma.user.update({
-      where: { id: userId },
+      where: { id: verification.userId },
       data: { emailVerified: true },
     });
 
-    logger.info(`Email verification successful for user ${userId}`);
+    try {
+      console.log({
+        message: `Email verification successful for user ${verification.userId}`,
+        userId: verification.userId
+      });
+    } catch (loggingError) {
+      // Fallback to simple console logging if structured logging fails
+      console.info(`Email verification successful for user`);
+    }
     return true;
   } catch (error) {
-    logger.error(`Error verifying token for user ${userId} with mode ${mode}`);
+    try {
+      console.error({
+        message: `Error verifying token for user with mode ${mode}`,
+        mode,
+        errorMessage: error instanceof Error ? error.message : String(error)
+      });
+    } catch (loggingError) {
+      // Fallback to simple console logging if structured logging fails
+      console.error(`Error verifying token for user with mode ${mode}: ${error}`);
+    }
+    throw error;
+  }
+};
+
+/**
+ * Get User By token
+ */
+export const getUserByToken = async (
+  tokenOrOtp: string,
+  mode: 'link' | 'otp'
+): Promise<string | null> => {
+  try {
+    // Find token in database
+    const verification = await prisma.verificationToken.findFirst({
+      where: {
+        token: tokenOrOtp,
+        type: mode,
+      },
+
+    });
+
+    // Check if token exists and is not expired
+    if (!verification) {
+      try {
+        console.warn({
+          message: `Invalid verification ${mode} for user`,
+          mode
+        });
+      } catch (loggingError) {
+        // Fallback to simple console logging if structured logging fails
+        console.warn(`Invalid verification ${mode} for user }`);
+      }
+      return null;
+    }
+
+    if (verification.expiresAt < new Date()) {
+      try {
+        console.warn({
+          message: `Expired verification ${mode} for user `,
+          mode
+        });
+      } catch (loggingError) {
+        // Fallback to simple console logging if structured logging fails
+        console.warn(`Expired verification ${mode} for user ${verification.userId}`);
+      }
+      return null;
+    }
+
+   
+    try {
+      console.log({
+        message: `Email verification successful for user ${verification.userId}`,
+        userId: verification.userId
+      });
+    } catch (loggingError) {
+      // Fallback to simple console logging if structured logging fails
+      console.info(`Email verification successful for user`);
+    }
+    return verification.userId;
+  } catch (error) {
+    try {
+      console.error({
+        message: `Error verifying token for user with mode ${mode}`,
+        mode,
+        errorMessage: error instanceof Error ? error.message : String(error)
+      });
+    } catch (loggingError) {
+      // Fallback to simple console logging if structured logging fails
+      console.error(`Error verifying token for user with mode ${mode}: ${error}`);
+    }
     throw error;
   }
 };
@@ -149,7 +281,16 @@ export const isTokenExpired = async (token: string): Promise<boolean> => {
 
     return verification.expiresAt < new Date();
   } catch (error) {
-    logger.error(`Error checking token expiration for token ${token.substring(0, 8)}...`);
+    try {
+      console.error({
+        message: `Error checking token expiration for token ${token.substring(0, 8)}...`,
+        tokenPrefix: token.substring(0, 8),
+        errorMessage: error instanceof Error ? error.message : String(error)
+      });
+    } catch (loggingError) {
+      // Fallback to simple console logging if structured logging fails
+      console.error(`Error checking token expiration for token ${token.substring(0, 8)}...: ${error}`);
+    }
     throw error;
   }
 };

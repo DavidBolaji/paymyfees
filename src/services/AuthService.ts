@@ -14,20 +14,17 @@ import {
 } from '@/src/middleware/auth';
 import {
   UnauthorizedError,
-  ValidationError,
-  NotFoundError
 } from '@/src/types/errors';
 import {
-  UserDTO,
+
   CreateUserInput,
   LoginInput,
   AuthResponse
 } from '@/src/types';
 import { executeTransaction } from '@/src/database/prisma';
-import { logger } from '@/src/utils/logger';
 import { UserRole } from '@prisma/client';
 import { MailService, IMailService } from '@/src/services/MailService';
-import { createVerification, verifyToken } from '@/src/utils/verification';
+import { createVerification, getUserByToken, verifyToken } from '@/src/utils/verification';
 
 /**
  * Auth Service Interface
@@ -36,7 +33,7 @@ export interface IAuthService {
   register(input: CreateUserInput): Promise<AuthResponse>;
   login(input: LoginInput): Promise<AuthResponse>;
   refreshToken(refreshToken: string): Promise<{ token: string; refreshToken: string }>;
-  verifyEmail(userId: string, tokenOrOtp: string, mode: 'link' | 'otp'): Promise<boolean>;
+  verifyEmail(tokenOrOtp: string, mode: 'link' | 'otp'): Promise<boolean>;
   requestPasswordReset(email: string): Promise<void>;
   resetPassword(token: string, newPassword: string): Promise<void>;
 }
@@ -58,7 +55,17 @@ export class AuthService implements IAuthService {
    * Creates user account with hashed password and initial profile
    */
   async register(input: CreateUserInput): Promise<AuthResponse> {
-    logger.info(`User registration started for ${input.email} with role ${input.role} and mode ${input.mode}`);
+    try {
+      console.log({
+        message: 'User registration started',
+        email: input.email,
+        role: input.role,
+        mode: input.mode
+      });
+    } catch (loggingError) {
+      // Fallback to simple console logging if structured logging fails
+      console.info(`User registration started for ${input.email} with role ${input.role} and mode ${input.mode}`);
+    }
 
     // Hash password
     const hashedPassword = await this.hashPassword(input.password);
@@ -69,8 +76,9 @@ export class AuthService implements IAuthService {
       const newUser = await tx.user.create({
         data: {
           email: input.email,
-          phone: input.phone,
+          //phone: input.phone,
           password: hashedPassword,
+          country: input.country,
           role: input.role,
           fullName: input.fullName,
           profileImage: input.profileImage,
@@ -85,21 +93,31 @@ export class AuthService implements IAuthService {
             userId: newUser.id,
           },
         });
-
-        // Create wallet for parent
-        await tx.wallet.create({
-          data: {
-            userId: newUser.id,
-          },
-        });
       } else if (input.role === UserRole.SCHOOL) {
         // School profile will be created separately with full details
       }
+      
+      // Create wallet for all users
+      await tx.wallet.create({
+        data: {
+          userId: newUser.id,
+          balance: 0,
+          currency: 'NGN',
+        },
+      });
 
       return newUser;
     });
 
-    logger.info(`User registered successfully with ID ${user.id}`);
+    try {
+      console.log({
+        message: 'User registered successfully',
+        userId: user.id
+      });
+    } catch (loggingError) {
+      // Fallback to simple console logging if structured logging fails
+      console.info(`User registered successfully with ID ${user.id}`);
+    }
 
     // Generate verification token or OTP based on mode
     try {
@@ -116,9 +134,27 @@ export class AuthService implements IAuthService {
         verificationData
       );
 
-      logger.info(`Verification email sent to ${user.email} using ${input.mode} mode`);
+      try {
+        console.log({
+          message: 'Verification email sent',
+          email: user.email,
+          mode: input.mode
+        });
+      } catch (loggingError) {
+        // Fallback to simple console logging if structured logging fails
+        console.info(`Verification email sent to ${user.email} using ${input.mode} mode`);
+      }
     } catch (error) {
-      logger.error(`Failed to send verification email to ${user.email}: ${error}`);
+      try {
+        console.error({
+          message: 'Failed to send verification email',
+          email: user.email,
+          errorMessage: error instanceof Error ? error.message : String(error)
+        });
+      } catch (loggingError) {
+        // Fallback to simple console logging if structured logging fails
+        console.error(`Failed to send verification email to ${user.email}: ${error}`);
+      }
       // Continue with registration even if email fails
       // We can implement a resend verification email feature later
     }
@@ -137,12 +173,13 @@ export class AuthService implements IAuthService {
       user: {
         id: user.id,
         email: user.email,
-        phone: user.phone,
+        // phone: user.phone,
         role: user.role,
         fullName: user.fullName,
         profileImage: user.profileImage,
         emailVerified: user.emailVerified,
         phoneVerified: user.phoneVerified,
+        residencyStatus: user.residencyStatus,
         isActive: user.isActive,
         lastLogin: user.lastLogin,
         createdAt: user.createdAt,
@@ -159,14 +196,14 @@ export class AuthService implements IAuthService {
    */
   async login(input: LoginInput): Promise<AuthResponse> {
     // @ts-ignore
-    logger.info('User login attempt', { email: input.email });
+    console.log('User login attempt', { email: input.email });
 
     // Find user by email
     const user = await this.userRepository.findByEmail(input.email);
 
     if (!user) {
       // @ts-ignore
-      logger.warn('Login failed: user not found', { email: input.email });
+      console.warn('Login failed: user not found', { email: input.email });
       throw new UnauthorizedError('Invalid email or password');
     }
 
@@ -175,21 +212,21 @@ export class AuthService implements IAuthService {
 
     if (!isPasswordValid) {
       // @ts-ignore
-      logger.warn('Login failed: invalid password', { email: input.email });
+      console.warn('Login failed: invalid password', { email: input.email });
       throw new UnauthorizedError('Invalid email or password');
     }
 
     // Check if user is active
     if (!user.isActive) {
       // @ts-ignore
-      logger.warn('Login failed: user inactive', { email: input.email });
+      console.warn('Login failed: user inactive', { email: input.email });
       throw new UnauthorizedError('Account is inactive');
     }
 
     // Update last login
     await this.userRepository.updateLastLogin(user.id);
     // @ts-ignore
-    logger.info('User logged in successfully', { userId: user.id });
+    console.log('User logged in successfully', { userId: user.id });
 
     // Generate tokens
     const authUser: AuthUser = {
@@ -205,12 +242,13 @@ export class AuthService implements IAuthService {
       user: {
         id: user.id,
         email: user.email,
-        phone: user.phone,
+        // phone: user.phone,
         role: user.role,
         fullName: user.fullName,
         profileImage: user.profileImage,
         emailVerified: user.emailVerified,
         phoneVerified: user.phoneVerified,
+        residencyStatus: user.residencyStatus,
         isActive: user.isActive,
         lastLogin: new Date(),
         createdAt: user.createdAt,
@@ -226,7 +264,7 @@ export class AuthService implements IAuthService {
    * Validates refresh token and issues new tokens
    */
   async refreshToken(refreshToken: string): Promise<{ token: string; refreshToken: string }> {
-    logger.info('Token refresh attempt');
+    console.log('Token refresh attempt');
 
     // Verify refresh token
     const decoded = verifyRefreshToken(refreshToken);
@@ -253,7 +291,7 @@ export class AuthService implements IAuthService {
     const newRefreshToken = generateRefreshToken(authUser);
 
     // @ts-ignore
-    logger.info('Token refreshed successfully', { userId: user.id });
+    console.log('Token refreshed successfully', { userId: user.id });
 
     return {
       token: newToken,
@@ -266,28 +304,39 @@ export class AuthService implements IAuthService {
    * Validates token or OTP and updates user's email verification status
    */
   async verifyEmail(
-    userId: string,
     tokenOrOtp: string,
     mode: 'link' | 'otp'
   ): Promise<boolean> {
     try {
-      logger.info(`Verifying email for user ${userId} using ${mode} mode`);
+      console.log(`Verifying email for user  using ${mode} mode`);
       
       // Verify token or OTP
-      const isVerified = await verifyToken(userId, tokenOrOtp, mode);
+      const userId = await getUserByToken(tokenOrOtp, mode);
+      const isVerified = await verifyToken(tokenOrOtp, mode);
+
+      console.log(userId, "UserId authservide")
+      console.log(isVerified, "usvrified")
       
       if (isVerified) {
         // Send welcome email
-        const user = await this.userRepository.findById(userId);
+        const user = await this.userRepository.findById(userId!);
         if (user) {
           await this.mailService.sendWelcomeEmail(user.email, user.fullName);
-          logger.info(`Welcome email sent to ${user.email}`);
+          console.log(`Welcome email sent to ${user.email}`);
         }
       }
       
       return isVerified;
     } catch (error) {
-      logger.error(`Email verification failed for user ${userId}: ${error}`);
+      try {
+        console.error({
+          message: 'Email verification failed',
+          errorMessage: error instanceof Error ? error.message : String(error)
+        });
+      } catch (loggingError) {
+        // Fallback to simple console logging if structured logging fails
+        console.error(`Email verification failed for user : ${error}`);
+      }
       return false;
     }
   }
@@ -301,24 +350,24 @@ export class AuthService implements IAuthService {
     if (!user) {
       // Don't reveal if email exists
       // @ts-ignore
-      logger.warn('Password reset requested for non-existent email', { email });
+      console.warn('Password reset requested for non-existent email', { email });
       return;
     }
 
     // TODO: Generate reset token and send email
     // @ts-ignore
-    logger.info('Password reset requested', { userId: user.id });
+    console.log('Password reset requested', { userId: user.id });
   }
 
   /**
    * Reset password
    */
-  async resetPassword(token: string, newPassword: string): Promise<void> {
+  async resetPassword(_token: string, _newPassword: string): Promise<void> {
     // TODO: Implement password reset logic
     // 1. Verify reset token
     // 2. Hash new password
     // 3. Update user password
-    logger.info('Password reset');
+    console.log('Password reset');
   }
 
   /**
@@ -336,3 +385,4 @@ export class AuthService implements IAuthService {
     return await bcrypt.compare(password, hash);
   }
 }
+
