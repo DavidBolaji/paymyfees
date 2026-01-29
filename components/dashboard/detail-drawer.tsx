@@ -1,4 +1,4 @@
-'use client';
+ 'use client';
 
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -152,6 +152,8 @@ interface LoanDisbursementDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   loan: any;
+  // The loan object may include these properties from dashboard stats
+  // but we don't require them to be present
 }
 
 export function LoanDisbursementDrawer({
@@ -160,6 +162,35 @@ export function LoanDisbursementDrawer({
   loan
 }: LoanDisbursementDrawerProps) {
   if (!loan) return null;
+
+  // Get the active plan information (e.g., 0/6 months paid)
+  const activePlanCurrent = loan.activePlan?.current || 0;
+  const activePlanTotal = loan.activePlan?.total || 6; // Default to 6 months if not specified
+  
+  // Calculate the outstanding amount (what is owed - what has been paid)
+  const tuitionAmount = loan.tuitionAmount || 120000;
+  const totalRepayable = tuitionAmount * 1.33;
+  
+  // Parse total paid amount from string if available
+  let totalPaid = 0;
+  if (loan.repaymentProgress?.totalPaid) {
+    const totalPaidStr = loan.repaymentProgress.totalPaid;
+    if (typeof totalPaidStr === 'string') {
+      // Remove currency symbol and commas, then parse as float
+      totalPaid = parseFloat(totalPaidStr.replace('₦', '').replace(/,/g, '')) || 0;
+    } else if (typeof totalPaidStr === 'number') {
+      totalPaid = totalPaidStr;
+    }
+  }
+  
+  // Calculate outstanding amount (balance from stat card or calculated)
+  const outstandingAmount = loan.balance?.amount !== undefined ?
+    loan.balance.amount : (totalRepayable - totalPaid);
+  
+  // Get the next repayment date and amount from the upcoming payment stat card
+  const nextRepaymentDate = loan.upcomingPayment?.dueDate || 'N/A';
+  const nextRepaymentAmount = loan.upcomingPayment?.amount ?
+    `₦${loan.upcomingPayment.amount.toLocaleString()}` : '₦0';
 
   const sections: DrawerSection[] = [
     {
@@ -176,9 +207,9 @@ export function LoanDisbursementDrawer({
         },
         {
           label: 'Total Repayable',
-          value: `₦${((loan.tuitionAmount || 120000) * 1.33).toLocaleString()}`
+          value: `₦${totalRepayable.toLocaleString()}`
         },
-        { label: 'Tenure', value: '6 Months' },
+        { label: 'Tenure', value: `${activePlanTotal} Months` },
         {
           label: 'Repayment Plan',
           value: loan.repaymentPlan || 'Monthly Auto-Debit / Bank Transfer'
@@ -204,11 +235,26 @@ export function LoanDisbursementDrawer({
     {
       title: 'Repayment Progress',
       items: [
-        { label: 'Progress', value: '7 / 12 months paid' },
-        { label: 'Total Paid', value: '₦95,000' },
-        { label: 'Outstanding', value: '₦65,000' },
-        { label: 'Next Repayment Date', value: '28 Dec 2025' },
-        { label: 'Next Repayment Amount', value: '₦15,000' }
+        {
+          label: 'Progress',
+          value: `${activePlanCurrent} / ${activePlanTotal} months paid`
+        },
+        {
+          label: 'Total Paid',
+          value: loan.repaymentProgress?.totalPaid || '₦0'
+        },
+        {
+          label: 'Outstanding',
+          value: `₦${outstandingAmount.toLocaleString()}`
+        },
+        {
+          label: 'Next Repayment Date',
+          value: nextRepaymentDate
+        },
+        {
+          label: 'Next Repayment Amount',
+          value: nextRepaymentAmount
+        }
       ]
     }
   ];
@@ -255,49 +301,65 @@ export function TransactionDrawer({
 }: TransactionDrawerProps) {
   if (!transaction) return null;
 
+  // Extract date and time from transaction date
+  const transactionDate = new Date(transaction.date);
+  const formattedDate = transactionDate.toLocaleDateString('en-NG', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+  const formattedTime = transactionDate.toLocaleTimeString('en-NG', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  // Format transaction reference
+  const transactionId = transaction.reference || `PMF-TX-${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`;
+
   const sections: DrawerSection[] = [
     {
       title: 'Transaction Summary',
       items: [
-        { label: 'Transaction ID', value: 'PMF-TX-092341' },
+        { label: 'Transaction ID', value: transactionId },
         {
           label: 'Status',
           value: <StatusBadge status={transaction.status || 'completed'} />
         },
-        { label: 'Date', value: transaction.date || 'Dec 12, 2025' },
-        { label: 'Time', value: '10:43 AM' }
+        { label: 'Date', value: formattedDate },
+        { label: 'Time', value: formattedTime }
       ]
     },
     {
-      title: 'Transaction Type',
+      title: 'Transaction Details',
       items: [
         {
-          label: 'Installment Payment',
-          value: '(3 of 5)'
+          label: 'Type',
+          value: transaction.type || 'Payment'
         },
         {
-          label: 'Amount Disbursed',
-          value: `₦${(transaction.amount || 15000).toLocaleString()}`
+          label: 'Amount',
+          value: `₦${(transaction.amount || 0).toLocaleString()}`
+        },
+        {
+          label: 'Payment Method',
+          value: transaction.method || 'Wallet'
         }
       ]
     },
     {
       title: 'Payment Flow',
       items: [
-        { label: 'From', value: 'Student Wallet' },
-        { label: 'To', value: 'Greenfield Secondary School' },
-        { label: 'Purpose', value: 'Tuition Fee Repayment' },
-        { label: 'Academic Term', value: '2025 / 2026 - Term 1' }
+        { label: 'From', value: transaction.source || 'Student Wallet' },
+        { label: 'To', value: transaction.destination || 'School Account' },
+        { label: 'Purpose', value: transaction.description || 'Tuition Fee Payment' },
+        { label: 'Category', value: transaction.category || 'School Payment' }
       ]
     },
     {
-      title: 'Linked Loan Information',
+      title: 'Additional Information',
       items: [
-        { label: 'Loan Reference', value: 'PMF-LN-10422' },
-        { label: 'Total Loan Amount', value: '₦75,000' },
-        { label: 'Repayment Plan', value: '5 Installments' },
-        { label: 'Remaining Balance', value: '₦30,000' },
-        { label: 'Next Payment Due', value: 'Jan 12, 2026' }
+        { label: 'Reference', value: transaction.reference || '-' },
+        { label: 'Notes', value: transaction.notes || '-' }
       ]
     }
   ];
@@ -305,15 +367,19 @@ export function TransactionDrawer({
   const actions: DrawerAction[] = [
     {
       label: 'Download Receipt',
-      onClick: () => console.log('Download receipt'),
+      onClick: () => {
+        console.log(`Download receipt for transaction ${transactionId}`);
+        // In a real implementation, this would call an API endpoint to generate and download a receipt
+        window.location.href = `/api/payments/${transaction.id}/receipt`;
+      },
       variant: 'primary',
       icon: <Download className="w-4 h-4" />
     },
     {
-      label: 'View Repayment Timeline',
+      label: 'View Transaction History',
       onClick: () => {
         onClose();
-        window.location.href = `/dashboard/timeline`;
+        window.location.href = `/dashboard/transactions`;
       },
       variant: 'secondary'
     }

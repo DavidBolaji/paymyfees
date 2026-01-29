@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import Logo from "@/assets/images/logo/logo.png";
 import Image from 'next/image';
+import useAuthStore from '@/src/authStore';
 
 interface SidebarProps {
   className?: string;
@@ -62,6 +63,7 @@ const navigationGroups: NavGroup[] = [
 
 export function Sidebar({ className }: SidebarProps) {
   const [isDark, setIsDark] = useState(false);
+  const {logout, token} = useAuthStore()
   const pathname = usePathname();
 
   const toggleTheme = (dark: boolean) => {
@@ -72,6 +74,36 @@ export function Sidebar({ className }: SidebarProps) {
       document.documentElement.classList.remove('dark');
     }
   };
+
+  const handleLogout = async () => {
+    try {
+      // Call API to register the user
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+         'Authorization': `Bearer ${token}`
+         },
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // clear session
+        logout()
+        localStorage.clear()
+        // Redirect to appropriate verification page based on mode
+        window.location.href = "/auth/login";
+
+      } else {
+        // Handle registration error
+        alert(data.message || "Logout failed. Please try again.");
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+      alert("An error occurred during registration. Please try again.");
+    }
+  }
 
   return (
     <div className={cn(
@@ -248,6 +280,8 @@ export function Sidebar({ className }: SidebarProps) {
           onMouseLeave={(e) => {
             e.currentTarget.style.background = '';
           }}
+          type='button'
+          onClick={handleLogout}
         >
           <LogOut className="w-5 h-5" />
           <span className="flex-1 text-left">Log Out</span>

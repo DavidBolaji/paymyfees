@@ -37,7 +37,7 @@ function handleZodError(error: ZodError): NextResponse {
 
   const validationError = new ValidationError('Validation failed', errors);
 
-  logger.warn({ msg: 'Validation error', errors });
+  console.warn({ msg: 'Validation error', errors });
 
   return NextResponse.json(
     {
@@ -86,8 +86,8 @@ function handlePrismaError(error: Prisma.PrismaClientKnownRequestError): NextRes
   }
 
   const dbError = new DatabaseError(message);
-  
-  logger.error({
+
+  console.error({
     msg: 'Prisma error',
     code: error.code,
     meta: error.meta,
@@ -106,14 +106,14 @@ function handlePrismaError(error: Prisma.PrismaClientKnownRequestError): NextRes
 function handleAppError(error: AppError): NextResponse {
   // Log operational errors as warnings, programming errors as errors
   if (error.isOperational) {
-    logger.warn({
+    console.warn({
       msg: 'Operational error',
       name: error.name,
       message: error.message,
       statusCode: error.statusCode,
     });
   } else {
-    logger.error({
+    console.error({
       msg: 'Programming error',
       name: error.name,
       message: error.message,
@@ -132,7 +132,7 @@ function handleAppError(error: AppError): NextResponse {
  * Handle unknown errors
  */
 function handleUnknownError(error: Error): NextResponse {
-  logger.error({
+  console.error({
     msg: 'Unknown error',
     message: error.message,
     stack: error.stack,
@@ -170,7 +170,7 @@ export function errorHandler(error: unknown): NextResponse {
   }
 
   // Fallback for non-Error objects
-  logger.error({ msg: 'Non-Error object thrown', error });
+  console.error({ msg: 'Non-Error object thrown', error });
   return NextResponse.json(
     formatErrorResponse(new Error('An unexpected error occurred'), 500),
     { status: 500 }
@@ -185,6 +185,9 @@ export function asyncHandler<T = any>(
   handler: (req: Request, context: T) => Promise<any>
 ) {
   return async (req: Request, context: any): Promise<NextResponse<unknown>> => {
+    console.log({
+      msg: 'Got here async handler'
+    });
     try {
       const response = await handler(req, context);
       if (!response) {

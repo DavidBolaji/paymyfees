@@ -25,7 +25,7 @@ export class AdminController {
    * GET /api/admin/analytics
    */
   async getAnalytics(req: Request): Promise<NextResponse> {
-    logger.info({ msg: 'Admin analytics request' });
+    console.log({ msg: 'Admin analytics request' });
     
     // Execute business logic
     const analyticsData = await this.adminService.getAnalytics();
@@ -46,7 +46,7 @@ export class AdminController {
    * POST /api/admin/applications/:loanId/review
    */
   async reviewLoanApplication(req: Request, loanId: string): Promise<NextResponse> {
-    logger.info({ msg: 'Loan application review request', loanId });
+    console.log({ msg: 'Loan application review request', loanId });
     
     // In a real implementation, we would process the review here
     // For now, we'll just return a success response
@@ -69,7 +69,7 @@ export class AdminController {
    * POST /api/admin/disbursements/process
    */
   async processDisbursement(req: Request): Promise<NextResponse> {
-    logger.info({ msg: 'Disbursement process request' });
+    console.log({ msg: 'Disbursement process request' });
     
     // In a real implementation, we would process the disbursement here
     // For now, we'll just return a success response
@@ -91,7 +91,7 @@ export class AdminController {
    * GET /api/admin/applications
    */
   async getLoanApplications(req: Request): Promise<NextResponse> {
-    logger.info({ msg: 'Admin loan applications request' });
+    console.log({ msg: 'Admin loan applications request' });
     
     // Execute business logic
     const applications = await this.adminService.getLoanApplications();

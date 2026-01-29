@@ -3,11 +3,10 @@
  * POST /api/loans/apply
  */
 
-import { NextResponse } from 'next/server';
 import { LoanController } from '@/src/controllers/LoanController';
 import { asyncHandler } from '@/src/middleware/errorHandler';
 import { standardRateLimiter } from '@/src/middleware/rateLimiter';
-import { parentAuthMiddleware } from '@/src/middleware/authMiddleware';
+import { studentAuthMiddleware } from '@/src/middleware/authMiddleware';
 import { UserRole } from '@prisma/client';
 
 const loanController = new LoanController();
@@ -21,7 +20,7 @@ export const POST = asyncHandler(async (req: Request) => {
   await standardRateLimiter(req);
 
   // Authenticate user
-  const authResult = await parentAuthMiddleware(req);
+  const authResult = await studentAuthMiddleware(req);
   if (!authResult.success) {
     return authResult.response!;
   }

@@ -1,19 +1,23 @@
 'use client';
 
 import { useState } from 'react';
-import { X, CheckCircle2 } from 'lucide-react';
+import { X, CheckCircle2, Loader2 } from 'lucide-react';
 import { CustomInput } from '@/components/ui/custom-input';
+import { api } from '@/src/lib/api';
 
 interface FundWalletModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-export default function FundWalletModal({ isOpen, onClose }: FundWalletModalProps) {
+export default function FundWalletModal({ isOpen, onClose, onSuccess }: FundWalletModalProps) {
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState('');
+  const [currency, setCurrency] = useState('NGN');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [note, setNote] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -23,10 +27,54 @@ export default function FundWalletModal({ isOpen, onClose }: FundWalletModalProp
     }
   };
 
-  const handleFundWallet = () => {
-    // Handle fund wallet logic here
-    console.log({ amount, currency, paymentMethod, note });
-    onClose();
+  const handleFundWallet = async () => {
+    // Validate inputs
+    if (!amount || parseFloat(amount) <= 0) {
+      setError('Please enter a valid amount');
+      return;
+    }
+
+    if (!paymentMethod) {
+      setError('Please select a payment method');
+      return;
+    }
+
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      // Step 1: Initialize payment with backend
+      const response = await api.post('/api/wallet/initialize-payment', {
+          amount: parseFloat(amount),
+          paymentMethod: paymentMethod.toUpperCase().replace(/ /g, '_'), // Convert to enum format
+          currency,
+          note: note || undefined,
+          callbackUrl: `${window.location.origin}/wallet/payment-callback`,
+        });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to initialize payment');
+      }
+
+      const data = await response.json();
+
+      if (!data.success || !data.data.paymentUrl) {
+        throw new Error('Invalid response from server');
+      }
+
+      // Step 2: Store reference in session storage for callback verification
+      sessionStorage.setItem('pending_payment_reference', data.data.reference);
+      sessionStorage.setItem('pending_payment_amount', amount);
+
+      // Step 3: Redirect to Paystack payment page
+      window.location.href = data.data.paymentUrl;
+
+    } catch (err) {
+      console.error('Payment initialization error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to initialize payment');
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -49,10 +97,18 @@ export default function FundWalletModal({ isOpen, onClose }: FundWalletModalProp
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
             aria-label="Close modal"
+            disabled={isLoading}
           >
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
 
         {/* Content */}
         <div className="space-y-5">
@@ -64,7 +120,9 @@ export default function FundWalletModal({ isOpen, onClose }: FundWalletModalProp
               value={amount}
               onChange={setAmount}
               placeholder="Enter Amount"
-              price={true}
+              // price={true}
+              
+              // disabled={isLoading}
             />
             
             <CustomInput
@@ -73,10 +131,11 @@ export default function FundWalletModal({ isOpen, onClose }: FundWalletModalProp
               value={paymentMethod}
               onChange={setPaymentMethod}
               options={[
-                { value: 'Bank Transfer', label: 'Bank Transfer' },
                 { value: 'Card Payment', label: 'Card Payment' },
-                { value: 'Ussd Code', label: 'Ussd Code' },
+                { value: 'Bank Transfer', label: 'Bank Transfer' },
+                { value: 'USSD Code', label: 'USSD Code' },
               ]}
+              // disabled={isLoading}
             />
           </div>
 
@@ -92,6 +151,7 @@ export default function FundWalletModal({ isOpen, onClose }: FundWalletModalProp
               { value: 'GBP', label: 'GBP (£)' },
               { value: 'EUR', label: 'EUR (€)' },
             ]}
+            // disabled={isLoading}
           />
 
           {/* Note (Optional) */}
@@ -100,8 +160,9 @@ export default function FundWalletModal({ isOpen, onClose }: FundWalletModalProp
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="Add any reference or not for your top-up"
-              className="w-full h-20 px-3 py-2 rounded-lg border border-[#d1d1d1] bg-[#f5f5f5] focus:outline-none text-[#292929] placeholder:text-gray-400 resize-none"
+              placeholder="Add any reference or note for your top-up"
+              className="w-full h-20 px-3 py-2 rounded-lg border border-[#d1d1d1] bg-[#f5f5f5] focus:outline-none text-[#292929] placeholder:text-gray-400 resize-none disabled:opacity-50"
+              disabled={isLoading}
             />
           </div>
 
@@ -109,17 +170,28 @@ export default function FundWalletModal({ isOpen, onClose }: FundWalletModalProp
           <div className="grid grid-cols-2 gap-3 pt-2">
             <button
               onClick={onClose}
-              className="h-12 rounded-lg border-2 border-[#00296B] bg-white text-[#00296B] font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+              className="h-12 rounded-lg border-2 border-[#00296B] bg-white text-[#00296B] font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading}
             >
               <X className="w-5 h-5" />
               Cancel
             </button>
             <button
               onClick={handleFundWallet}
-              className="h-12 rounded-lg bg-[#00296B] text-white font-semibold hover:bg-[#003D82] transition-colors flex items-center justify-center gap-2"
+              className="h-12 rounded-lg bg-[#00296B] text-white font-semibold hover:bg-[#003D82] transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading}
             >
-              <CheckCircle2 className="w-5 h-5" />
-              Fund Wallet Now
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-5 h-5" />
+                  Fund Wallet Now
+                </>
+              )}
             </button>
           </div>
 
@@ -143,7 +215,8 @@ export default function FundWalletModal({ isOpen, onClose }: FundWalletModalProp
               </svg>
             </div>
             <p className="text-xs text-gray-600 leading-relaxed">
-              Wallet funds are automatically applied to upcoming repayments. You can view your payment schedule under "View Payment Plan"
+              You will be redirected to a secure payment page. After successful payment, your wallet will be credited automatically.
+              Wallet funds are automatically applied to upcoming repayments.
             </p>
           </div>
         </div>

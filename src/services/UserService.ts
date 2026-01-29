@@ -1,6 +1,6 @@
 import { UserRepository, IUserRepository } from '@/src/repositories/UserRepository';
 import { ValidationError, NotFoundError } from '@/src/types/errors';
-import { logger } from '@/src/utils/logger';
+
 
 /**
  * User Service
@@ -25,7 +25,7 @@ export class UserService implements IUserService {
    * Get user profile for a user
    */
   async getUserProfile(userId: string): Promise<any> {
-    logger.info({ msg: 'Getting user profile', userId });
+    console.log({ msg: 'Getting user profile', userId });
 
     const user = await this.userRepository.getUserById(userId);
     if (!user) {
@@ -39,7 +39,7 @@ export class UserService implements IUserService {
    * Update user profile
    */
   async updateUserProfile(userId: string, data: any): Promise<any> {
-    logger.info({ msg: 'Updating user profile', userId });
+    console.log({ msg: 'Updating user profile', userId });
 
     // Validate required fields
     if (!data.email) {

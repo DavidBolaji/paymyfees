@@ -6,7 +6,6 @@
 import { NextResponse } from 'next/server';
 import { AdminController } from '@/src/controllers/AdminController';
 import { adminAuthMiddleware, authMiddleware } from '@/src/middleware/authMiddleware';
-import { asyncHandler } from '@/src/middleware/errorHandler';
 import { lenientRateLimiter } from '@/src/middleware/rateLimiter';
 
 const adminController = new AdminController();
@@ -15,7 +14,7 @@ const adminController = new AdminController();
  * GET /api/admin/applications
  * Get loan applications for admin review
  */
-export const GET = asyncHandler(async (req: Request): Promise<NextResponse> => {
+export async function GET(req: Request): Promise<NextResponse>{
   try {
     // Apply lenient rate limiting for admin operations
     await lenientRateLimiter(req);
@@ -38,4 +37,4 @@ export const GET = asyncHandler(async (req: Request): Promise<NextResponse> => {
     console.error('Error in GET /api/admin/applications:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
   }
-});
+};

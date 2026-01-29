@@ -1,32 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { BackNavigation } from '@/components/dashboard/back-navigation';
 import { DataTable } from '@/components/dashboard/data-table';
 
-import { fetchLoanHistory, LOAN_HISTORY_COLUMNS_SIMPLE, loanHistoryData } from '@/data';
+
+import { LOAN_HISTORY_COLUMNS_SIMPLE } from '@/data';
 import { LoanDisbursementDrawer } from '@/components/dashboard/detail-drawer';
+import useLoan from '@/hooks/useLoan';
 
 export default function LoansPage() {
-  const [loanHistory, setLoanHistory] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedLoan, setSelectedLoan] = useState<any>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        await fetchLoanHistory();
-        setLoanHistory(loanHistoryData);
-      } catch (error) {
-        console.error('Error loading loan history:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, []);
+  const {loanHistory, paginationInfo, loading} = useLoan()
 
   if (loading) {
     return (
@@ -41,36 +28,41 @@ export default function LoansPage() {
 
   return (
     <>
-    <div className="p-6">
-      <div className="">
-        <BackNavigation href="/dashboard" label="Back to Dashboard" />
-        
-        <div className="mb-6">
-          <h1 className="mb-2 font-semibold text-[#191919] text-[1.6875rem]">
-            Loan / Disbursement History
-          </h1>
-          <p className="text-[#5F5F5F] text-base">
-            View all your loan applications and disbursement records
-          </p>
+      <div className="p-6">
+        <div className="">
+          <BackNavigation href="/dashboard" label="Back to Dashboard" />
+
+          <div className="mb-6">
+            <h1 className="mb-2 font-semibold text-[#191919] text-[1.6875rem]">
+              Loan / Disbursement History
+            </h1>
+            <p className="text-[#5F5F5F] text-base">
+              View all your loan applications and disbursement records
+            </p>
+          </div>
+
+          <DataTable
+            title="All Loans"
+            columns={LOAN_HISTORY_COLUMNS_SIMPLE}
+            data={loanHistory}
+            paginationInfo={paginationInfo}
+            onPageChange={() => { }}
+            itemsPerPage={10}
+            isLoading={loading}
+            onRowClick={(loan) => {
+              setSelectedLoan(loan);
+              setIsDrawerOpen(true);
+            }}
+
+          />
         </div>
-
-        <DataTable
-          title="All Loans"
-          columns={LOAN_HISTORY_COLUMNS_SIMPLE}
-          data={loanHistory}
-          onRowClick={(loan) => {
-            setSelectedLoan(loan);
-            setIsDrawerOpen(true);
-          }}
-        />
       </div>
-    </div>
 
-    <LoanDisbursementDrawer
-      isOpen={isDrawerOpen}
-      onClose={() => setIsDrawerOpen(false)}
-      loan={selectedLoan}
-    />
+      <LoanDisbursementDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        loan={selectedLoan}
+      />
     </>
   );
 }

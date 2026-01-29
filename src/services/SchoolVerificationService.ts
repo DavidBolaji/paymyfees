@@ -1,54 +1,51 @@
 /**
  * School Verification Service
  * Business logic for school verification operations
- * Implements service layer with dependency injection
  */
-
 import { SchoolVerificationRepository, ISchoolVerificationRepository } from '@/src/repositories/SchoolVerificationRepository';
-import { ValidationError, NotFoundError } from '@/src/types/errors';
-import { logger } from '@/src/utils/logger';
+import { ValidationError } from '@/src/types/errors';
+import { ISchoolSupportMessageRepository, SchoolSupportMessageRepository } from '../repositories/SupportMessageRepository';
 
-/**
- * School Verification Service Interface
- */
 export interface ISchoolVerificationService {
   submitVerificationRequest(userId: string, data: any): Promise<any>;
   getVerificationStatus(userId: string): Promise<any>;
+  getVerificationLogs(schoolId: string, limit?: number): Promise<any[]>;
+  getSupportMessages(schoolId: string): Promise<any[]>;
+  markSupportMessageAsRead(messageId: string): Promise<any>;
+  getUnreadSupportCount(schoolId: string): Promise<number>;
 }
 
-/**
- * School Verification Service Implementation
- */
 export class SchoolVerificationService implements ISchoolVerificationService {
   private schoolVerificationRepository: ISchoolVerificationRepository;
+  private supportMessageRepository: ISchoolSupportMessageRepository;
 
-  constructor(schoolVerificationRepository?: ISchoolVerificationRepository) {
+  constructor(
+    schoolVerificationRepository?: ISchoolVerificationRepository,
+    supportMessageRepository?: ISchoolSupportMessageRepository
+  ) {
     this.schoolVerificationRepository = schoolVerificationRepository || new SchoolVerificationRepository();
+    this.supportMessageRepository = supportMessageRepository || new SchoolSupportMessageRepository();
   }
 
   /**
    * Submit a school verification request
    */
   async submitVerificationRequest(userId: string, data: any): Promise<any> {
-    logger.info({ msg: 'Submitting verification request', userId });
+    console.log({ msg: 'Submitting verification request', userId });
 
     // Validate required fields
     if (!data.loanId) {
       throw new ValidationError('Loan ID is required');
     }
-
     if (!data.schoolId) {
       throw new ValidationError('School ID is required');
     }
-
     if (!data.studentName) {
       throw new ValidationError('Student name is required');
     }
-
     if (!data.studentClass) {
       throw new ValidationError('Student class is required');
     }
-
     if (!data.invoiceAmount) {
       throw new ValidationError('Invoice amount is required');
     }
@@ -76,10 +73,63 @@ export class SchoolVerificationService implements ISchoolVerificationService {
    * Get verification status for a user
    */
   async getVerificationStatus(userId: string): Promise<any> {
-    logger.info({ msg: 'Getting verification status', userId });
+    console.log({ msg: 'Getting verification status', userId });
 
     const verification = await this.schoolVerificationRepository.getVerificationStatus(userId);
     
     return verification || { status: 'NOT_SUBMITTED' };
+  }
+
+  /**
+   * Get verification logs for a school
+   */
+  async getVerificationLogs(schoolId: string, limit?: number): Promise<any[]> {
+    console.log({ msg: 'Getting verification logs', schoolId });
+
+    const logs = await this.schoolVerificationRepository.getVerificationLogs(schoolId, limit);
+    
+    // Transform logs for frontend
+    return logs.map(log => ({
+      id: log.id,
+      date: log.createdAt,
+      activity: log.activity,
+      details: log.details,
+      status: log.status,
+      studentName: log.verification?.loan?.student?.fullName || 'N/A',
+      loanNumber: log.verification?.loan?.loanNumber || 'N/A',
+    }));
+  }
+
+  /**
+   * Get support messages for a school
+   */
+  async getSupportMessages(schoolId: string): Promise<any[]> {
+    console.log({ msg: 'Getting support messages', schoolId });
+
+    const messages = await this.supportMessageRepository.getMessages(schoolId);
+    
+    return messages;
+  }
+
+  /**
+   * Mark support message as read
+   */
+  async markSupportMessageAsRead(messageId: string): Promise<any> {
+    console.log({ msg: 'Marking support message as read', messageId });
+
+    const message = await this.supportMessageRepository.markAsRead(messageId);
+    
+    return message;
+  }
+
+  /**
+   * Get unread support message count
+   */
+  async getUnreadSupportCount(schoolId: string): Promise<number> {
+    console.log({ msg: 'Getting unread support count', schoolId });
+
+    const count = await this.supportMessageRepository.getUnreadCount(schoolId);
+    
+    return count;
   }
 }

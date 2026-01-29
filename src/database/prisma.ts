@@ -4,10 +4,11 @@
  * Optimized for PostgreSQL with Prisma Accelerate
  */
 
-import { PrismaClient, Transaction } from '@/prisma/app/generated/prisma-client';
+// import { PrismaClient, Transaction } from '@/prisma/app/generated/prisma-client';
 import { withAccelerate } from '@prisma/extension-accelerate';
 import { env } from '@/src/config/env';
 import { DatabaseError } from '@/src/types/errors';
+import { PrismaClient, Transaction } from '@prisma/client';
 
 /**
  * Extended Prisma Client type with Accelerate

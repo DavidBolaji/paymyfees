@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { requireAuth, requireParent, requireSchool, requireAdmin } from '@/src/middleware/auth';
+import { requireAuth, requireParent, requireSchool, requireAdmin, requireStudent } from '@/src/middleware/auth';
 import { UnauthorizedError, ForbiddenError } from '@/src/types/errors';
 import { logger } from '@/src/utils/logger';
 
@@ -32,7 +32,7 @@ export async function authMiddleware(req: Request): Promise<AuthMiddlewareResult
       role: user.role
     };
   } catch (error) {
-    logger.warn({ msg: 'Authentication failed', error: (error as Error).message });
+    console.warn({ msg: 'Authentication failed', error: (error as Error).message });
     
     const response = NextResponse.json(
       {
@@ -44,6 +44,48 @@ export async function authMiddleware(req: Request): Promise<AuthMiddlewareResult
         },
       },
       { status: 401 }
+    );
+    
+    return {
+      success: false,
+      response
+    };
+  }
+}
+
+/**
+ * Student authentication middleware
+ * Verifies JWT token and ensures user has STUDENT role
+ */
+export async function studentAuthMiddleware(req: Request): Promise<AuthMiddlewareResult> {
+  try {
+    const user = await requireStudent(req);
+    
+    return {
+      success: true,
+      userId: user.id,
+      role: user.role
+    };
+  } catch (error) {
+    console.warn({ msg: 'Parent authentication failed', error: (error as Error).message });
+    
+    const status = error instanceof UnauthorizedError ? 401 : 403;
+    const message = error instanceof UnauthorizedError 
+      ? 'Authentication required' 
+      : 'Parent access required';
+    
+    const response = NextResponse.json(
+      {
+        success: false,
+        error: message,
+        message: error instanceof UnauthorizedError 
+          ? 'Please log in to access this resource' 
+          : 'This resource is only accessible to parents',
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status }
     );
     
     return {
@@ -67,7 +109,7 @@ export async function parentAuthMiddleware(req: Request): Promise<AuthMiddleware
       role: user.role
     };
   } catch (error) {
-    logger.warn({ msg: 'Parent authentication failed', error: (error as Error).message });
+    console.warn({ msg: 'Parent authentication failed', error: (error as Error).message });
     
     const status = error instanceof UnauthorizedError ? 401 : 403;
     const message = error instanceof UnauthorizedError 
@@ -109,7 +151,7 @@ export async function schoolAuthMiddleware(req: Request): Promise<AuthMiddleware
       role: user.role
     };
   } catch (error) {
-    logger.warn({ msg: 'School authentication failed', error: (error as Error).message });
+    console.warn({ msg: 'School authentication failed', error: (error as Error).message });
     
     const status = error instanceof UnauthorizedError ? 401 : 403;
     const message = error instanceof UnauthorizedError 
@@ -151,7 +193,7 @@ export async function adminAuthMiddleware(req: Request): Promise<AuthMiddlewareR
       role: user.role
     };
   } catch (error) {
-    logger.warn({ msg: 'Admin authentication failed', error: (error as Error).message });
+    console.warn({ msg: 'Admin authentication failed', error: (error as Error).message });
     
     const status = error instanceof UnauthorizedError ? 401 : 403;
     const message = error instanceof UnauthorizedError 

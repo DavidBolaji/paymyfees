@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import useAuthStore from "@/src/authStore";
 import Image from "next/image";
 import Logo from "@/assets/images/logo/logo.png";
 import { LoginForm } from "@/components/forms/login-form";
+import { api } from "@/src/lib/api";
 
 // Interface for form data
 interface FormData {
@@ -11,31 +13,37 @@ interface FormData {
   password: string;
 }
 
-export default function RegisterPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+export default function LoginPage() {
+  const [, setIsSubmitting] = useState(false);
+  const { login } = useAuthStore();
 
   // Handle form submission
   const handleSubmit = async (formData: FormData) => {
     try {
       setIsSubmitting(true);
-      
-      // Simulate API call
+
       console.log("Form submitted:", formData);
-      
-      // Here you would typically call an API to register the user
-      // Example:
-      // const response = await fetch('/api/auth/register', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(formData)
-      // });
-      
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
+      // Call API to login the user (skipAuth since we're logging in)
+      const response = await api.post('/api/auth/login', {
+        email: formData.email,
+        password: formData.password,
+      }, { skipAuth: true }); // Skip auth header for login endpoint
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Use Zustand to store user data
+        login(data.data.user, data.data.token, data.data.refreshToken);
+        window.location.href = "/dashboard";
+      } else {
+        // Handle login error
+        alert(data.message || "Login failed. Please try again.");
+      }
+
     } catch (error) {
-      console.error("Registration error:", error);
-      // Handle error (e.g., show toast notification)
+      console.error("Login error:", error);
+      alert("An error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -55,9 +63,9 @@ export default function RegisterPage() {
 
       {/* Login Form */}
       <div className="w-full max-w-md p-6 border border-[#00296B] bg-white rounded-lg">
-        <h1 className="text-[1.6875rem] font-semibold text-center mb-1">Sign Up</h1>
+        <h1 className="text-[1.6875rem] font-semibold text-center mb-1">Sign In</h1>
         <p className="text-center font-semibold text-sm text-[#525252] mb-6">Finance Your Education, Stress Free</p>
-        
+
         <LoginForm onSubmit={handleSubmit} />
       </div>
     </div>

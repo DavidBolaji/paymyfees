@@ -1,16 +1,16 @@
 /**
  * Loan Controller
  * HTTP request/response handling for loan endpoints
- * Implements controller layer with proper status codes and response formatting
+ * Supports both local and international student loans with school lookup
  */
 
 import { NextResponse } from 'next/server';
 import { LoanService, ILoanService } from '@/src/services/LoanService';
+import { SchoolService, ISchoolService } from '@/src/services/SchoolService';
 import { createLoanSchema, loanQuerySchema } from '@/src/validation/schemas';
 import { ApiResponse } from '@/src/types';
-import { logger } from '@/src/utils/logger';
 import { AuthUser } from '@/src/middleware/auth';
-import { LoanStatus } from '@prisma/client';
+import { LoanStatus, ResidencyStatus } from '@prisma/client';
 
 /**
  * Loan Controller
@@ -18,32 +18,71 @@ import { LoanStatus } from '@prisma/client';
  */
 export class LoanController {
   private loanService: ILoanService;
+  private schoolService: ISchoolService;
 
-  constructor(loanService?: ILoanService) {
+  constructor(loanService?: ILoanService, schoolService?: ISchoolService) {
     this.loanService = loanService || new LoanService();
+    this.schoolService = schoolService || new SchoolService();
   }
 
   /**
-   * Apply for a loan
+   * Apply for a loan (both local and international)
    * POST /api/loans/apply
    */
   async applyForLoan(req: Request, user: AuthUser): Promise<NextResponse> {
-    logger.info({ msg: 'Loan application request', userId: user.id });
+    console.log({ msg: 'Loan application request', userId: user.id });
     
     const body = await req.json();
     const validatedData = createLoanSchema.parse(body);
 
-    // Execute business logic
-    const loan = await this.loanService.createLoan({
+    // Determine loan type
+    const isInternational = validatedData.residencyStatus === ResidencyStatus.INTERNATIONAL;
+
+    // Find or create school profile
+    const schoolId = await this.schoolService.findOrCreateSchool({
+      schoolName: validatedData.schoolName,
+      residencyStatus: validatedData.residencyStatus,
+      countryOfStudy: isInternational ? (validatedData as any).countryOfStudy : undefined
+    });
+
+    console.log({ 
+      msg: 'School resolved', 
+      schoolId, 
+      schoolName: validatedData.schoolName 
+    });
+
+    // Base loan data
+    const baseLoanData = {
       userId: user.id,
-      studentId: validatedData.studentId,
-      schoolId: '', // This would be determined from the school name in a real implementation
+      // studentId: validatedData.studentId,
+      schoolId,
       loanAmount: validatedData.loanAmount,
       repaymentMonths: validatedData.repaymentMonths,
       schoolName: validatedData.schoolName,
       academicSession: validatedData.academicSession,
-      term: validatedData.term,
-    });
+      residencyStatus: validatedData.residencyStatus
+    };
+
+    // Execute business logic based on loan type
+    const loan = isInternational
+      ? await this.loanService.createInternationalLoan({
+          ...baseLoanData,
+          countryOfStudy: (validatedData as any).countryOfStudy,
+          programCourseOfStudy: (validatedData as any).programCourseOfStudy,
+          employmentStatus: (validatedData as any).employmentStatus,
+          companyName: (validatedData as any).companyName,
+          jobTitleRole: (validatedData as any).jobTitleRole,
+          monthlyNetIncome: (validatedData as any).monthlyNetIncome,
+          paymentFrequency: (validatedData as any).paymentFrequency,
+          accountHolderName: (validatedData as any).accountHolderName,
+          bankName: (validatedData as any).bankName,
+          accountNumber: (validatedData as any).accountNumber,
+          countryOfBankAccount: (validatedData as any).countryOfBankAccount
+        })
+      : await this.loanService.createLocalLoan({
+          ...baseLoanData,
+          term: (validatedData as any).term
+        });
 
     const response: ApiResponse = {
       success: true,
@@ -51,6 +90,7 @@ export class LoanController {
         loanId: loan.id,
         loanNumber: loan.loanNumber,
         status: loan.status,
+        residencyStatus: loan.residencyStatus,
         amount: loan.loanAmount,
         monthlyPayment: loan.monthlyPayment,
         totalAmount: loan.totalAmount,
@@ -69,13 +109,13 @@ export class LoanController {
    * GET /api/loans/:loanId
    */
   async getLoanById(_req: Request, loanId: string, user: AuthUser): Promise<NextResponse> {
-    logger.info({ msg: 'Get loan details', loanId, userId: user.id });
+    console.log({ msg: 'Get loan details', loanId, userId: user.id });
 
     const loan = await this.loanService.getLoanById(loanId);
 
     // Verify loan belongs to user
     if (loan.userId !== user.id) {
-      logger.warn({ msg: 'Unauthorized loan access attempt', loanId, userId: user.id });
+      console.warn({ msg: 'Unauthorized loan access attempt', loanId, userId: user.id });
       
       return NextResponse.json(
         {
@@ -106,11 +146,12 @@ export class LoanController {
    * GET /api/loans/history
    */
   async getLoanHistory(req: Request, user: AuthUser): Promise<NextResponse> {
-    logger.info({ msg: 'Get loan history', userId: user.id });
+    console.log({ msg: 'Get loan history', userId: user.id });
 
     const { searchParams } = new URL(req.url);
     const queryParams = loanQuerySchema.parse({
       status: searchParams.get('status') || undefined,
+      residencyStatus: searchParams.get('residencyStatus') || undefined,
       page: searchParams.get('page') || '1',
       limit: searchParams.get('limit') || '10',
     });
@@ -119,9 +160,10 @@ export class LoanController {
       user.id,
       queryParams.status as LoanStatus | undefined,
       {
-        page: queryParams.page,
-        limit: queryParams.limit,
-      }
+        page: parseInt(queryParams.page),
+        limit: parseInt(queryParams.limit),
+      },
+      queryParams.residencyStatus as ResidencyStatus | undefined
     );
 
     const response: ApiResponse = {
@@ -150,13 +192,13 @@ export class LoanController {
    * POST /api/loans/:loanId/documents
    */
   async uploadDocuments(_req: Request, loanId: string, user: AuthUser): Promise<NextResponse> {
-    logger.info({ msg: 'Upload loan documents', loanId, userId: user.id });
+    console.log({ msg: 'Upload loan documents', loanId, userId: user.id });
 
     // First, verify loan belongs to user
     const loan = await this.loanService.getLoanById(loanId);
 
     if (loan.userId !== user.id) {
-      logger.warn({ msg: 'Unauthorized document upload attempt', loanId, userId: user.id });
+      console.warn({ msg: 'Unauthorized document upload attempt', loanId, userId: user.id });
       
       return NextResponse.json(
         {

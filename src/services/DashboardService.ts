@@ -5,7 +5,6 @@
  */
 
 import { DashboardRepository, IDashboardRepository } from '@/src/repositories/DashboardRepository';
-import { logger } from '@/src/utils/logger';
 import {
   DashboardStats,
   AnalyticsData,
@@ -36,7 +35,7 @@ export class DashboardService implements IDashboardService {
    * Get dashboard statistics
    */
   async getStats(userId: string): Promise<DashboardStats> {
-    logger.info({ msg: 'Getting dashboard stats', userId });
+    console.log({ msg: 'Getting dashboard stats', userId });
 
     // Get data from repository
     const data = await this.dashboardRepository.getUserStats(userId);
@@ -45,11 +44,18 @@ export class DashboardService implements IDashboardService {
     let upcomingPayment = null;
     if (data.activeLoans.length > 0) {
       const firstLoan = data.activeLoans[0];
-      // In a real implementation, we would get the next installment due
-      // For now, we'll just use a mock value
+      
+      // Calculate the next payment date (30 days from disbursement date or today if no disbursement date)
+      const disbursementDate = firstLoan?.disbursementDate || new Date();
+      const nextPaymentDate = new Date(disbursementDate);
+      nextPaymentDate.setDate(nextPaymentDate.getDate() + 30); // 30 days from disbursement
+      
+      // Format the date properly
+      const formattedDate = this.formatDate(nextPaymentDate);
+      
       upcomingPayment = {
         amount: firstLoan?.monthlyPayment || 0,
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days from now
+        dueDate: formattedDate,
       };
     }
 
@@ -57,9 +63,14 @@ export class DashboardService implements IDashboardService {
     let activePlan = null;
     if (data.activeLoans.length > 0) {
       const loan = data.activeLoans[0];
+      
+      // Calculate the number of installments paid and total installments
+      const totalInstallments = loan?.repaymentMonths || 0;
+      const paidInstallments = Math.floor((loan?.amountRepaid || 0) / (loan?.monthlyPayment || 1));
+      
       activePlan = {
-        current: loan?.amountRepaid || 0,
-        total: loan?.totalAmount || 0,
+        current: paidInstallments,
+        total: totalInstallments,
         planType: 'Monthly',
       };
     }
@@ -83,12 +94,33 @@ export class DashboardService implements IDashboardService {
       },
     };
   }
+  
+  /**
+   * Format date to a readable format (e.g., "3rd Feb 2026")
+   */
+  private formatDate(date: Date): string {
+    const day = date.getDate();
+    const month = date.toLocaleString('default', { month: 'short' });
+    const year = date.getFullYear();
+    
+    // Add ordinal suffix to day
+    let suffix = 'th';
+    if (day === 1 || day === 21 || day === 31) {
+      suffix = 'st';
+    } else if (day === 2 || day === 22) {
+      suffix = 'nd';
+    } else if (day === 3 || day === 23) {
+      suffix = 'rd';
+    }
+    
+    return `${day}${suffix} ${month} ${year}`;
+  }
 
   /**
    * Get analytics data
    */
   async getAnalytics(userId: string): Promise<AnalyticsData> {
-    logger.info({ msg: 'Getting analytics data', userId });
+    console.log({ msg: 'Getting analytics data', userId });
 
     // Get data from repository
     const data = await this.dashboardRepository.getUserAnalytics(userId);
@@ -131,7 +163,7 @@ export class DashboardService implements IDashboardService {
    * Get chart data
    */
   async getChartData(userId: string, year?: number): Promise<ChartDataPoint[]> {
-    logger.info({ msg: 'Getting chart data', userId, year });
+    console.log({ msg: 'Getting chart data', userId, year });
 
     // Use current year if not specified
     const targetYear = year || new Date().getFullYear();
@@ -141,8 +173,8 @@ export class DashboardService implements IDashboardService {
     
     // Process transactions into monthly data
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
     
     // Initialize monthly data with zeros

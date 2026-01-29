@@ -1,45 +1,20 @@
 'use client';
 
-import { useState } from 'react';
 import { Clock } from 'lucide-react';
 import { DataTable } from './data-table';
 import { LOAN_HISTORY_COLUMNS } from '@/data';
-
-interface LoanHistoryItem {
-  loanId: string;
-  tuitionAmount: number;
-  repaymentPlan: string;
-  status: 'ongoing' | 'completed';
-  contributedTo: string;
-  date: string;
-}
+import useLoan from '@/hooks/useLoan';
+import { GlobalSearchIcon } from '@/assets/icons/GlobalSearchIcon';
 
 export function LoanHistory() {
   // Mock data - this would come from API
-  const [loanHistory] = useState<LoanHistoryItem[]>([
-    {
-      loanId: 'PMF-102-11',
-      tuitionAmount: 75000,
-      repaymentPlan: '5-month plan',
-      status: 'ongoing',
-      contributedTo: 'Springlight School',
-      date: 'Jan 1 2026'
-    },
-    {
-      loanId: 'PMF-102-11',
-      tuitionAmount: 75000,
-      repaymentPlan: '5-month plan',
-      status: 'completed',
-      contributedTo: 'Springlight School',
-      date: 'Jan 1 2026'
-    }
-  ]);
-
+   const { loanHistory, paginationInfo } = useLoan()
+ 
   if (loanHistory.length === 0) {
     return (
       <div className="flex flex-col justify-center items-center py-16 text-center">
         <div className="flex justify-center items-center bg-blue-100 mb-6 rounded-full w-16 h-16">
-          <Clock className="w-8 h-8 text-[#00296B]" />
+          <GlobalSearchIcon className="w-8 h-8 text-[#00296B]" />
         </div>
         
         <h3 className="mb-4 font-semibold text-[#292D32] text-[27px]">
@@ -61,7 +36,7 @@ export function LoanHistory() {
         data={loanHistory}
         searchable={true}
         filterable={true}
-        pagination={true}
+        paginationInfo={paginationInfo}
         itemsPerPage={5}
         className="shadow-none border-0"
       />

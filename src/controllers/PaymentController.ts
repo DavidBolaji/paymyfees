@@ -31,7 +31,7 @@ export class PaymentController {
    * POST /api/payments/make
    */
   async makePayment(req: Request, user: AuthUser): Promise<NextResponse> {
-    logger.info({ msg: 'Payment request', userId: user.id });
+    console.log({ msg: 'Payment request', userId: user.id });
     
     const body = await req.json();
     const validatedData = makePaymentSchema.parse(body);
@@ -68,13 +68,13 @@ export class PaymentController {
    * GET /api/payments/:paymentId/receipt
    */
   async getReceipt(_req: Request, paymentId: string, user: AuthUser): Promise<NextResponse> {
-    logger.info({ msg: 'Get payment receipt', paymentId, userId: user.id });
+    console.log({ msg: 'Get payment receipt', paymentId, userId: user.id });
 
     const result = await this.paymentService.generateReceipt(paymentId);
 
     // Verify payment belongs to user
     if (result.payment.userId !== user.id) {
-      logger.warn({ msg: 'Unauthorized payment receipt access attempt', paymentId, userId: user.id });
+      console.warn({ msg: 'Unauthorized payment receipt access attempt', paymentId, userId: user.id });
       
       return NextResponse.json(
         {
@@ -115,7 +115,7 @@ export class PaymentController {
    * GET /api/payment-plan
    */
   async getPaymentPlan(_req: Request, userId: string): Promise<NextResponse> {
-    logger.info({ msg: 'Get payment plan', userId });
+    console.log({ msg: 'Get payment plan', userId });
 
     try {
       // Get payment plan from service

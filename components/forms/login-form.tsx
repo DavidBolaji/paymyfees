@@ -126,7 +126,7 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4 md:min-w-96">
       {/* Email */}
       <div>
         <CustomInput
