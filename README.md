@@ -237,8 +237,8 @@ Structured logging with Pino:
 ```typescript
 import { logger } from '@/src/utils/logger';
 
-logger.info('User logged in', { userId: user.id });
-logger.error('Payment failed', { error, paymentId });
+console.log('User logged in', { userId: user.id });
+console.error('Payment failed', { error, paymentId });
 ```
 
 ## 🧪 Scripts

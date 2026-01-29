@@ -1,20 +1,17 @@
 /**
  * Loan Service
  * Business logic for loan operations
- * Implements service layer with dependency injection
+ * Supports both local and international student loans
  */
 
 import { LoanRepository, ILoanRepository } from '@/src/repositories/LoanRepository';
 import { executeTransaction } from '@/src/database/prisma';
 import { ValidationError, NotFoundError } from '@/src/types/errors';
-import { logger } from '@/src/utils/logger';
-import { 
-  LoanStatus,
-  Prisma
-} from '@prisma/client';
-import { 
-  LoanDTO, 
-  CreateLoanInput,
+import { LoanStatus, ResidencyStatus } from '@prisma/client';
+import {
+  LoanDTO,
+  LocalLoanInput,
+  InternationalLoanInput,
   UpdateLoanStatusInput,
   LoanCalculation,
   PaginationParams
@@ -24,9 +21,10 @@ import {
  * Loan Service Interface
  */
 export interface ILoanService {
-  createLoan(input: CreateLoanInput): Promise<LoanDTO>;
+  createLocalLoan(input: Omit<LocalLoanInput, 'userId' | 'schoolId'> & { userId: string; schoolId: string }): Promise<LoanDTO>;
+  createInternationalLoan(input: Omit<InternationalLoanInput, 'userId' | 'schoolId'> & { userId: string; schoolId: string }): Promise<LoanDTO>;
   getLoanById(id: string): Promise<LoanDTO>;
-  getLoansByUserId(userId: string, status?: LoanStatus, pagination?: PaginationParams): Promise<{ loans: LoanDTO[]; total: number; page: number; limit: number }>;
+  getLoansByUserId(userId: string, status?: LoanStatus, pagination?: PaginationParams, residencyStatus?: ResidencyStatus): Promise<{ loans: LoanDTO[]; total: number; page: number; limit: number }>;
   updateLoanStatus(input: UpdateLoanStatusInput): Promise<LoanDTO>;
   calculateLoan(loanAmount: number, repaymentMonths: number): LoanCalculation;
 }
@@ -44,7 +42,8 @@ function toLoanDTO(loan: any): LoanDTO {
     monthlyPayment: Number(loan.monthlyPayment),
     amountDisbursed: Number(loan.amountDisbursed),
     amountRepaid: Number(loan.amountRepaid),
-    outstandingBalance: Number(loan.outstandingBalance)
+    outstandingBalance: Number(loan.outstandingBalance),
+    monthlyNetIncome: loan.monthlyNetIncome ? Number(loan.monthlyNetIncome) : undefined
   };
 }
 
@@ -59,14 +58,17 @@ export class LoanService implements ILoanService {
   }
 
   /**
-   * Create a new loan application
+   * Create a local student loan application
    */
-  async createLoan(input: CreateLoanInput): Promise<LoanDTO> {
-    logger.info({ msg: 'Creating loan application', userId: input.userId });
+  async createLocalLoan(input: Omit<LocalLoanInput, 'userId' | 'schoolId'> & { userId: string; schoolId: string }): Promise<LoanDTO> {
+    console.log({ msg: 'Creating local loan application', userId: input.userId });
+
+    // Check for existing active loans
+    await this.validateNoActiveLoan(input.userId);
 
     // Calculate loan details
     const loanCalculation = this.calculateLoan(input.loanAmount, input.repaymentMonths);
-    
+
     // Generate loan number
     const loanNumber = `LOAN-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
 
@@ -75,7 +77,7 @@ export class LoanService implements ILoanService {
       // Create loan
       const newLoan = await this.loanRepository.create({
         userId: input.userId,
-        studentId: input.studentId,
+        // studentId: input.studentId,
         schoolId: input.schoolId,
         loanNumber,
         loanAmount: input.loanAmount,
@@ -87,6 +89,7 @@ export class LoanService implements ILoanService {
         schoolName: input.schoolName,
         academicSession: input.academicSession,
         term: input.term,
+        residencyStatus: ResidencyStatus.LOCAL,
         status: LoanStatus.PENDING,
         amountDisbursed: 0,
         amountRepaid: 0,
@@ -95,42 +98,135 @@ export class LoanService implements ILoanService {
       });
 
       // Create installments
-      const installments = [];
-      let firstPaymentDate = new Date();
-      firstPaymentDate.setDate(firstPaymentDate.getDate() + 30); // First payment due in 30 days
-
-      for (let i = 0; i < input.repaymentMonths; i++) {
-        const dueDate = new Date(firstPaymentDate);
-        dueDate.setMonth(dueDate.getMonth() + i);
-
-        installments.push({
-          loanId: newLoan.id,
-          installmentNumber: i + 1,
-          amount: loanCalculation.monthlyPayment,
-          dueDate,
-          status: 'PENDING',
-          daysOverdue: 0,
-          lateFee: 0,
-        });
-      }
-
-      // Create installments in batch
-      await tx.installment.createMany({
-        data: installments,
-      });
+      await this.createInstallments(tx, newLoan.id, loanCalculation.monthlyPayment, input.repaymentMonths);
 
       return newLoan;
     });
 
-    logger.info({ msg: 'Loan application created', loanId: loan.id });
+    console.log({ msg: 'Local loan application created', loanId: loan.id });
     return toLoanDTO(loan);
+  }
+
+  /**
+   * Create an international student loan application
+   */
+  async createInternationalLoan(input: Omit<InternationalLoanInput, 'userId' | 'schoolId'> & { userId: string; schoolId: string }): Promise<LoanDTO> {
+    console.log({ msg: 'Creating international loan application', userId: input.userId });
+
+    // Check for existing active loans
+    await this.validateNoActiveLoan(input.userId);
+
+    // Calculate loan details
+    const loanCalculation = this.calculateLoan(input.loanAmount, input.repaymentMonths);
+
+    // Generate loan number
+    const loanNumber = `INTL-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+
+    // Create loan with transaction
+    const loan = await executeTransaction(async (tx) => {
+      // Create loan
+      const newLoan = await this.loanRepository.create({
+        userId: input.userId,
+        // studentId: input.studentId,
+        schoolId: input.schoolId,
+        loanNumber,
+        loanAmount: input.loanAmount,
+        interestRate: loanCalculation.interestRate,
+        totalInterest: loanCalculation.totalInterest,
+        totalAmount: loanCalculation.totalAmount,
+        monthlyPayment: loanCalculation.monthlyPayment,
+        repaymentMonths: input.repaymentMonths,
+        schoolName: input.schoolName,
+        academicSession: input.academicSession,
+        residencyStatus: ResidencyStatus.INTERNATIONAL,
+        
+        // International student specific fields
+        countryOfStudy: input.countryOfStudy,
+        programCourseOfStudy: input.programCourseOfStudy,
+        employmentStatus: input.employmentStatus,
+        companyName: input.companyName,
+        jobTitleRole: input.jobTitleRole,
+        monthlyNetIncome: input.monthlyNetIncome,
+        paymentFrequency: input.paymentFrequency,
+        accountHolderName: input.accountHolderName,
+        bankName: input.bankName,
+        accountNumber: input.accountNumber,
+        countryOfBankAccount: input.countryOfBankAccount,
+        
+        status: LoanStatus.PENDING,
+        amountDisbursed: 0,
+        amountRepaid: 0,
+        outstandingBalance: loanCalculation.totalAmount,
+        applicationDate: new Date(),
+      });
+
+      // Create installments
+      await this.createInstallments(tx, newLoan.id, loanCalculation.monthlyPayment, input.repaymentMonths);
+
+      return newLoan;
+    });
+
+    console.log({ msg: 'International loan application created', loanId: loan.id });
+    return toLoanDTO(loan);
+  }
+
+  /**
+   * Create loan installments
+   */
+  private async createInstallments(tx: any, loanId: string, monthlyPayment: number, repaymentMonths: number): Promise<void> {
+    const installments = [];
+    let firstPaymentDate = new Date();
+    firstPaymentDate.setDate(firstPaymentDate.getDate() + 30); // First payment due in 30 days
+
+    for (let i = 0; i < repaymentMonths; i++) {
+      const dueDate = new Date(firstPaymentDate);
+      dueDate.setMonth(dueDate.getMonth() + i);
+
+      installments.push({
+        loanId,
+        installmentNumber: i + 1,
+        amount: monthlyPayment,
+        dueDate,
+        status: 'PENDING' as any,
+        daysOverdue: 0,
+        lateFee: 0,
+      });
+    }
+
+    await tx.installment.createMany({ data: installments });
+  }
+
+  /**
+   * Validate user doesn't have an active loan
+   */
+  private async validateNoActiveLoan(userId: string): Promise<void> {
+    const activeStatuses = [
+      LoanStatus.ACTIVE,
+      LoanStatus.DISBURSED,
+      LoanStatus.APPROVED,
+      LoanStatus.UNDER_REVIEW,
+      LoanStatus.PENDING,
+    ];
+
+    const { loans } = await this.loanRepository.findByUserId(
+      userId,
+      { status: activeStatuses },
+      { page: 1, limit: 1 }
+    );
+
+    if (loans.length > 0) {
+      const activeLoan = loans[0];
+      throw new ValidationError(
+        `You already have an active loan or in review (${activeLoan?.loanNumber}). Please complete or cancel your current loan before applying for another.`
+      );
+    }
   }
 
   /**
    * Get loan by ID
    */
   async getLoanById(id: string): Promise<LoanDTO> {
-    logger.info({ msg: 'Getting loan by ID', loanId: id });
+    console.log({ msg: 'Getting loan by ID', loanId: id });
 
     const loan = await this.loanRepository.findById(id);
 
@@ -147,13 +243,17 @@ export class LoanService implements ILoanService {
   async getLoansByUserId(
     userId: string,
     status?: LoanStatus,
-    pagination?: PaginationParams
+    pagination?: PaginationParams,
+    residencyStatus?: ResidencyStatus
   ): Promise<{ loans: LoanDTO[]; total: number; page: number; limit: number }> {
-    logger.info({ msg: 'Getting loans by user ID', userId, status });
+    console.log({ msg: 'Getting loans by user ID', userId, status, residencyStatus });
 
     const filters: any = {};
     if (status) {
       filters.status = status;
+    }
+    if (residencyStatus) {
+      filters.residencyStatus = residencyStatus;
     }
 
     const { loans, total } = await this.loanRepository.findByUserId(
@@ -177,7 +277,7 @@ export class LoanService implements ILoanService {
    * Update loan status
    */
   async updateLoanStatus(input: UpdateLoanStatusInput): Promise<LoanDTO> {
-    logger.info({ msg: 'Updating loan status', loanId: input.loanId, status: input.status });
+    console.log({ msg: 'Updating loan status', loanId: input.loanId, status: input.status });
 
     const loan = await this.loanRepository.findById(input.loanId);
 
@@ -201,7 +301,7 @@ export class LoanService implements ILoanService {
       }
     );
 
-    logger.info({ msg: 'Loan status updated', loanId: input.loanId, status: input.status });
+    console.log({ msg: 'Loan status updated', loanId: input.loanId, status: input.status });
     return toLoanDTO(updatedLoan);
   }
 
@@ -209,19 +309,18 @@ export class LoanService implements ILoanService {
    * Calculate loan details
    */
   calculateLoan(loanAmount: number, repaymentMonths: number): LoanCalculation {
-    // Interest rate is 15% per annum, or 1.25% per month
+    // Interest rate is 15% per annum
     const annualInterestRate = 0.15;
-    const monthlyInterestRate = annualInterestRate / 12;
-    
+
     // Calculate total interest
     const totalInterest = loanAmount * annualInterestRate * (repaymentMonths / 12);
-    
+
     // Calculate total amount
     const totalAmount = loanAmount + totalInterest;
-    
+
     // Calculate monthly payment
     const monthlyPayment = totalAmount / repaymentMonths;
-    
+
     return {
       loanAmount,
       interestRate: annualInterestRate,
@@ -234,7 +333,6 @@ export class LoanService implements ILoanService {
 
   /**
    * Validate loan status transition
-   * Ensures that status changes follow the allowed flow
    */
   private validateStatusTransition(currentStatus: LoanStatus, newStatus: LoanStatus): void {
     const allowedTransitions: Record<LoanStatus, LoanStatus[]> = {

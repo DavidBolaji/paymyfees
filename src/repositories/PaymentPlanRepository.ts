@@ -24,7 +24,7 @@ export class PaymentPlanRepository implements IPaymentPlanRepository {
    * @returns Payment plan with installments
    */
   async getPaymentPlanByUserId(userId: string): Promise<any> {
-    logger.info({ msg: 'Getting payment plan by user ID', userId });
+    console.log({ msg: 'Getting payment plan by user ID', userId });
 
     // Get active loans for the user
     const activeLoan = await prisma.loan.findFirst({

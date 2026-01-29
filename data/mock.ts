@@ -1,56 +1,12 @@
 // Mock data for dashboard components
 import type { 
-  LoanHistoryItem, 
   TransactionItem, 
   ProgressStep, 
   ChartDataItem, 
   DashboardStats,
   PaymentPlan,
-  PaymentInstallment
 } from './types';
 
-export const loanHistoryData: LoanHistoryItem[] = [
-  {
-    loanId: 'PMF-SIG-11',
-    tuitionAmount: 75000,
-    repaymentPlan: '3-month plan',
-    status: 'ongoing',
-    contributedTo: 'Springfield School',
-    date: 'Jan 1 2025'
-  },
-  {
-    loanId: 'PMF-SIG-08',
-    tuitionAmount: 50000,
-    repaymentPlan: '12-month plan',
-    status: 'completed',
-    contributedTo: 'Springfield School',
-    date: 'Dec 1 2024'
-  },
-  {
-    loanId: 'PMF-SIG-11',
-    tuitionAmount: 65000,
-    repaymentPlan: '3-month plan',
-    status: 'completed',
-    contributedTo: 'Springfield School',
-    date: 'Nov 30 2024'
-  },
-  {
-    loanId: 'PMF-SIG-11',
-    tuitionAmount: 65000,
-    repaymentPlan: '3-month plan',
-    status: 'completed',
-    contributedTo: 'Springfield School',
-    date: 'Aug 1 2024'
-  },
-  {
-    loanId: 'PMF-SIG-11',
-    tuitionAmount: 65000,
-    repaymentPlan: '3-month plan',
-    status: 'completed',
-    contributedTo: 'Springfield School',
-    date: 'June 1 2024'
-  }
-];
 
 export const recentTransactionsData: TransactionItem[] = [
   {
@@ -159,10 +115,6 @@ export const fetchDashboardStats = async (): Promise<DashboardStats> => {
   };
 };
 
-export const fetchLoanHistory = async (): Promise<LoanHistoryItem[]> => {
-  await new Promise(resolve => setTimeout(resolve, 300));
-  return loanHistoryData;
-};
 
 export const fetchRecentTransactions = async (): Promise<TransactionItem[]> => {
   await new Promise(resolve => setTimeout(resolve, 300));
@@ -286,14 +238,220 @@ export const schoolDetailsData = {
   status: 'verified'
 };
 
-// Extended loan history data with additional fields
-export const loanHistoryDataFull = loanHistoryData.map((loan, index) => ({
-  ...loan,
-  amountPaid: loan.status === 'completed' ? loan.tuitionAmount : Math.floor(loan.tuitionAmount * 0.4),
-  balance: loan.status === 'completed' ? 0 : Math.floor(loan.tuitionAmount * 0.6),
-  nextPayment: loan.status === 'completed' ? 'N/A' : 'Jan 20, 2025',
-  actions: 'View Details'
-}));
+export const EMPLOYMENT_STATUS_OPTIONS = [
+  { value: '', label: 'Select status' },
+  { value: 'employed_full_time', label: 'Employed (Full-time)' },
+  { value: 'employed_part_time', label: 'Employed (Part-time)' },
+  { value: 'self_employed', label: 'Self-employed' },
+  { value: 'student', label: 'Student' },
+  { value: 'unemployed', label: 'Unemployed' },
+  { value: 'freelancer', label: 'Freelancer / Contractor' },
+];
+
+export const COUNTRY_OPTIONS = [
+  { value: '', label: 'Select country' },
+
+  // Africa
+  { value: 'NG', label: 'Nigeria' },
+  { value: 'GH', label: 'Ghana' },
+  { value: 'KE', label: 'Kenya' },
+  { value: 'ZA', label: 'South Africa' },
+  { value: 'EG', label: 'Egypt' },
+  { value: 'MA', label: 'Morocco' },
+  { value: 'TN', label: 'Tunisia' },
+  { value: 'RW', label: 'Rwanda' },
+  { value: 'UG', label: 'Uganda' },
+  { value: 'TZ', label: 'Tanzania' },
+  { value: 'ET', label: 'Ethiopia' },
+  { value: 'SN', label: 'Senegal' },
+
+  // North America
+  { value: 'US', label: 'United States' },
+  { value: 'CA', label: 'Canada' },
+  { value: 'MX', label: 'Mexico' },
+
+  // South America
+  { value: 'BR', label: 'Brazil' },
+  { value: 'AR', label: 'Argentina' },
+  { value: 'CL', label: 'Chile' },
+  { value: 'CO', label: 'Colombia' },
+  { value: 'PE', label: 'Peru' },
+
+  // Europe
+  { value: 'GB', label: 'United Kingdom' },
+  { value: 'IE', label: 'Ireland' },
+  { value: 'FR', label: 'France' },
+  { value: 'DE', label: 'Germany' },
+  { value: 'NL', label: 'Netherlands' },
+  { value: 'BE', label: 'Belgium' },
+  { value: 'LU', label: 'Luxembourg' },
+  { value: 'CH', label: 'Switzerland' },
+  { value: 'AT', label: 'Austria' },
+  { value: 'ES', label: 'Spain' },
+  { value: 'PT', label: 'Portugal' },
+  { value: 'IT', label: 'Italy' },
+  { value: 'SE', label: 'Sweden' },
+  { value: 'NO', label: 'Norway' },
+  { value: 'FI', label: 'Finland' },
+  { value: 'DK', label: 'Denmark' },
+  { value: 'PL', label: 'Poland' },
+  { value: 'CZ', label: 'Czech Republic' },
+  { value: 'HU', label: 'Hungary' },
+  { value: 'RO', label: 'Romania' },
+  { value: 'BG', label: 'Bulgaria' },
+  { value: 'GR', label: 'Greece' },
+  { value: 'CY', label: 'Cyprus' },
+  { value: 'EE', label: 'Estonia' },
+  { value: 'LV', label: 'Latvia' },
+  { value: 'LT', label: 'Lithuania' },
+  { value: 'SK', label: 'Slovakia' },
+  { value: 'SI', label: 'Slovenia' },
+
+  // Middle East
+  { value: 'AE', label: 'United Arab Emirates' },
+  { value: 'SA', label: 'Saudi Arabia' },
+  { value: 'QA', label: 'Qatar' },
+  { value: 'KW', label: 'Kuwait' },
+  { value: 'BH', label: 'Bahrain' },
+  { value: 'OM', label: 'Oman' },
+  { value: 'IL', label: 'Israel' },
+  { value: 'TR', label: 'Turkey' },
+  { value: 'JO', label: 'Jordan' },
+
+  // Asia
+  { value: 'CN', label: 'China' },
+  { value: 'JP', label: 'Japan' },
+  { value: 'KR', label: 'South Korea' },
+  { value: 'IN', label: 'India' },
+  { value: 'PK', label: 'Pakistan' },
+  { value: 'BD', label: 'Bangladesh' },
+  { value: 'LK', label: 'Sri Lanka' },
+  { value: 'MY', label: 'Malaysia' },
+  { value: 'SG', label: 'Singapore' },
+  { value: 'TH', label: 'Thailand' },
+  { value: 'VN', label: 'Vietnam' },
+  { value: 'ID', label: 'Indonesia' },
+  { value: 'PH', label: 'Philippines' },
+  { value: 'HK', label: 'Hong Kong' },
+  { value: 'TW', label: 'Taiwan' },
+
+  // Oceania
+  { value: 'AU', label: 'Australia' },
+  { value: 'NZ', label: 'New Zealand' },
+
+  // Others
+  { value: 'RU', label: 'Russia' },
+  { value: 'UA', label: 'Ukraine' },
+  { value: 'KZ', label: 'Kazakhstan' },
+];
+
+export const PROGRAM_OPTIONS = [
+  { value: '', label: 'Select program' },
+
+  // Tech & Engineering
+  { value: 'computer_science', label: 'Computer Science' },
+  { value: 'software_engineering', label: 'Software Engineering' },
+  { value: 'information_technology', label: 'Information Technology' },
+  { value: 'data_science', label: 'Data Science' },
+  { value: 'artificial_intelligence', label: 'Artificial Intelligence' },
+  { value: 'cyber_security', label: 'Cyber Security' },
+  { value: 'computer_engineering', label: 'Computer Engineering' },
+  { value: 'electrical_engineering', label: 'Electrical Engineering' },
+  { value: 'mechanical_engineering', label: 'Mechanical Engineering' },
+  { value: 'civil_engineering', label: 'Civil Engineering' },
+  { value: 'chemical_engineering', label: 'Chemical Engineering' },
+  { value: 'biomedical_engineering', label: 'Biomedical Engineering' },
+  { value: 'environmental_engineering', label: 'Environmental Engineering' },
+
+  // Business & Economics
+  { value: 'business_admin', label: 'Business Administration' },
+  { value: 'economics', label: 'Economics' },
+  { value: 'finance', label: 'Finance' },
+  { value: 'accounting', label: 'Accounting' },
+  { value: 'marketing', label: 'Marketing' },
+  { value: 'international_business', label: 'International Business' },
+  { value: 'entrepreneurship', label: 'Entrepreneurship' },
+  { value: 'human_resources', label: 'Human Resource Management' },
+  { value: 'management', label: 'Management' },
+  { value: 'supply_chain', label: 'Supply Chain Management' },
+
+  // Health & Medicine
+  { value: 'medicine', label: 'Medicine (MBBS / MD)' },
+  { value: 'nursing', label: 'Nursing' },
+  { value: 'pharmacy', label: 'Pharmacy' },
+  { value: 'dentistry', label: 'Dentistry' },
+  { value: 'public_health', label: 'Public Health' },
+  { value: 'biochemistry', label: 'Biochemistry' },
+  { value: 'biotechnology', label: 'Biotechnology' },
+  { value: 'microbiology', label: 'Microbiology' },
+  { value: 'physiotherapy', label: 'Physiotherapy' },
+  { value: 'radiography', label: 'Radiography' },
+
+  // Law, Politics & Social Sciences
+  { value: 'law', label: 'Law' },
+  { value: 'international_law', label: 'International Law' },
+  { value: 'political_science', label: 'Political Science' },
+  { value: 'international_relations', label: 'International Relations' },
+  { value: 'sociology', label: 'Sociology' },
+  { value: 'psychology', label: 'Psychology' },
+  { value: 'criminology', label: 'Criminology' },
+  { value: 'public_administration', label: 'Public Administration' },
+
+  // Arts, Media & Design
+  { value: 'art_design', label: 'Art & Design' },
+  { value: 'graphic_design', label: 'Graphic Design' },
+  { value: 'fashion_design', label: 'Fashion Design' },
+  { value: 'fine_arts', label: 'Fine Arts' },
+  { value: 'photography', label: 'Photography' },
+  { value: 'film_production', label: 'Film Production' },
+  { value: 'media_studies', label: 'Media Studies' },
+  { value: 'journalism', label: 'Journalism' },
+  { value: 'communication_studies', label: 'Communication Studies' },
+
+  // Education & Humanities
+  { value: 'education', label: 'Education' },
+  { value: 'early_childhood_education', label: 'Early Childhood Education' },
+  { value: 'english_literature', label: 'English Literature' },
+  { value: 'linguistics', label: 'Linguistics' },
+  { value: 'history', label: 'History' },
+  { value: 'philosophy', label: 'Philosophy' },
+  { value: 'theology', label: 'Theology' },
+
+  // Natural Sciences
+  { value: 'mathematics', label: 'Mathematics' },
+  { value: 'statistics', label: 'Statistics' },
+  { value: 'physics', label: 'Physics' },
+  { value: 'chemistry', label: 'Chemistry' },
+  { value: 'biology', label: 'Biology' },
+  { value: 'geology', label: 'Geology' },
+  { value: 'environmental_science', label: 'Environmental Science' },
+
+  // Architecture & Built Environment
+  { value: 'architecture', label: 'Architecture' },
+  { value: 'urban_planning', label: 'Urban Planning' },
+  { value: 'real_estate', label: 'Real Estate' },
+  { value: 'construction_management', label: 'Construction Management' },
+
+  // Hospitality & Tourism
+  { value: 'hospitality_management', label: 'Hospitality Management' },
+  { value: 'tourism_management', label: 'Tourism Management' },
+  { value: 'event_management', label: 'Event Management' },
+
+  // Agriculture & Food
+  { value: 'agriculture', label: 'Agriculture' },
+  { value: 'food_science', label: 'Food Science' },
+  { value: 'nutrition', label: 'Nutrition & Dietetics' },
+  { value: 'animal_science', label: 'Animal Science' },
+  { value: 'forestry', label: 'Forestry' },
+
+  // Other professional programs
+  { value: 'actuarial_science', label: 'Actuarial Science' },
+  { value: 'insurance', label: 'Insurance' },
+  { value: 'project_management', label: 'Project Management' },
+  { value: 'logistics', label: 'Logistics & Transport' },
+  { value: 'sports_science', label: 'Sports Science' },
+];
+
 
 // Extended transaction data with additional fields
 export const recentTransactionsDataFull = recentTransactionsData.map((transaction, index) => ({
@@ -427,5 +585,6 @@ export const fetchPaymentPlan = async (): Promise<PaymentPlan | null> => {
   ];
   
   // Return active plan by default (change index to test other scenarios)
+  //@ts-ignore
   return scenarios[0];
 };

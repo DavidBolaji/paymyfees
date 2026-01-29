@@ -97,17 +97,25 @@ export const TRANSACTION_COLUMNS_FULL: TableColumn[] = [
 ];
 
 export const WALLET_TRANSACTION_COLUMNS: TableColumn[] = [
-  { key: 'date', label: 'DATE' },
-  { key: 'description', label: 'DESCRIPTION' },
   { key: 'amount', label: 'AMOUNT' },
-  { key: 'type', label: 'TYPE' },
-  { key: 'status', label: 'STATUS' }
+  { key: 'method', label: 'METHOD' },
+  { key: 'transactionId', label: 'TRANSACTION ID' },
+  { key: 'status', label: 'STATUS' },
+  { key: 'type', label: 'ACTIVITY TYPE' },
+  { key: 'date', label: 'DATE' }
 ];
 
 export const INSTALLMENT_COLUMNS: TableColumn[] = [
   { key: 'installment', label: 'INSTALLMENT' },
   { key: 'amount', label: 'AMOUNT' },
   { key: 'dueDate', label: 'DUE DATE' },
+  { key: 'status', label: 'STATUS' }
+];
+
+export const VERIFICATION_LOGS_COLUMNS: TableColumn[] = [
+  { key: 'date', label: 'DATE' },
+  { key: 'activities', label: 'ACTIVITIES' },
+  { key: 'details', label: 'DETAILS' },
   { key: 'status', label: 'STATUS' }
 ];
 

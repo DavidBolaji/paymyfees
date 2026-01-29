@@ -6,7 +6,6 @@
 import { NextResponse } from 'next/server';
 import { AdminController } from '@/src/controllers/AdminController';
 import { adminAuthMiddleware, authMiddleware } from '@/src/middleware/authMiddleware';
-import { asyncHandler } from '@/src/middleware/errorHandler';
 import { lenientRateLimiter } from '@/src/middleware/rateLimiter';
 
 
@@ -16,7 +15,7 @@ const adminController = new AdminController();
  * GET /api/admin/analytics
  * Get admin analytics data
  */
-export const GET = asyncHandler(async (req: Request, context?: unknown): Promise<NextResponse> => {
+export async function GET(req: Request): Promise<NextResponse> {
   // Apply lenient rate limiting for admin operations
   await lenientRateLimiter(req);
 
@@ -35,4 +34,4 @@ export const GET = asyncHandler(async (req: Request, context?: unknown): Promise
   // Delegate to controller
   const response = await adminController.getAnalytics(req);
   return response;
-});
+};

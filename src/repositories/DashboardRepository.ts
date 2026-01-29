@@ -5,7 +5,6 @@
 
 import { prisma } from '@/src/lib/prisma';
 import { LoanStatus } from '@prisma/client';
-import { logger } from '@/src/utils/logger';
 
 /**
  * Dashboard Repository Interface
@@ -24,7 +23,7 @@ export class DashboardRepository implements IDashboardRepository {
    * Get user dashboard statistics
    */
   async getUserStats(userId: string): Promise<any> {
-    logger.info({ msg: 'Fetching user dashboard stats from database', userId });
+    console.log({ msg: 'Fetching user dashboard stats from database', userId });
     
     try {
       // Get active loans
@@ -50,7 +49,7 @@ export class DashboardRepository implements IDashboardRepository {
         wallet,
       };
     } catch (error) {
-      logger.error({ 
+      console.error({ 
         msg: 'Error fetching user dashboard stats', 
         userId,
         error: (error as Error).message 
@@ -63,7 +62,7 @@ export class DashboardRepository implements IDashboardRepository {
    * Get user analytics data
    */
   async getUserAnalytics(userId: string): Promise<any> {
-    logger.info({ msg: 'Fetching user analytics from database', userId });
+    console.log({ msg: 'Fetching user analytics from database', userId });
     
     try {
       // Get all loans
@@ -89,7 +88,7 @@ export class DashboardRepository implements IDashboardRepository {
         transactions,
       };
     } catch (error) {
-      logger.error({ 
+      console.error({ 
         msg: 'Error fetching user analytics', 
         userId,
         error: (error as Error).message 
@@ -104,7 +103,7 @@ export class DashboardRepository implements IDashboardRepository {
   async getChartData(userId: string, year?: number): Promise<any> {
     const targetYear = year || new Date().getFullYear();
     
-    logger.info({ msg: 'Fetching chart data from database', userId, year: targetYear });
+    console.log({ msg: 'Fetching chart data from database', userId, year: targetYear });
     
     try {
       // Get transactions for the specified year
@@ -126,7 +125,7 @@ export class DashboardRepository implements IDashboardRepository {
       
       return transactions;
     } catch (error) {
-      logger.error({ 
+      console.error({ 
         msg: 'Error fetching chart data', 
         userId,
         year: targetYear,

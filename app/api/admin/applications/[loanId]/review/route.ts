@@ -5,7 +5,6 @@
 
 import { NextResponse } from 'next/server';
 import { AdminController } from '@/src/controllers/AdminController';
-import { asyncHandler } from '@/src/middleware/errorHandler';
 import { lenientRateLimiter } from '@/src/middleware/rateLimiter';
 import { authMiddleware } from '@/src/middleware/authMiddleware';
 import { adminMiddleware } from '@/src/middleware/adminMiddleware';
@@ -16,7 +15,7 @@ const adminController = new AdminController();
  * POST /api/admin/applications/:loanId/review
  * Review a loan application
  */
-export const POST = asyncHandler(async (req: Request, context?: { params: { loanId: string } }): Promise<NextResponse> => {
+export async function POST(req: Request, context: { params: { loanId: string } }): Promise<NextResponse> {
   // Apply lenient rate limiting for admin operations
   await lenientRateLimiter(req);
 
@@ -41,4 +40,4 @@ export const POST = asyncHandler(async (req: Request, context?: { params: { loan
 
   // Delegate to controller
   return await adminController.reviewLoanApplication(req, loanId);
-});
+};

@@ -15,7 +15,6 @@ import {
   resetPasswordConfirmSchema
 } from '@/src/validation/schemas';
 import { ApiResponse } from '@/src/types';
-import { logger } from '@/src/utils/logger';
 import { UserRepository } from '@/src/repositories/UserRepository';
 import { createVerification } from '@/src/utils/verification';
 
@@ -39,26 +38,82 @@ export class AuthController {
    * POST /api/auth/register
    */
   async register(req: Request): Promise<NextResponse> {
-    const body = await req.json();
+    try {
+      // Log incoming request for debugging
+      console.log('Processing registration request');
 
-    // Validate input
-    const validatedData = registerSchema.parse(body);
+      // Parse request body
+      let body;
+      try {
+        body = await req.json();
+        console.log('Registration request body received');
+      } catch (error) {
+        console.error({
+          msg: 'Failed to parse request body:',
+          error: (error as Error).message
+        });
+        return NextResponse.json({
+          success: false,
+          error: 'invalid_request',
+          message: 'Invalid request body',
+        }, { status: 400 });
+      }
+      console.log(body)
+      // Validate input
+      let validatedData;
+      try {
+        validatedData = registerSchema.parse(body);
+        console.log('Registration data validated successfully');
+      } catch (error) {
+        console.error({msg:'Registration validation failed:', error: (error as Error).message});
+        return NextResponse.json({
+          success: false,
+          error: 'validation_error',
+          message: 'Invalid registration data',
+          details: error,
+        }, { status: 400 });
+      }
 
-    // Execute business logic
-    const result = await this.authService.register(validatedData);
-    // @ts-ignore
-    logger.info('User registration successful', { userId: result.user.id });
+      // Execute business logic
+      const result = await this.authService.register(validatedData);
 
-    // Format response
-    const response: ApiResponse = {
-      success: true,
-      data: result,
-      metadata: {
-        timestamp: new Date().toISOString(),
-      },
-    };
+      if (!result || !result.user) {
+        console.error('Registration failed: Invalid result from auth service');
+        return NextResponse.json({
+          success: false,
+          error: 'registration_failed',
+          message: 'Failed to register user',
+        }, { status: 500 });
+      }
 
-    return NextResponse.json(response, { status: 201 });
+      try {
+        console.log({
+          message: 'User registration successful',
+          userId: result.user.id
+        });
+      } catch (loggingError) {
+        // Fallback to simple console logging if structured logging fails
+        console.info(`User registration successful - ID: ${result.user.id}`);
+      }
+
+      // Format response
+      const response: ApiResponse = {
+        success: true,
+        data: result,
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      };
+
+      return NextResponse.json(response, { status: 201 });
+    } catch (error) {
+      console.error({msg: 'Unexpected error during registration:', error: (error as Error).message});
+      return NextResponse.json({
+        success: false,
+        error: 'server_error',
+        message: 'An unexpected error occurred',
+      }, { status: 500 });
+    }
   }
 
   /**
@@ -74,7 +129,7 @@ export class AuthController {
     // Execute business logic
     const result = await this.authService.login(validatedData);
     // @ts-ignore
-    logger.info('User login successful', { userId: result.user.id });
+    console.log('User login successful', { userId: result.user.id });
 
     // Format response
     const response: ApiResponse = {
@@ -101,7 +156,7 @@ export class AuthController {
     // Execute business logic
     const result = await this.authService.refreshToken(validatedData.refreshToken);
 
-    logger.info('Token refresh successful');
+    console.log('Token refresh successful');
 
     // Format response
     const response: ApiResponse = {
@@ -129,7 +184,7 @@ export class AuthController {
     await this.authService.requestPasswordReset(validatedData.email);
 
     // @ts-ignore
-    logger.info('Password reset requested', { email: validatedData.email });
+    console.log('Password reset requested', { email: validatedData.email });
 
     // Format response
     const response: ApiResponse = {
@@ -159,7 +214,7 @@ export class AuthController {
       validatedData.newPassword
     );
 
-    logger.info('Password reset successful');
+    console.log('Password reset successful');
 
     // Format response
     const response: ApiResponse = {
@@ -181,7 +236,7 @@ export class AuthController {
     // In a stateless JWT system, logout is handled client-side
     // Here we can add token to blacklist if needed
 
-    logger.info('User logout');
+    console.log('User logout');
 
     const response: ApiResponse = {
       success: true,
@@ -207,7 +262,7 @@ export class AuthController {
     // Execute business logic
     const result = await this.authService.register(validatedData);
     // @ts-ignore
-    logger.info('User registration successful', { userId: result.user.id });
+    console.log('User registration successful', { userId: result.user.id });
 
     // Format response
     const response: ApiResponse = {
@@ -303,8 +358,16 @@ export class AuthController {
 
       return NextResponse.json(response, { status: 200 });
     } catch (error) {
-      logger.error(`Failed to resend verification: ${error}`);
-      
+      try {
+        console.error({
+          message: 'Failed to resend verification',
+          errorMessage: error instanceof Error ? error.message : String(error)
+        });
+      } catch (loggingError) {
+        // Fallback to simple console logging if structured logging fails
+        console.error(`Failed to resend verification: ${error}`);
+      }
+
       return NextResponse.json(
         {
           success: false,
@@ -324,9 +387,10 @@ export class AuthController {
     const body = await req.json();
 
     // Validate input
-    const { userId, token, mode } = body;
+    const { token, mode } = body;
+    console.log(token, mode)
 
-    if (!userId || !token || !mode) {
+    if (!token || !mode) {
       return NextResponse.json(
         {
           success: false,
@@ -350,7 +414,7 @@ export class AuthController {
 
     try {
       // Execute business logic
-      const isVerified = await this.authService.verifyEmail(userId, token, mode);
+      const isVerified = await this.authService.verifyEmail(token, mode);
 
       if (!isVerified) {
         return NextResponse.json(
@@ -376,8 +440,16 @@ export class AuthController {
 
       return NextResponse.json(response, { status: 200 });
     } catch (error) {
-      logger.error(`Email verification failed: ${error}`);
-      
+      try {
+        console.error({
+          message: 'Email verification failed',
+          errorMessage: error instanceof Error ? error.message : String(error)
+        });
+      } catch (loggingError) {
+        // Fallback to simple console logging if structured logging fails
+        console.error(`Email verification failed: ${error}`);
+      }
+
       return NextResponse.json(
         {
           success: false,

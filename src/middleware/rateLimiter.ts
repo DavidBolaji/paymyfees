@@ -3,7 +3,6 @@
  * Prevents abuse by limiting requests per time window
  */
 
-import { NextResponse } from 'next/server';
 import { RateLimitError } from '@/src/types/errors';
 import { env } from '@/src/config/env';
 
@@ -34,19 +33,25 @@ setInterval(() => {
  * Get client identifier from request
  */
 function getClientIdentifier(req: Request): string {
-  // Try to get IP from headers
-  const forwarded = req.headers.get('x-forwarded-for');
-  const realIp = req.headers.get('x-real-ip');
-  
-  if (forwarded) {
-    return forwarded.split(',')[0]?.trim() || 'unknown';
+  try {
+    // Try to get IP from headers
+    const forwarded = req.headers.get('x-forwarded-for');
+    const realIp = req.headers.get('x-real-ip');
+    
+    if (forwarded && typeof forwarded === 'string') {
+      const firstIp = forwarded.split(',')[0];
+      return firstIp ? firstIp.trim() : 'unknown';
+    }
+    
+    if (realIp) {
+      return realIp;
+    }
+    
+    return 'unknown';
+  } catch (error) {
+    console.error('Error getting client identifier:', error);
+    return 'unknown';
   }
-  
-  if (realIp) {
-    return realIp;
-  }
-  
-  return 'unknown';
 }
 
 /**
@@ -56,8 +61,27 @@ export function rateLimiter(options?: {
   windowMs?: number;
   maxRequests?: number;
 }): (req: Request) => Promise<void> {
-  const windowMs = options?.windowMs || parseInt(env.get('RATE_LIMIT_WINDOW_MS'));
-  const maxRequests = options?.maxRequests || parseInt(env.get('RATE_LIMIT_MAX_REQUESTS'));
+  // Default values in case environment variables are missing or invalid
+  const defaultWindowMs = 900000; // 15 minutes in milliseconds
+  const defaultMaxRequests = 100;
+  
+  // Safely parse environment variables with fallbacks
+  let windowMs: number;
+  let maxRequests: number;
+  
+  try {
+    windowMs = options?.windowMs || parseInt(env.get('RATE_LIMIT_WINDOW_MS')) || defaultWindowMs;
+  } catch (error) {
+    console.warn('Error parsing RATE_LIMIT_WINDOW_MS, using default value:', error);
+    windowMs = defaultWindowMs;
+  }
+  
+  try {
+    maxRequests = options?.maxRequests || parseInt(env.get('RATE_LIMIT_MAX_REQUESTS')) || defaultMaxRequests;
+  } catch (error) {
+    console.warn('Error parsing RATE_LIMIT_MAX_REQUESTS, using default value:', error);
+    maxRequests = defaultMaxRequests;
+  }
 
   return async (req: Request): Promise<void> => {
     const clientId = getClientIdentifier(req);

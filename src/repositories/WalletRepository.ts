@@ -5,7 +5,7 @@
  */
 
 import { prisma } from '@/src/database/prisma';
-import { Wallet } from '@/prisma/app/generated/prisma-client';
+import { Wallet } from '@prisma/client';
 import { NotFoundError, ValidationError } from '@/src/types/errors';
 
 /**
@@ -17,6 +17,8 @@ export interface IWalletRepository {
   findById(id: string): Promise<Wallet | null>;
   updateBalance(userId: string, amount: number, operation: 'increment' | 'decrement'): Promise<Wallet>;
   getBalance(userId: string): Promise<number>;
+  setAutoDebit(userId: string, enabled: boolean): Promise<Wallet>;
+  getAutoDebitStatus(userId: string): Promise<boolean>;
 }
 
 /**
@@ -95,5 +97,36 @@ export class WalletRepository implements IWalletRepository {
     }
 
     return Number(wallet.balance);
+  }
+
+  /**
+   * Set auto-debit status for a wallet
+   */
+  async setAutoDebit(userId: string, enabled: boolean): Promise<Wallet> {
+    const wallet = await this.findByUserId(userId);
+    
+    if (!wallet) {
+      throw new NotFoundError('Wallet not found');
+    }
+
+    return await prisma.wallet.update({
+      where: { userId },
+      data: {
+        autoDebitEnabled: enabled,
+      },
+    });
+  }
+
+  /**
+   * Get auto-debit status for a wallet
+   */
+  async getAutoDebitStatus(userId: string): Promise<boolean> {
+    const wallet = await this.findByUserId(userId);
+    
+    if (!wallet) {
+      throw new NotFoundError('Wallet not found');
+    }
+
+    return wallet.autoDebitEnabled || false;
   }
 }

@@ -14,6 +14,7 @@ const authController = new AuthController();
  * Authenticate user and return tokens
  */
 export const POST = asyncHandler(async (req: Request) => {
+  console.log("hello")
   // Apply strict rate limiting for login attempts
   await strictRateLimiter(req);
 

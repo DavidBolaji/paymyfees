@@ -1,5 +1,6 @@
 import { Sidebar } from '@/components/dashboard/sidebar';
 import { Header } from '@/components/dashboard/header';
+import Authenticated from '@/providers/authenticated';
 
 export default function DashboardLayout({
   children,
@@ -7,6 +8,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
+    <Authenticated>
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
       
@@ -18,5 +20,6 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
+    </Authenticated>
   );
 }

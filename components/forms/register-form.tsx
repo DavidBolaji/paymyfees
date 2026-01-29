@@ -538,7 +538,7 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
       </button>
 
       {/* Divider */}
-      <div className="flex items-center my-4">
+      <div className="flex items-center justify-center my-4">
         <span className="px-3 text-gray-500 text-sm">or</span>
       </div>
 

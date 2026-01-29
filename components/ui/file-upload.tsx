@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
-import { Upload, X, FileText } from 'lucide-react';
+import { useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { X, FileText, CheckCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DocumentIcon } from '@/assets/icons/DocumentIcon';
+import { CloudinaryUploadResult, uploadToCloudinary } from '@/src/utils/cloudinary-api';
+
 
 export interface UploadedFile {
   id: string;
@@ -11,26 +13,43 @@ export interface UploadedFile {
   size: number;
   type: string;
   file: File;
+  cloudinaryResult?: CloudinaryUploadResult;
+  uploading?: boolean;
+  uploaded?: boolean;
+  error?: string;
 }
 
 interface FileUploadProps {
   onFilesChange: (files: UploadedFile[]) => void;
+  onUploadComplete?: (results: CloudinaryUploadResult[]) => void;
   acceptedTypes?: string[];
   maxFileSize?: number; // in MB
   maxFiles?: number;
   className?: string;
+  folder?: string; // Cloudinary folder
+  autoUpload?: boolean; // Auto upload to Cloudinary on file select
 }
 
-export function FileUpload({
+export interface FileUploadRef {
+  uploadAllFiles: () => Promise<CloudinaryUploadResult[]>;
+  getUploadedFiles: () => CloudinaryUploadResult[];
+  areAllFilesUploaded: () => boolean;
+}
+
+export const FileUpload = forwardRef<FileUploadRef, FileUploadProps>(({
   onFilesChange,
+  onUploadComplete,
   acceptedTypes = ['.pdf', '.png', '.jpg', '.jpeg'],
   maxFileSize = 10,
   maxFiles = 10,
-  className
-}: FileUploadProps) {
+  className,
+  folder = 'school-documents',
+  autoUpload = false
+}, ref) => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string>('');
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const formatFileSize = (bytes: number): string => {
@@ -56,7 +75,91 @@ export function FileUpload({
     return null;
   };
 
-  const processFiles = useCallback((fileList: FileList) => {
+  const uploadFileToCloudinary = async (file: UploadedFile): Promise<CloudinaryUploadResult | null> => {
+    const fileIndex = files.findIndex(f => f.id === file.id);
+    if (fileIndex === -1) return null;
+
+    // Update file status to uploading
+    const updatedFiles = [...files];
+    updatedFiles[fileIndex] = { ...file, uploading: true, error: undefined };
+    setFiles(updatedFiles);
+    onFilesChange(updatedFiles);
+
+    try {
+      const result = await uploadToCloudinary(file.file, { folder });
+      
+      // Update file with cloudinary result
+      updatedFiles[fileIndex] = {
+        ...file,
+        uploading: false,
+        uploaded: true,
+        cloudinaryResult: result
+      };
+      setFiles(updatedFiles);
+      onFilesChange(updatedFiles);
+
+      return result;
+    } catch (error) {
+      console.error('Upload error:', error);
+      updatedFiles[fileIndex] = {
+        ...file,
+        uploading: false,
+        uploaded: false,
+        error: error instanceof Error ? error.message : 'Upload failed'
+      };
+      setFiles(updatedFiles);
+      onFilesChange(updatedFiles);
+      return null;
+    }
+  };
+
+  const uploadAllFiles = async (): Promise<CloudinaryUploadResult[]> => {
+    setIsUploading(true);
+    const results: CloudinaryUploadResult[] = [];
+
+    try {
+      for (const file of files) {
+        if (!file.uploaded && !file.uploading) {
+          const result = await uploadFileToCloudinary(file);
+          if (result) {
+            results.push(result);
+          }
+        } else if (file.cloudinaryResult) {
+          results.push(file.cloudinaryResult);
+        }
+      }
+
+      if (onUploadComplete) {
+        onUploadComplete(results);
+      }
+
+      return results;
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      throw error;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const getUploadedFiles = (): CloudinaryUploadResult[] => {
+    return files
+      .filter(f => f.uploaded && f.cloudinaryResult)
+      .map(f => f.cloudinaryResult!);
+  };
+
+  const areAllFilesUploaded = (): boolean => {
+    return files.length > 0 && files.every(f => f.uploaded);
+  };
+
+  // Expose methods to parent via ref
+  useImperativeHandle(ref, () => ({
+    uploadAllFiles,
+    getUploadedFiles,
+    areAllFilesUploaded
+  }));
+
+  const processFiles = useCallback(async (fileList: FileList) => {
     const newFiles: UploadedFile[] = [];
     const errors: string[] = [];
 
@@ -77,14 +180,16 @@ export function FileUpload({
         name: file.name,
         size: file.size,
         type: file.type,
-        file
+        file,
+        uploading: false,
+        uploaded: false
       };
 
       newFiles.push(uploadedFile);
     });
 
     if (errors.length > 0) {
-      setError(errors[0]);
+      setError(errors[0] || "An error occurred");
       setTimeout(() => setError(''), 5000);
     } else {
       setError('');
@@ -94,8 +199,15 @@ export function FileUpload({
       const updatedFiles = [...files, ...newFiles];
       setFiles(updatedFiles);
       onFilesChange(updatedFiles);
+
+      // Auto upload if enabled
+      if (autoUpload) {
+        for (const file of newFiles) {
+          await uploadFileToCloudinary(file);
+        }
+      }
     }
-  }, [files, maxFiles, maxFileSize, acceptedTypes, onFilesChange]);
+  }, [files, maxFiles, maxFileSize, acceptedTypes, onFilesChange, autoUpload]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -181,26 +293,71 @@ export function FileUpload({
         </div>
       )}
 
+      {/* Upload All Button (if not auto-upload) */}
+      {!autoUpload && files.length > 0 && !areAllFilesUploaded() && (
+        <button
+          type="button"
+          onClick={uploadAllFiles}
+          disabled={isUploading}
+          className={cn(
+            "w-full py-2 px-4 rounded-lg font-medium transition-colors",
+            isUploading
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-[#00296B] text-white hover:bg-[#002561]"
+          )}
+        >
+          {isUploading ? (
+            <span className="flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Uploading...
+            </span>
+          ) : (
+            'Upload All Files'
+          )}
+        </button>
+      )}
+
       {/* Uploaded Files */}
       {files.length > 0 && (
         <div className="space-y-2">
           {files.map((file) => (
             <div key={file.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="flex justify-center items-center bg-red-100 rounded w-8 h-8">
-                  <FileText className="w-4 h-4 text-red-600" />
+              <div className="flex items-center gap-3 flex-1">
+                <div className={cn(
+                  "flex justify-center items-center rounded w-8 h-8",
+                  file.uploaded ? "bg-green-100" : file.error ? "bg-red-100" : "bg-blue-100"
+                )}>
+                  {file.uploading ? (
+                    <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                  ) : file.uploaded ? (
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  ) : (
+                    <FileText className="w-4 h-4 text-blue-600" />
+                  )}
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="font-medium text-[#292929] text-sm">{file.name}</p>
-                  <p className="text-[#7C7C7C] text-xs">{formatFileSize(file.size)}</p>
+                  <p className="text-[#7C7C7C] text-xs">
+                    {formatFileSize(file.size)}
+                    {file.uploading && ' - Uploading...'}
+                    {file.uploaded && ' - Uploaded'}
+                    {file.error && ` - ${file.error}`}
+                  </p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   removeFile(file.id);
                 }}
-                className="flex justify-center items-center bg-[#00296B] hover:bg-[#002561] rounded-full w-6 h-6 transition-colors"
+                disabled={file.uploading}
+                className={cn(
+                  "flex justify-center items-center rounded-full w-6 h-6 transition-colors",
+                  file.uploading
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "bg-[#00296B] hover:bg-[#002561]"
+                )}
               >
                 <X className="w-3 h-3 text-white" />
               </button>
@@ -210,4 +367,6 @@ export function FileUpload({
       )}
     </div>
   );
-}
+});
+
+FileUpload.displayName = 'FileUpload';

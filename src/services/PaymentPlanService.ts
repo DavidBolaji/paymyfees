@@ -29,7 +29,7 @@ export class PaymentPlanService implements IPaymentPlanService {
    * @returns Payment plan with installments and statistics
    */
   async getPaymentPlanByUserId(userId: string): Promise<any> {
-    logger.info({ msg: 'Getting payment plan for user', userId });
+    console.log({ msg: 'Getting payment plan for user', userId });
     
     // Delegate to repository
     const paymentPlan = await this.paymentPlanRepository.getPaymentPlanByUserId(userId);

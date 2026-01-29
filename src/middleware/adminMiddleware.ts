@@ -27,14 +27,14 @@ export async function adminMiddleware(req: Request, userId?: string): Promise<Ad
     // For example, by checking a database or an admin role in the JWT token
     
     // For now, we'll assume the check is successful
-    logger.info({ msg: 'Admin privileges verified', userId });
+    console.log({ msg: 'Admin privileges verified', userId });
     
     return {
       success: true,
       userId
     };
   } catch (error) {
-    logger.error({ msg: 'Admin middleware error', error });
+    console.error({ msg: 'Admin middleware error', error });
     
     return {
       success: false,

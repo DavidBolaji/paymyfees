@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import useAuthStore from "@/src/authStore";
 import Image from "next/image";
 import { RegisterForm } from "@/components/forms/register-form";
 import Logo from "@/assets/images/logo/logo.png";
@@ -17,7 +18,8 @@ interface FormData {
 }
 
 export default function RegisterPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [, setIsSubmitting] = useState(false);
+  const {login} = useAuthStore();
 
   // Handle form submission
   const handleSubmit = async (formData: FormData) => {
@@ -30,8 +32,9 @@ export default function RegisterPage() {
         email: formData.email,
         password: formData.password,
         confirmPassword: formData.password,
-        phone: "", // This would need to be added to the form
-        role: "PARENT", // Default role
+        country: formData.country,
+        // phone: "", // This would need to be added to the form
+        role: "STUDENT", // Default role
         mode: formData.verificationMode
       };
       
@@ -45,14 +48,14 @@ export default function RegisterPage() {
       const data = await response.json();
       
       if (data.success) {
-        // Store user data in localStorage for verification pages
-        localStorage.setItem("userData", JSON.stringify(data.data));
+        // Use Zustand to store user data
+        login(data.data.user);
         
         // Redirect to appropriate verification page based on mode
         if (formData.verificationMode === 'link') {
           // Show message about checking email
           // alert("Registration successful! Please check your email for a verification link.");
-           window.location.href = "/auth/verify/link";
+           window.location.href = "/auth/register/complete";
         } else {
           // Redirect to OTP verification page
           window.location.href = "/auth/verify/otp";

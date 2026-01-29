@@ -26,7 +26,7 @@ export class DashboardController {
    * GET /api/dashboard/stats
    */
   async getStats(_req: Request, userId: string | undefined): Promise<NextResponse> {
-    logger.info({ msg: 'Getting dashboard stats', userId });
+    console.log({ msg: 'Getting dashboard stats', userId });
     
     if (!userId) {
       return NextResponse.json(
@@ -60,7 +60,7 @@ export class DashboardController {
    * GET /api/dashboard/analytics
    */
   async getAnalytics(_req: Request, userId: string | undefined): Promise<NextResponse> {
-    logger.info({ msg: 'Getting analytics data', userId });
+    console.log({ msg: 'Getting analytics data', userId });
     
     if (!userId) {
       return NextResponse.json(
@@ -98,7 +98,7 @@ export class DashboardController {
     const yearParam = searchParams.get('year');
     const year = yearParam ? parseInt(yearParam) : undefined;
     
-    logger.info({ msg: 'Getting chart data', userId, year });
+    console.log({ msg: 'Getting chart data', userId, year });
     
     if (!userId) {
       return NextResponse.json(

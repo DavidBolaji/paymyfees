@@ -3,10 +3,11 @@
  * GET /api/wallet/balance
  */
 
+
 import { WalletController } from '@/src/controllers/WalletController';
 import { asyncHandler } from '@/src/middleware/errorHandler';
 import { lenientRateLimiter } from '@/src/middleware/rateLimiter';
-import { parentAuthMiddleware } from '@/src/middleware/authMiddleware';
+import {studentAuthMiddleware } from '@/src/middleware/authMiddleware';
 import { UserRole } from '@prisma/client';
 
 const walletController = new WalletController();
@@ -20,12 +21,13 @@ export const GET = asyncHandler(async (req: Request) => {
   await lenientRateLimiter(req);
 
   // Authenticate user
-  const authResult = await parentAuthMiddleware(req);
+  const authResult = await studentAuthMiddleware(req);
   if (!authResult.success) {
     return authResult.response!;
   }
 
-  // Delegate to controller
+  // Get wallet balance from controller with all required data
+  // The controller now fetches real data from the database
   return await walletController.getBalance(req, {
     id: authResult.userId!,
     email: '',

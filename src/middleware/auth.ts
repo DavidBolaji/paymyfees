@@ -108,6 +108,7 @@ export async function optionalAuth(req: Request): Promise<AuthUser | null> {
  * Generate JWT token
  */
 export function generateToken(user: AuthUser): string {
+  //@ts-ignore
   return jwt.sign(
     {
       id: user.id,
@@ -125,6 +126,7 @@ export function generateToken(user: AuthUser): string {
  * Generate refresh token
  */
 export function generateRefreshToken(user: AuthUser): string {
+  //@ts-ignore
   return jwt.sign(
     {
       id: user.id,
@@ -154,6 +156,11 @@ export function verifyRefreshToken(token: string): AuthUser {
  * Middleware for parent-only routes
  */
 export const requireParent = requireRole(UserRole.PARENT);
+
+/**
+ * Middleware for student-only routes
+ */
+export const requireStudent = requireRole(UserRole.STUDENT);
 
 /**
  * Middleware for school-only routes

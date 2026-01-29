@@ -33,7 +33,7 @@ export class NotificationService implements INotificationService {
    * Get all notifications for a user
    */
   async getUserNotifications(userId: string): Promise<Notification[]> {
-    logger.info({ msg: 'Getting user notifications', userId });
+    console.log({ msg: 'Getting user notifications', userId });
 
     if (!userId) {
       throw new ValidationError('User ID is required');
@@ -46,7 +46,7 @@ export class NotificationService implements INotificationService {
    * Mark a notification as read
    */
   async markNotificationAsRead(notificationId: string, userId: string): Promise<Notification> {
-    logger.info({ msg: 'Marking notification as read', notificationId, userId });
+    console.log({ msg: 'Marking notification as read', notificationId, userId });
 
     if (!notificationId) {
       throw new ValidationError('Notification ID is required');
@@ -79,7 +79,7 @@ export class NotificationService implements INotificationService {
    * Mark all notifications as read for a user
    */
   async markAllNotificationsAsRead(userId: string): Promise<number> {
-    logger.info({ msg: 'Marking all notifications as read', userId });
+    console.log({ msg: 'Marking all notifications as read', userId });
 
     if (!userId) {
       throw new ValidationError('User ID is required');
@@ -100,7 +100,7 @@ export class NotificationService implements INotificationService {
     actionUrl?: string,
     metadata?: any
   ): Promise<Notification> {
-    logger.info({ msg: 'Creating notification', userId, type });
+    console.log({ msg: 'Creating notification', userId, type });
 
     if (!userId) {
       throw new ValidationError('User ID is required');

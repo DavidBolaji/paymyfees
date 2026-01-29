@@ -47,6 +47,20 @@ export function ChartCard({
     onSearch?.(query);
   };
 
+  // Check if data is empty or all values are zero
+  const isEmpty = data.length === 0 || data.every(d => d.value === 0);
+
+  // Create default empty data if no data provided
+  const defaultMonths = ['Jan', 'Feb', 'Mar', 'April', 'May', 'June', 'July', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const emptyData = defaultMonths.map(month => ({ month, value: 0 }));
+  
+  // Use provided data or empty data
+  const chartData = data.length > 0 ? data : emptyData;
+
+  // Calculate max value for proper Y-axis scaling
+  const maxValue = Math.max(...chartData.map(d => d.value), 0);
+  const yAxisMax = isEmpty ? 100000 : Math.ceil(maxValue * 1.1);
+
   return (
     <div className={cn("bg-white rounded-lg border border-gray-200 shadow-sm", className)}>
       {/* Header */}
@@ -108,30 +122,31 @@ export function ChartCard({
       <div className="px-6 pb-6">
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 20, right: 30, left: -20, bottom: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
               <XAxis 
                 dataKey="month" 
-                axisLine={false}
+                axisLine={{ stroke: '#d1d5db' }}
                 tickLine={false}
                 tick={{ fontSize: 12, fill: '#6b7280' }}
                 dy={10}
               />
               <YAxis 
-                axisLine={false}
+                axisLine={{ stroke: '#d1d5db' }}
                 tickLine={false}
-                tick={{ fontSize: 12, fill: '#6b7280', textAnchor: 'start' }}
-                tickFormatter={(value) => `${(value / 1000).toLocaleString()}`}
-                domain={[0, 'dataMax']}
-                width={40}
+                tick={{ fontSize: 12, fill: '#6b7280' }}
+                tickFormatter={(value) => value.toLocaleString()}
+                domain={[0, yAxisMax]}
+                allowDataOverflow={false}
+                ticks={isEmpty ? [0, 20000, 40000, 60000, 80000, 100000] : undefined}
               />
               <Line 
                 type="monotone" 
                 dataKey="value" 
                 stroke="#002561" 
-                strokeWidth={3}
+                strokeWidth={2}
                 dot={false}
-                activeDot={{ r: 6, stroke: '#002561', strokeWidth: 2, fill: '#fff' }}
+                activeDot={isEmpty ? false : { r: 6, stroke: '#002561', strokeWidth: 2, fill: '#fff' }}
               />
             </LineChart>
           </ResponsiveContainer>
