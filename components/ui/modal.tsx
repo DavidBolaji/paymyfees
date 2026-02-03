@@ -8,9 +8,10 @@ interface ModalProps {
   onClose: () => void;
   children: React.ReactNode;
   className?: string;
+  title?: string;
 }
 
-export function Modal({ isOpen, onClose, children, className = "" }: ModalProps) {
+export function Modal({ isOpen, onClose, children, className = "", title }: ModalProps) {
   // Handle escape key press
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -46,7 +47,7 @@ export function Modal({ isOpen, onClose, children, className = "" }: ModalProps)
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 transition-colors"
+          className="absolute top-4 right-4 p-1 rounded-full hover:bg-gray-100 transition-colors z-10"
           aria-label="Close modal"
         >
           <X className="w-5 h-5 text-gray-500" />
@@ -54,6 +55,9 @@ export function Modal({ isOpen, onClose, children, className = "" }: ModalProps)
         
         {/* Modal Body */}
         <div className="p-6">
+          {title && (
+            <h2 className="text-xl font-semibold mb-4 pr-8">{title}</h2>
+          )}
           {children}
         </div>
       </div>

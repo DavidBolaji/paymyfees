@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Edit3,
@@ -25,14 +25,10 @@ import {
   INSTANT_ACTIONS
 } from '@/data';
 import useAuthStore from '@/src/authStore';
-import { fetchChartData, fetchDashboardStats } from '@/src/utils/dashboard-api';
-import { DashboardStats, TimelineData } from '@/src/types';
-import {  fetchTimelineData } from '@/src/utils/loan-api';
 import { LoanDisbursementDrawer, TransactionDrawer } from '@/components/dashboard/detail-drawer';
 import useLoan from '@/hooks/useLoan';
 import useTransaction from '@/hooks/useTransaction';
-
-
+import useDashboard from '@/hooks/useDashboard';
 
 export interface TransactionItem {
   date: string;
@@ -42,64 +38,46 @@ export interface TransactionItem {
   status: string;
 }
 
-interface ChartDataItem {
-  month: string;
-  value: number;
-}
-
 export default function DashboardPage() {
-  const { user } = useAuthStore()
+  const { user } = useAuthStore();
   const router = useRouter();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  
+  // Use custom hooks with caching
+  const {
+    stats,
+    chartData,
+    timelineData,
+    selectedYear,
+    loading: dashboardLoading,
+    handleYearChange,
+  } = useDashboard();
 
-  const [timelineData, setTimelineData] = useState<TimelineData | null>(null);
-  const [chartData, setChartData] = useState<ChartDataItem[]>([]);
-  const [selectedYear, setSelectedYear] = useState('2026');
+  const {
+    loanHistory,
+    paginationInfo,
+    loading: loanLoading,
+    handlePageChange: handleLoanPageChange
+  } = useLoan();
+
+  const {
+    transactions,
+    paginationInfo: tpaginationInfo,
+    loading: transactionLoading,
+    handlePageChange: handleTransactionPageChange
+  } = useTransaction();
+
   const [selectedLoan, setSelectedLoan] = useState<any>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isDrawerTOpen, setIsTDrawerOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
-   const {loanHistory, paginationInfo, loading: loanLoading, handlePageChange: handleLoanPageChange} = useLoan()
-   const {transactions, paginationInfo: tpaginationInfo, loading: transactionLoading, handlePageChange: handleTransactionPageChange} = useTransaction()
-
-  useEffect(() => {
-    const loadDashboardData = async () => {
-      try {
-        const [statsData,  chartDataResult, timelineData] = await Promise.all([
-          fetchDashboardStats(),
-          fetchChartData(selectedYear),
-          fetchTimelineData()
-        ]);
-
-        setStats(statsData);
-        setChartData(chartDataResult);
-        setTimelineData(timelineData);
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadDashboardData();
-  }, [selectedYear]);
-
-  const handleYearChange = async (year: string) => {
-    setSelectedYear(year);
-    const newChartData = await fetchChartData(year);
-    setChartData(newChartData);
-  };
 
   const handleChartSearch = (query: string) => {
     // Handle chart search functionality
     console.log('Chart search:', query);
   };
 
-
-
-  // Instead of showing a central loading spinner, we'll render the page with skeleton components
-  const isLoading = loading || !stats;
+  // Determine loading state
+  const isLoading = dashboardLoading || !stats;
   
   // Ensure we have a valid user object even during loading
   const userName = user?.fullName?.split(" ")[0] || "User";
@@ -110,6 +88,7 @@ export default function DashboardPage() {
         <div className="">
           <h2 className='mb-[0.56rem] font-semibold text-[#191919] text-[1.6875rem]'>Dashboard</h2>
           <p className='mb-[1.375rem] font-semibold text-[#5F5F5F] text-[1.6875rem]'>Welcome Back, {userName}</p>
+          
           {/* Stats Grid */}
           <div className="gap-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 mb-8">
             {isLoading ? (
@@ -224,7 +203,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-
           {/* Bottom Section */}
           <div className="gap-6 grid grid-cols-1 lg:grid-cols-3">
             {/* Recent Transactions */}
@@ -235,7 +213,6 @@ export default function DashboardPage() {
                 data={transactions}
                 viewAllHref="/dashboard/transactions"
                 itemsPerPage={5}
-                
                 isLoading={transactionLoading || isLoading}
                 paginationInfo={tpaginationInfo}
                 onPageChange={(page) => {
@@ -300,6 +277,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      
       <LoanDisbursementDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}

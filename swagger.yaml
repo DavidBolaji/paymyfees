@@ -1,0 +1,1176 @@
+openapi: 3.0.3
+info:
+  title: PayMyFees API
+  description: |
+    PayMyFees is an education financing platform that provides interest-bearing loans to parents for school fee payments.
+    
+    ## Authentication
+    Most endpoints require JWT authentication. Include the access token in the Authorization header:
+    ```
+    Authorization: Bearer <access_token>
+    ```
+    
+    ## Response Format
+    All API responses follow this structure:
+    ```json
+    {
+      "success": boolean,
+      "data": object | array,
+      "error": string,
+      "message": string,
+      "metadata": {
+        "timestamp": string,
+        "requestId": string,
+        "pagination": {
+          "page": number,
+          "limit": number,
+          "total": number,
+          "totalPages": number
+        }
+      }
+    }
+    ```
+  version: 1.0.0
+  contact:
+    name: PayMyFees Support
+    email: support@paymyfees.com
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://api.paymyfees.com
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Dashboard
+    description: Dashboard statistics and analytics
+  - name: Loans
+    description: Loan application and management
+  - name: Wallet
+    description: Wallet operations and transactions
+  - name: Schools
+    description: School management and verification
+  - name: Admin
+    description: Admin operations for managing the platform
+  - name: Support
+    description: Customer support and ticketing
+  - name: Notifications
+    description: User notifications
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token for authentication
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: string
+          example: "Error message"
+        metadata:
+          type: object
+          properties:
+            timestamp:
+              type: string
+              format: date-time
+
+    PaginationMetadata:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        total:
+          type: integer
+          example: 100
+        totalPages:
+          type: integer
+          example: 10
+        hasNext:
+          type: boolean
+        hasPrevious:
+          type: boolean
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        fullName:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [PARENT, SCHOOL, ADMIN, TEACHER, STUDENT]
+        emailVerified:
+          type: boolean
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    Loan:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        loanNumber:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        schoolId:
+          type: string
+          format: uuid
+        loanAmount:
+          type: number
+          format: decimal
+        interestRate:
+          type: number
+          format: decimal
+        totalAmount:
+          type: number
+          format: decimal
+        repaymentMonths:
+          type: integer
+        status:
+          type: string
+          enum: [PENDING, UNDER_REVIEW, APPROVED, REJECTED, DISBURSED, ACTIVE, COMPLETED, DEFAULTED, CANCELLED]
+        applicationDate:
+          type: string
+          format: date-time
+        approvalDate:
+          type: string
+          format: date-time
+        disbursementDate:
+          type: string
+          format: date-time
+
+    School:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        schoolName:
+          type: string
+        schoolEmail:
+          type: string
+          format: email
+        schoolPhone:
+          type: string
+        schoolAddress:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        isVerified:
+          type: boolean
+        totalStudents:
+          type: integer
+
+paths:
+  # Authentication Endpoints
+  /api/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Create a new user account (Parent or School)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - fullName
+                - phone
+                - role
+                - country
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                fullName:
+                  type: string
+                phone:
+                  type: string
+                role:
+                  type: string
+                  enum: [PARENT, SCHOOL]
+                country:
+                  type: string
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login user
+      description: Authenticate user and receive access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      accessToken:
+                        type: string
+                      refreshToken:
+                        type: string
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout user
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+
+  # Admin Endpoints
+  /api/admin/analytics:
+    get:
+      tags:
+        - Admin
+      summary: Get admin analytics
+      description: Retrieve system-wide analytics and statistics
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Analytics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      loans:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                          pending:
+                            type: integer
+                          approved:
+                            type: integer
+                          active:
+                            type: integer
+                          completed:
+                            type: integer
+                          defaulted:
+                            type: integer
+                      financial:
+                        type: object
+                        properties:
+                          totalLoanAmount:
+                            type: number
+                          totalDisbursed:
+                            type: number
+                          totalRepaid:
+                            type: number
+                          totalOutstanding:
+                            type: number
+                      schools:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                          verified:
+                            type: integer
+                          pending:
+                            type: integer
+                      support:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                          open:
+                            type: integer
+
+  /api/admin/loans:
+    get:
+      tags:
+        - Admin
+      summary: Get all loan applications
+      description: Retrieve paginated list of loan applications with optional status filter
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, APPROVED, REJECTED, DISBURSED, ACTIVE, COMPLETED]
+      responses:
+        '200':
+          description: Loans retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Loan'
+                  metadata:
+                    type: object
+                    properties:
+                      pagination:
+                        $ref: '#/components/schemas/PaginationMetadata'
+
+  /api/admin/loans/{loanId}:
+    get:
+      tags:
+        - Admin
+      summary: Get loan details
+      description: Retrieve detailed information about a specific loan
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: loanId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Loan details retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    $ref: '#/components/schemas/Loan'
+
+  /api/admin/loans/{loanId}/status:
+    patch:
+      tags:
+        - Admin
+      summary: Update loan status
+      description: Approve or reject a loan application
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: loanId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [APPROVED, REJECTED]
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Loan status updated successfully
+
+  /api/admin/loans/{loanId}/disburse:
+    post:
+      tags:
+        - Admin
+      summary: Disburse loan
+      description: Process loan disbursement to school
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: loanId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Loan disbursed successfully
+
+  /api/admin/schools:
+    get:
+      tags:
+        - Admin
+      summary: Get all schools
+      description: Retrieve paginated list of schools with optional status filter
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [verified, pending]
+      responses:
+        '200':
+          description: Schools retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/School'
+    post:
+      tags:
+        - Admin
+      summary: Add new school
+      description: Manually add a new school to the platform
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - schoolName
+                - schoolEmail
+                - schoolPhone
+                - schoolAddress
+                - city
+                - state
+                - contactPersonName
+                - contactPersonEmail
+                - contactPersonPhone
+              properties:
+                schoolName:
+                  type: string
+                schoolEmail:
+                  type: string
+                  format: email
+                schoolPhone:
+                  type: string
+                schoolAddress:
+                  type: string
+                city:
+                  type: string
+                state:
+                  type: string
+                country:
+                  type: string
+                  default: Nigeria
+                contactPersonName:
+                  type: string
+                contactPersonEmail:
+                  type: string
+                  format: email
+                contactPersonPhone:
+                  type: string
+                bankName:
+                  type: string
+                accountNumber:
+                  type: string
+                accountName:
+                  type: string
+      responses:
+        '201':
+          description: School added successfully
+
+  /api/admin/schools/{schoolId}:
+    get:
+      tags:
+        - Admin
+      summary: Get school details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: schoolId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: School details retrieved successfully
+
+  /api/admin/schools/{schoolId}/approve:
+    post:
+      tags:
+        - Admin
+      summary: Approve school
+      description: Approve a school registration
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: schoolId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: School approved successfully
+
+  /api/admin/schools/{schoolId}/reject:
+    post:
+      tags:
+        - Admin
+      summary: Reject school
+      description: Reject a school registration
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: schoolId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reason
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: School rejected successfully
+
+  /api/admin/schools/{schoolId}/verification-message:
+    post:
+      tags:
+        - Admin
+      summary: Send verification message
+      description: Send a message to school regarding verification
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: schoolId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+      responses:
+        '201':
+          description: Message sent successfully
+
+  /api/admin/schools/{schoolId}/verification-logs:
+    get:
+      tags:
+        - Admin
+      summary: Get verification logs
+      description: Retrieve verification logs for a school
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: schoolId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Logs retrieved successfully
+
+  /api/admin/support:
+    get:
+      tags:
+        - Admin
+      summary: Get support tickets
+      description: Retrieve paginated list of support tickets
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [OPEN, IN_PROGRESS, RESOLVED, CLOSED]
+      responses:
+        '200':
+          description: Tickets retrieved successfully
+
+  /api/admin/support/{ticketId}/respond:
+    post:
+      tags:
+        - Admin
+      summary: Respond to ticket
+      description: Send a response to a support ticket
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: ticketId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+      responses:
+        '200':
+          description: Response sent successfully
+
+  /api/admin/support/{ticketId}/status:
+    patch:
+      tags:
+        - Admin
+      summary: Update ticket status
+      description: Update the status of a support ticket
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: ticketId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [OPEN, IN_PROGRESS, RESOLVED, CLOSED]
+      responses:
+        '200':
+          description: Status updated successfully
+
+  # Dashboard Endpoints
+  /api/dashboard/stats:
+    get:
+      tags:
+        - Dashboard
+      summary: Get dashboard statistics
+      description: Retrieve user dashboard statistics
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+
+  # Loan Endpoints
+  /api/loans/apply:
+    post:
+      tags:
+        - Loans
+      summary: Apply for a loan
+      description: Submit a new loan application
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - schoolId
+                - loanAmount
+                - repaymentMonths
+                - schoolName
+                - academicSession
+              properties:
+                schoolId:
+                  type: string
+                  format: uuid
+                loanAmount:
+                  type: number
+                repaymentMonths:
+                  type: integer
+                  minimum: 1
+                  maximum: 12
+                schoolName:
+                  type: string
+                academicSession:
+                  type: string
+                term:
+                  type: string
+                residencyStatus:
+                  type: string
+                  enum: [LOCAL, INTERNATIONAL]
+      responses:
+        '201':
+          description: Loan application submitted successfully
+
+  /api/loans/history:
+    get:
+      tags:
+        - Loans
+      summary: Get loan history
+      description: Retrieve user's loan history with pagination
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Loan history retrieved successfully
+
+  /api/loans/{loanId}:
+    get:
+      tags:
+        - Loans
+      summary: Get loan details
+      description: Retrieve detailed information about a specific loan
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: loanId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Loan details retrieved successfully
+
+  # Wallet Endpoints
+  /api/wallet/balance:
+    get:
+      tags:
+        - Wallet
+      summary: Get wallet balance
+      description: Retrieve current wallet balance
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Balance retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      balance:
+                        type: number
+                      currency:
+                        type: string
+
+  /api/wallet/fund:
+    post:
+      tags:
+        - Wallet
+      summary: Fund wallet
+      description: Initiate wallet funding via Paystack
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - amount
+              properties:
+                amount:
+                  type: number
+                  minimum: 100
+      responses:
+        '200':
+          description: Payment initialization successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      authorizationUrl:
+                        type: string
+                      reference:
+                        type: string
+
+  /api/wallet/transactions:
+    get:
+      tags:
+        - Wallet
+      summary: Get wallet transactions
+      description: Retrieve wallet transaction history
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Transactions retrieved successfully
+
+  # School Endpoints
+  /api/schools:
+    get:
+      tags:
+        - Schools
+      summary: Get all schools
+      description: Retrieve list of all registered schools
+      responses:
+        '200':
+          description: Schools retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/School'
+
+  /api/school-verification:
+    post:
+      tags:
+        - Schools
+      summary: Submit school verification
+      description: Submit school verification request for loan
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - schoolId
+                - studentName
+                - studentClass
+                - invoiceAmount
+              properties:
+                schoolId:
+                  type: string
+                  format: uuid
+                studentName:
+                  type: string
+                studentClass:
+                  type: string
+                invoiceAmount:
+                  type: number
+      responses:
+        '201':
+          description: Verification request submitted successfully
+
+  # Support Endpoints
+  /api/support/tickets:
+    get:
+      tags:
+        - Support
+      summary: Get user support tickets
+      description: Retrieve user's support tickets
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Tickets retrieved successfully
+
+    post:
+      tags:
+        - Support
+      summary: Create support ticket
+      description: Create a new support ticket
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - subject
+                - category
+                - description
+              properties:
+                subject:
+                  type: string
+                category:
+                  type: string
+                priority:
+                  type: string
+                  enum: [LOW, MEDIUM, HIGH, URGENT]
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Ticket created successfully
+
+  # Notifications Endpoints
+  /api/notifications:
+    get:
+      tags:
+        - Notifications
+      summary: Get user notifications
+      description: Retrieve user notifications with pagination
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Notifications retrieved successfully
+
+  /api/notifications/read-all:
+    post:
+      tags:
+        - Notifications
+      summary: Mark all as read
+      description: Mark all notifications as read
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: All notifications marked as read
+
+  /api/notifications/{notificationId}:
+    patch:
+      tags:
+        - Notifications
+      summary: Mark notification as read
+      description: Mark a specific notification as read
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Notification marked as read
+
+  # Payment Endpoints
+  /api/repayment/pay:
+    post:
+      tags:
+        - Loans
+      summary: Make loan repayment
+      description: Make a payment towards loan installment
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - loanId
+                - amount
+              properties:
+                loanId:
+                  type: string
+                  format: uuid
+                amount:
+                  type: number
+      responses:
+        '200':
+          description: Payment processed successfully

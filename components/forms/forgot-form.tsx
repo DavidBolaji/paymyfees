@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CustomInput } from "@/components/ui/custom-input";
-import Link from "next/link";
 
 // Form data interface
 interface FormData {
@@ -15,15 +14,16 @@ interface ForgotFormProps {
   onSubmit: (data: FormData) => Promise<void>;
 }
 
-export function   ForgotForm({ onSubmit }:ForgotFormProps) {
+export function ForgotForm({ onSubmit }: ForgotFormProps) {
   // Form state
   const [formData, setFormData] = useState<FormData>({
-    email: ""   
+    email: "",
   });
 
   // Validation state
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [emailFocused, setEmailFocused] = useState(false);
 
   // Loading state
   const [loading, setLoading] = useState(false);
@@ -88,8 +88,7 @@ export function   ForgotForm({ onSubmit }:ForgotFormProps) {
   const isFormValid = () => {
     // Check if all required fields have values
     const requiredFields = ["email"];
-    const hasAllRequiredFields = requiredFields.every(field => {
-    
+    const hasAllRequiredFields = requiredFields.every((field) => {
       return !!formData[field as keyof typeof formData];
     });
 
@@ -108,7 +107,7 @@ export function   ForgotForm({ onSubmit }:ForgotFormProps) {
         setLoading(true);
         await onSubmit(formData);
       } catch (error) {
-        console.error("Login error:", error);
+        console.error("Forgot password error:", error);
         // Handle submission error
       } finally {
         setLoading(false);
@@ -126,12 +125,16 @@ export function   ForgotForm({ onSubmit }:ForgotFormProps) {
           value={formData.email}
           placeholder="Enter your email address"
           onChange={(value) => handleChange("email", value)}
-          onBlur={() => handleBlur("email")}
-          error={touched.email && !!errors.email}
+          onFocus={() => setEmailFocused(true)}
+          onBlur={() => {
+            setEmailFocused(false);
+            handleBlur("email");
+          }}
+          error={touched.email && !!errors.email && !emailFocused}
         />
         <AnimatePresence>
-          {touched.email && errors.email && (
-            <motion.p 
+          {touched.email && errors.email && !emailFocused && (
+            <motion.p
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -144,13 +147,6 @@ export function   ForgotForm({ onSubmit }:ForgotFormProps) {
         </AnimatePresence>
       </div>
 
-      {/* Forgot Password Link */}
-      <div className="-translate-y-3">
-        <Link href="/auth/forgot-password" className="text-xs font-semibold text-[#00296B] hover:underline">
-          Forgot Password?
-        </Link>
-      </div>
-
       {/* Submit Button */}
       <button
         type="submit"
@@ -159,7 +155,7 @@ export function   ForgotForm({ onSubmit }:ForgotFormProps) {
           loading || !isFormValid() ? "opacity-50 cursor-not-allowed" : ""
         }`}
       >
-        {loading ? "Sending..." : "Send"}
+        {loading ? "Sending..." : "Send Reset Link"}
       </button>
     </form>
   );

@@ -189,7 +189,7 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
 
       {/* Forgot Password Link */}
       <div className="-translate-y-3">
-        <Link href="/auth/forgot-password" className="text-xs font-semibold text-[#00296B] hover:underline">
+        <Link href="/auth/forgot" className="text-xs font-semibold text-[#00296B] hover:underline">
           Forgot Password?
         </Link>
       </div>

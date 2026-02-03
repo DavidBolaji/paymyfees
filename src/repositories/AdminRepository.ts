@@ -4,171 +4,566 @@
  */
 
 import { prisma } from '@/src/database/prisma';
-import { LoanStatus } from '@prisma/client';
-
-import { LoanApplication } from '@/src/services/AdminService';
+import { LoanStatus, SupportTicketStatus, UserRole } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 export interface IAdminRepository {
-  getLoanStats(): Promise<{
-    totalLoans: number;
-    pendingLoans: number;
-    approvedLoans: number;
-    disbursedLoans: number;
-    activeLoans: number;
-    completedLoans: number;
-    defaultedLoans: number;
-    rejectedLoans: number;
-    cancelledLoans: number;
-  }>;
-  getTotalLoanAmount(): Promise<number>;
-  getTotalDisbursedAmount(): Promise<number>;
-  getTotalRepaidAmount(): Promise<number>;
-  getTotalOutstandingAmount(): Promise<number>;
-  getUserStats(): Promise<{
-    totalUsers: number;
-    activeUsers: number;
-    inactiveUsers: number;
-  }>;
-  getSchoolStats(): Promise<{
-    totalSchools: number;
-    verifiedSchools: number;
-    pendingSchools: number;
-  }>;
-  getLoanApplications(): Promise<LoanApplication[]>;
+  getAnalytics(): Promise<any>;
+  getLoanApplications(page: number, limit: number, status?: string): Promise<any>;
+  updateLoanStatus(loanId: string, status: LoanStatus, adminId: string, reason?: string): Promise<any>;
+  processDisbursement(loanId: string, adminId: string): Promise<any>;
+  getSchools(page: number, limit: number, status?: string): Promise<any>;
+  approveSchool(schoolId: string, adminId: string): Promise<any>;
+  rejectSchool(schoolId: string, adminId: string, reason: string): Promise<any>;
+  addSchool(data: any, adminId: string): Promise<any>;
+  getSupportTickets(page: number, limit: number, status?: string): Promise<any>;
+  respondToTicket(ticketId: string, message: string, adminId: string): Promise<any>;
+  updateTicketStatus(ticketId: string, status: string, adminId: string): Promise<any>;
+  getVerificationLogs(schoolId: string): Promise<any>;
+  addVerificationMessage(schoolId: string, message: string, adminId: string): Promise<any>;
 }
 
 export class AdminRepository implements IAdminRepository {
-  async getLoanStats(): Promise<{
-    totalLoans: number;
-    pendingLoans: number;
-    approvedLoans: number;
-    disbursedLoans: number;
-    activeLoans: number;
-    completedLoans: number;
-    defaultedLoans: number;
-    rejectedLoans: number;
-    cancelledLoans: number;
-  }> {
-    const totalLoans = await prisma.loan.count();
-    const pendingLoans = await prisma.loan.count({ where: { status: LoanStatus.PENDING } });
-    const approvedLoans = await prisma.loan.count({ where: { status: LoanStatus.APPROVED } });
-    const disbursedLoans = await prisma.loan.count({ where: { status: LoanStatus.DISBURSED } });
-    const activeLoans = await prisma.loan.count({ where: { status: LoanStatus.ACTIVE } });
-    const completedLoans = await prisma.loan.count({ where: { status: LoanStatus.COMPLETED } });
-    const defaultedLoans = await prisma.loan.count({ where: { status: LoanStatus.DEFAULTED } });
-    const rejectedLoans = await prisma.loan.count({ where: { status: LoanStatus.REJECTED } });
-    const cancelledLoans = await prisma.loan.count({ where: { status: LoanStatus.CANCELLED } });
-
-    return {
+  /**
+   * Get admin analytics
+   */
+  async getAnalytics(): Promise<any> {
+    const [
       totalLoans,
       pendingLoans,
       approvedLoans,
-      disbursedLoans,
       activeLoans,
       completedLoans,
       defaultedLoans,
-      rejectedLoans,
-      cancelledLoans,
-    };
-  }
-
-  async getTotalLoanAmount(): Promise<number> {
-    const result = await prisma.loan.aggregate({
-      _sum: {
-        loanAmount: true,
-      },
-    });
-    return Number(result._sum.loanAmount || 0);
-  }
-
-  async getTotalDisbursedAmount(): Promise<number> {
-    const result = await prisma.loan.aggregate({
-      _sum: {
-        amountDisbursed: true,
-      },
-    });
-    return Number(result._sum.amountDisbursed || 0);
-  }
-
-  async getTotalRepaidAmount(): Promise<number> {
-    const result = await prisma.loan.aggregate({
-      _sum: {
-        amountRepaid: true,
-      },
-    });
-    return Number(result._sum.amountRepaid || 0);
-  }
-
-  async getTotalOutstandingAmount(): Promise<number> {
-    const result = await prisma.loan.aggregate({
-      _sum: {
-        outstandingBalance: true,
-      },
-    });
-    return Number(result._sum.outstandingBalance || 0);
-  }
-
-  async getUserStats(): Promise<{
-    totalUsers: number;
-    activeUsers: number;
-    inactiveUsers: number;
-  }> {
-    const totalUsers = await prisma.user.count();
-    const activeUsers = await prisma.user.count({ where: { isActive: true } });
-    const inactiveUsers = await prisma.user.count({ where: { isActive: false } });
-
-    return {
       totalUsers,
-      activeUsers,
-      inactiveUsers,
-    };
-  }
-
-  async getSchoolStats(): Promise<{
-    totalSchools: number;
-    verifiedSchools: number;
-    pendingSchools: number;
-  }> {
-    const totalSchools = await prisma.school.count();
-    const verifiedSchools = await prisma.school.count({ where: { isVerified: true } });
-    const pendingSchools = await prisma.school.count({ where: { isVerified: false } });
-
-    return {
       totalSchools,
       verifiedSchools,
       pendingSchools,
+      totalTickets,
+      openTickets,
+      loanAmountSum,
+      disbursedAmountSum,
+      repaidAmountSum,
+      outstandingAmountSum
+    ] = await Promise.all([
+      prisma.loan.count(),
+      prisma.loan.count({ where: { status: LoanStatus.PENDING } }),
+      prisma.loan.count({ where: { status: LoanStatus.APPROVED } }),
+      prisma.loan.count({ where: { status: LoanStatus.ACTIVE } }),
+      prisma.loan.count({ where: { status: LoanStatus.COMPLETED } }),
+      prisma.loan.count({ where: { status: LoanStatus.DEFAULTED } }),
+      prisma.user.count({ where: { role: { in: [UserRole.PARENT, UserRole.STUDENT] } } }),
+      prisma.schoolProfile.count(),
+      prisma.schoolProfile.count({ where: { isVerified: true } }),
+      prisma.schoolProfile.count({ where: { isVerified: false } }),
+      prisma.supportTicket.count(),
+      prisma.supportTicket.count({ where: { status: SupportTicketStatus.OPEN } }),
+      prisma.loan.aggregate({ _sum: { loanAmount: true } }),
+      prisma.loan.aggregate({ _sum: { amountDisbursed: true } }),
+      prisma.loan.aggregate({ _sum: { amountRepaid: true } }),
+      prisma.loan.aggregate({ _sum: { outstandingBalance: true } })
+    ]);
+
+    return {
+      loans: {
+        total: totalLoans,
+        pending: pendingLoans,
+        approved: approvedLoans,
+        active: activeLoans,
+        completed: completedLoans,
+        defaulted: defaultedLoans
+      },
+      financial: {
+        totalLoanAmount: Number(loanAmountSum._sum.loanAmount || 0),
+        totalDisbursed: Number(disbursedAmountSum._sum.amountDisbursed || 0),
+        totalRepaid: Number(repaidAmountSum._sum.amountRepaid || 0),
+        totalOutstanding: Number(outstandingAmountSum._sum.outstandingBalance || 0)
+      },
+      users: {
+        total: totalUsers
+      },
+      schools: {
+        total: totalSchools,
+        verified: verifiedSchools,
+        pending: pendingSchools
+      },
+      support: {
+        total: totalTickets,
+        open: openTickets
+      }
     };
   }
 
   /**
-   * Get loan applications for admin review
+   * Get loan applications with pagination
    */
-  async getLoanApplications(): Promise<LoanApplication[]> {
-    // Get all loan applications with user information
-    const loans = await prisma.loan.findMany({
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
+  async getLoanApplications(page: number, limit: number, status?: string): Promise<any> {
+    const skip = (page - 1) * limit;
+    const where = status ? { status: status as LoanStatus } : {};
+
+    const [loans, total] = await Promise.all([
+      prisma.loan.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phone: true
+            }
           },
+          school: {
+            select: {
+              id: true,
+              schoolName: true
+            }
+          },
+          documents: {
+            select: {
+              id: true,
+              documentType: true,
+              fileName: true,
+              fileUrl: true,
+              isVerified: true
+            }
+          },
+          installments: {
+            select: {
+              id: true,
+              installmentNumber: true,
+              amount: true,
+              dueDate: true,
+              status: true
+            },
+            orderBy: {
+              installmentNumber: 'asc'
+            }
+          }
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      }),
+      prisma.loan.count({ where })
+    ]);
+
+    return {
+      loans: loans.map(loan => ({
+        id: loan.id,
+        loanNumber: loan.loanNumber,
+        userId: loan.userId,
+        userName: loan.user.fullName,
+        userEmail: loan.user.email,
+        userPhone: loan.user.phone,
+        schoolId: loan.schoolId,
+        schoolName: loan.school.schoolName,
+        loanAmount: Number(loan.loanAmount),
+        totalAmount: Number(loan.totalAmount),
+        interestRate: Number(loan.interestRate),
+        repaymentMonths: loan.repaymentMonths,
+        status: loan.status,
+        amountDisbursed: Number(loan.amountDisbursed),
+        amountRepaid: Number(loan.amountRepaid),
+        outstandingBalance: Number(loan.outstandingBalance),
+        applicationDate: loan.applicationDate,
+        approvalDate: loan.approvalDate,
+        disbursementDate: loan.disbursementDate,
+        documents: loan.documents,
+        installments: loan.installments.map(inst => ({
+          ...inst,
+          amount: Number(inst.amount)
+        })),
+        residencyStatus: loan.residencyStatus
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrevious: page > 1
+      }
+    };
+  }
+
+  /**
+   * Update loan status
+   */
+  async updateLoanStatus(loanId: string, status: LoanStatus, adminId: string, reason?: string): Promise<any> {
+    const updateData: any = {
+      status,
+      updatedAt: new Date()
+    };
+
+    if (status === LoanStatus.APPROVED) {
+      updateData.approvalDate = new Date();
+      updateData.approvedBy = adminId;
+    } else if (status === LoanStatus.REJECTED) {
+      updateData.rejectionReason = reason;
+    }
+
+    const [loan] = await Promise.all([
+      prisma.loan.update({
+        where: { id: loanId },
+        data: updateData,
+        include: {
+          user: {
+            select: {
+              fullName: true,
+              email: true
+            }
+          }
+        }
+      }),
+      prisma.loanStatusHistory.create({
+        data: {
+          loanId,
+          newStatus: status,
+          changedBy: adminId,
+          reason
+        }
+      })
+    ]);
+
+    return loan;
+  }
+
+  /**
+   * Process loan disbursement
+   */
+  async processDisbursement(loanId: string, adminId: string): Promise<any> {
+    const loan = await prisma.loan.findUnique({
+      where: { id: loanId },
+      include: {
+        school: true
+      }
     });
 
-    // Map to the LoanApplication interface
-    return loans.map((loan: any) => ({
-      id: loan.id,
-      userId: loan.userId,
-      userName: loan.user.name,
-      loanAmount: Number(loan.loanAmount),
-      purpose: loan.purpose,
-      status: loan.status,
-      createdAt: loan.createdAt,
-      updatedAt: loan.updatedAt,
-    }));
+    if (!loan) {
+      throw new Error('Loan not found');
+    }
+
+    const disbursementReference = `DISB-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+    const [updatedLoan, disbursement] = await Promise.all([
+      prisma.loan.update({
+        where: { id: loanId },
+        data: {
+          status: LoanStatus.DISBURSED,
+          amountDisbursed: loan.loanAmount,
+          disbursementDate: new Date()
+        }
+      }),
+      prisma.disbursement.create({
+        data: {
+          disbursementReference,
+          loanId,
+          schoolId: loan.schoolId,
+          amount: loan.loanAmount,
+          status: 'COMPLETED',
+          bankName: loan.school.bankName || '',
+          accountNumber: loan.school.accountNumber || '',
+          accountName: loan.school.accountName || '',
+          disbursedAt: new Date(),
+          confirmedAt: new Date()
+        }
+      }),
+      prisma.loanStatusHistory.create({
+        data: {
+          loanId,
+          newStatus: LoanStatus.DISBURSED,
+          changedBy: adminId,
+          reason: 'Disbursement processed by admin'
+        }
+      })
+    ]);
+
+    return { loan: updatedLoan, disbursement };
+  }
+
+  /**
+   * Get schools with pagination
+   */
+  async getSchools(page: number, limit: number, status?: string): Promise<any> {
+    const skip = (page - 1) * limit;
+    const where = status === 'verified' 
+      ? { isVerified: true } 
+      : status === 'pending' 
+        ? { isVerified: false } 
+        : {};
+
+    const [schools, total] = await Promise.all([
+      prisma.schoolProfile.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phone: true
+            }
+          },
+          documents: {
+            select: {
+              id: true,
+              documentType: true,
+              fileName: true,
+              fileUrl: true,
+              isVerified: true
+            }
+          },
+          loans: {
+            select: {
+              id: true,
+              loanNumber: true,
+              status: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      }),
+      prisma.schoolProfile.count({ where })
+    ]);
+
+    return {
+      schools: schools.map(school => ({
+        id: school.id,
+        userId: school.userId,
+        schoolName: school.schoolName,
+        schoolEmail: school.schoolEmail,
+        schoolPhone: school.schoolPhone,
+        schoolAddress: school.schoolAddress,
+        city: school.city,
+        state: school.state,
+        country: school.country,
+        contactPersonName: school.contactPersonName,
+        contactPersonEmail: school.contactPersonEmail,
+        contactPersonPhone: school.contactPersonPhone,
+        bankName: school.bankName,
+        accountNumber: school.accountNumber,
+        accountName: school.accountName,
+        isVerified: school.isVerified,
+        verifiedAt: school.verifiedAt,
+        totalStudents: school.totalStudents,
+        totalDisbursements: Number(school.totalDisbursements),
+        createdAt: school.createdAt,
+        documents: school.documents,
+        loans: school.loans
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrevious: page > 1
+      }
+    };
+  }
+
+  /**
+   * Approve school
+   */
+  async approveSchool(schoolId: string, adminId: string): Promise<any> {
+    return await prisma.schoolProfile.update({
+      where: { id: schoolId },
+      data: {
+        isVerified: true,
+        verifiedAt: new Date()
+      }
+    });
+  }
+
+  /**
+   * Reject school
+   */
+  async rejectSchool(schoolId: string, adminId: string, reason: string): Promise<any> {
+    await prisma.schoolSupportMessage.create({
+      data: {
+        schoolId,
+        message: `School verification rejected: ${reason}`,
+        priority: 'urgent',
+        isRead: false
+      }
+    });
+
+    return await prisma.schoolProfile.update({
+      where: { id: schoolId },
+      data: {
+        isVerified: false,
+        verifiedAt: null
+      }
+    });
+  }
+
+  /**
+   * Add new school
+   */
+  async addSchool(data: any, adminId: string): Promise<any> {
+    const hashedPassword = await bcrypt.hash(data.password || 'School@123456', 10);
+
+    const user = await prisma.user.create({
+      data: {
+        email: data.schoolEmail,
+        phone: data.schoolPhone,
+        password: hashedPassword,
+        role: UserRole.SCHOOL,
+        fullName: data.schoolName,
+        emailVerified: true,
+        phoneVerified: true,
+        isActive: true,
+        country: data.country || 'Nigeria',
+        residencyStatus: 'LOCAL'
+      }
+    });
+
+    const school = await prisma.schoolProfile.create({
+      data: {
+        userId: user.id,
+        isPrimary: true,
+        schoolName: data.schoolName,
+        schoolAddress: data.schoolAddress,
+        city: data.city,
+        state: data.state,
+        country: data.country || 'Nigeria',
+        schoolEmail: data.schoolEmail,
+        schoolPhone: data.schoolPhone,
+        website: data.website,
+        contactPersonName: data.contactPersonName,
+        contactPersonPosition: data.contactPersonPosition,
+        contactPersonEmail: data.contactPersonEmail,
+        contactPersonPhone: data.contactPersonPhone,
+        bankName: data.bankName,
+        accountNumber: data.accountNumber,
+        accountName: data.accountName,
+        isVerified: true,
+        verifiedAt: new Date()
+      }
+    });
+
+    return { user, school };
+  }
+
+  /**
+   * Get support tickets with pagination
+   */
+  async getSupportTickets(page: number, limit: number, status?: string): Promise<any> {
+    const skip = (page - 1) * limit;
+    const where = status ? { status: status as SupportTicketStatus } : {};
+
+    const [tickets, total] = await Promise.all([
+      prisma.supportTicket.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              phone: true,
+              role: true
+            }
+          },
+          messages: {
+            orderBy: {
+              createdAt: 'desc'
+            },
+            take: 1
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      }),
+      prisma.supportTicket.count({ where })
+    ]);
+
+    return {
+      tickets,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrevious: page > 1
+      }
+    };
+  }
+
+  /**
+   * Respond to support ticket
+   */
+  async respondToTicket(ticketId: string, message: string, adminId: string): Promise<any> {
+    return await prisma.supportMessage.create({
+      data: {
+        ticketId,
+        senderId: adminId,
+        senderRole: UserRole.ADMIN,
+        message,
+        isInternal: false
+      }
+    });
+  }
+
+  /**
+   * Update ticket status
+   */
+  async updateTicketStatus(ticketId: string, status: string, adminId: string): Promise<any> {
+    const updateData: any = {
+      status: status as SupportTicketStatus,
+      updatedAt: new Date()
+    };
+
+    if (status === 'RESOLVED') {
+      updateData.resolvedAt = new Date();
+    } else if (status === 'CLOSED') {
+      updateData.closedAt = new Date();
+    }
+
+    if (!updateData.assignedTo) {
+      updateData.assignedTo = adminId;
+    }
+
+    return await prisma.supportTicket.update({
+      where: { id: ticketId },
+      data: updateData
+    });
+  }
+
+  /**
+   * Get verification logs for a school
+   */
+  async getVerificationLogs(schoolId: string): Promise<any> {
+    return await prisma.schoolSupportMessage.findMany({
+      where: { schoolId },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+  }
+
+  /**
+   * Add verification message
+   */
+  async addVerificationMessage(schoolId: string, message: string, adminId: string): Promise<any> {
+    return await prisma.schoolSupportMessage.create({
+      data: {
+        schoolId,
+        message,
+        priority: 'normal',
+        isRead: false
+      }
+    });
   }
 }
