@@ -6,196 +6,374 @@
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { Prisma } from '@prisma/client';
-import { AppError, ValidationError, DatabaseError } from '@/src/types/errors';
-import { ApiResponse } from '@/src/types';
-import { logger } from '@/src/utils/logger';
-
-/**
- * Format error response
- */
-function formatErrorResponse(
-  error: Error,
-  _statusCode: number = 500
-): ApiResponse {
-  return {
-    success: false,
-    error: error.message,
-    metadata: {
-      timestamp: new Date().toISOString(),
-    },
-  };
-}
+import { AppError } from '@/src/types/errors';
 
 /**
  * Handle Zod validation errors
  */
 function handleZodError(error: ZodError): NextResponse {
-  const errors = error.issues.map((issue) => ({
-    field: issue.path.join('.'),
-    message: issue.message,
-  }));
+  try {
+    const errors = error.issues.map((issue) => ({
+      field: issue.path.join('.'),
+      message: issue.message,
+    }));
 
-  const validationError = new ValidationError('Validation failed', errors);
+    console.warn({ msg: 'Validation error', errors });
 
-  console.warn({ msg: 'Validation error', errors });
-
-  return NextResponse.json(
-    {
-      success: false,
-      error: validationError.message,
-      errors: validationError.errors,
-      metadata: {
-        timestamp: new Date().toISOString(),
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'validation_error',
+        message: 'Validation failed',
+        errors: errors,
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
       },
-    },
-    { status: validationError.statusCode }
-  );
+      { status: 400 }
+    );
+  } catch (handlerError) {
+    console.error({ msg: 'Failed to handle Zod error', handlerError });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'validation_error',
+        message: 'Validation failed',
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 400 }
+    );
+  }
 }
 
 /**
  * Handle Prisma errors
  */
 function handlePrismaError(error: Prisma.PrismaClientKnownRequestError): NextResponse {
-  let message = 'Database operation failed';
-  let statusCode = 500;
+  try {
+    let message = 'Database operation failed';
+    let statusCode = 500;
+    let errorCode = 'database_error';
 
-  switch (error.code) {
-    case 'P2002':
-      // Unique constraint violation
-      message = 'A record with this value already exists';
-      statusCode = 409;
-      break;
-    case 'P2025':
-      // Record not found
-      message = 'Record not found';
-      statusCode = 404;
-      break;
-    case 'P2003':
-      // Foreign key constraint violation
-      message = 'Related record not found';
-      statusCode = 400;
-      break;
-    case 'P2014':
-      // Invalid ID
-      message = 'Invalid ID provided';
-      statusCode = 400;
-      break;
-    default:
-      message = 'Database operation failed';
-      statusCode = 500;
+    switch (error.code) {
+      case 'P2002':
+        message = 'A record with this value already exists';
+        statusCode = 409;
+        errorCode = 'conflict';
+        break;
+      case 'P2025':
+        message = 'Record not found';
+        statusCode = 404;
+        errorCode = 'not_found';
+        break;
+      case 'P2003':
+        message = 'Related record not found';
+        statusCode = 400;
+        errorCode = 'bad_request';
+        break;
+      case 'P2014':
+        message = 'Invalid ID provided';
+        statusCode = 400;
+        errorCode = 'bad_request';
+        break;
+      default:
+        message = 'Database operation failed';
+        statusCode = 500;
+        errorCode = 'database_error';
+    }
+
+    console.error({
+      msg: 'Prisma error',
+      code: error.code,
+      meta: error.meta,
+      message: error.message,
+    });
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: errorCode,
+        message: message,
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: statusCode }
+    );
+  } catch (handlerError) {
+    console.error({ msg: 'Failed to handle Prisma error', handlerError });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'database_error',
+        message: 'Database operation failed',
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 500 }
+    );
   }
-
-  const dbError = new DatabaseError(message);
-
-  console.error({
-    msg: 'Prisma error',
-    code: error.code,
-    meta: error.meta,
-    message: error.message,
-  });
-
-  return NextResponse.json(
-    formatErrorResponse(dbError, statusCode),
-    { status: statusCode }
-  );
 }
 
 /**
  * Handle application errors
  */
 function handleAppError(error: AppError): NextResponse {
-  // Log operational errors as warnings, programming errors as errors
-  if (error.isOperational) {
-    console.warn({
-      msg: 'Operational error',
-      name: error.name,
-      message: error.message,
-      statusCode: error.statusCode,
-    });
-  } else {
-    console.error({
-      msg: 'Programming error',
-      name: error.name,
-      message: error.message,
-      statusCode: error.statusCode,
-      stack: error.stack,
-    });
-  }
+  try {
+    // Log operational errors as warnings, programming errors as errors
+    if (error.isOperational) {
+      console.warn({
+        msg: 'Operational error',
+        name: error.name,
+        message: error.message,
+        statusCode: error.statusCode,
+      });
+    } else {
+      console.error({
+        msg: 'Programming error',
+        name: error.name,
+        message: error.message,
+        statusCode: error.statusCode,
+        stack: error.stack,
+      });
+    }
 
-  return NextResponse.json(
-    formatErrorResponse(error, error.statusCode),
-    { status: error.statusCode }
-  );
+    const response: any = {
+      success: false,
+      error: error.name.replace('Error', '').toLowerCase(),
+      message: error.message,
+      metadata: {
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    // Add validation errors if present
+    if ('errors' in error && Array.isArray((error as any).errors)) {
+      response.errors = (error as any).errors;
+    }
+
+    // Add retry-after header for rate limit errors
+    const headers: HeadersInit = {};
+    if ('retryAfter' in error) {
+      headers['Retry-After'] = String((error as any).retryAfter);
+    }
+
+    return NextResponse.json(response, { 
+      status: error.statusCode,
+      headers: Object.keys(headers).length > 0 ? headers : undefined
+    });
+  } catch (handlerError) {
+    console.error({ msg: 'Failed to handle AppError', handlerError });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'internal_error',
+        message: 'An error occurred',
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 500 }
+    );
+  }
 }
 
 /**
  * Handle unknown errors
  */
 function handleUnknownError(error: Error): NextResponse {
-  console.error({
-    msg: 'Unknown error',
-    message: error.message,
-    stack: error.stack,
-  });
+  try {
+    console.error({
+      msg: 'Unknown error',
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    });
 
-  return NextResponse.json(
-    formatErrorResponse(new Error('Internal server error'), 500),
-    { status: 500 }
-  );
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'internal_error',
+        message: error.message || 'Internal server error',
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 500 }
+    );
+  } catch (handlerError) {
+    console.error({ msg: 'Failed to handle unknown error', handlerError });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'internal_error',
+        message: 'Internal server error',
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 500 }
+    );
+  }
 }
 
 /**
  * Main error handler
  * Determines error type and delegates to appropriate handler
+ * CRITICAL: Never throws, always returns a valid NextResponse
  */
 export function errorHandler(error: unknown): NextResponse {
-  // Zod validation errors
-  if (error instanceof ZodError) {
-    return handleZodError(error);
-  }
+  try {
+    // Zod validation errors
+    if (error instanceof ZodError) {
+      return handleZodError(error);
+    }
 
-  // Prisma errors
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    return handlePrismaError(error);
-  }
+    // Prisma errors
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      return handlePrismaError(error);
+    }
 
-  // Application errors
-  if (error instanceof AppError) {
-    return handleAppError(error);
-  }
+    // Application errors
+    if (error instanceof AppError) {
+      return handleAppError(error);
+    }
 
-  // Unknown errors
-  if (error instanceof Error) {
-    return handleUnknownError(error);
-  }
+    // Unknown errors
+    if (error instanceof Error) {
+      return handleUnknownError(error);
+    }
 
-  // Fallback for non-Error objects
-  console.error({ msg: 'Non-Error object thrown', error });
-  return NextResponse.json(
-    formatErrorResponse(new Error('An unexpected error occurred'), 500),
-    { status: 500 }
-  );
+    // Fallback for non-Error objects
+    console.error({ msg: 'Non-Error object thrown', error });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'unexpected_error',
+        message: 'An unexpected error occurred',
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 500 }
+    );
+  } catch (handlerError) {
+    // Ultimate fallback if error handling itself fails
+    console.error({ 
+      msg: 'Critical: Error handler failed',
+      originalError: error,
+      handlerError: handlerError instanceof Error ? handlerError.message : String(handlerError)
+    });
+    
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'critical_error',
+        message: 'A critical error occurred',
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 500 }
+    );
+  }
 }
 
 /**
  * Async error wrapper for route handlers
  * Catches async errors and passes them to error handler
+ * CRITICAL: Always returns a valid NextResponse to prevent build cache corruption
  */
 export function asyncHandler<T = any>(
   handler: (req: Request, context: T) => Promise<any>
 ) {
-  return async (req: Request, context: any): Promise<NextResponse<unknown>> => {
-    console.log({
-      msg: 'Got here async handler'
-    });
+  return async (req: Request, context: any): Promise<NextResponse> => {
     try {
+      // Execute the handler
       const response = await handler(req, context);
+      
+      // Validate response exists
       if (!response) {
-        throw new Error('Handler returned undefined response');
+        console.error({ 
+          msg: 'Handler returned undefined response',
+          url: req.url,
+          method: req.method 
+        });
+        
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'internal_error',
+            message: 'Handler returned undefined response',
+            metadata: {
+              timestamp: new Date().toISOString(),
+            },
+          },
+          { status: 500 }
+        );
       }
+
+      // Validate response is a NextResponse
+      if (!(response instanceof NextResponse)) {
+        console.error({ 
+          msg: 'Handler returned invalid response type',
+          url: req.url,
+          method: req.method,
+          responseType: typeof response
+        });
+        
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'internal_error',
+            message: 'Invalid response type from handler',
+            metadata: {
+              timestamp: new Date().toISOString(),
+            },
+          },
+          { status: 500 }
+        );
+      }
+
       return response;
     } catch (error) {
-      return errorHandler(error);
+      // Log the error with context
+      console.error({ 
+        msg: 'Error caught in asyncHandler',
+        url: req.url,
+        method: req.method,
+        error: error instanceof Error ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        } : String(error)
+      });
+      
+      // Always return a valid response, never throw
+      try {
+        return errorHandler(error);
+      } catch (handlerError) {
+        // Fallback if error handler itself fails
+        console.error({ 
+          msg: 'Error handler failed',
+          handlerError: handlerError instanceof Error ? handlerError.message : String(handlerError)
+        });
+        
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'critical_error',
+            message: 'An unexpected error occurred',
+            metadata: {
+              timestamp: new Date().toISOString(),
+            },
+          },
+          { status: 500 }
+        );
+      }
     }
   };
 }

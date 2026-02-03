@@ -1,7 +1,6 @@
 /**
- * Loan Repository
- * Database layer for Loan entity operations
- * Supports both local and international student loans
+ * Enhanced Loan Repository
+ * Added detailed loan fetching with all related data
  */
 
 import { prisma, executeWriteTransaction } from '@/src/database/prisma';
@@ -19,7 +18,6 @@ export interface UpdateStatusOptions {
 
 export interface CreateLoanData {
   userId: string;
-  // studentId: string;
   schoolId: string;
   loanNumber: string;
   loanAmount: number;
@@ -53,9 +51,52 @@ export interface CreateLoanData {
   applicationDate: Date;
 }
 
+export interface DetailedLoanDTO extends LoanDTO {
+  installments?: Array<{
+    id: string;
+    installmentNumber: number;
+    amount: number;
+    dueDate: Date;
+    paidDate: Date | null;
+    status: string;
+    daysOverdue: number;
+    lateFee: number;
+  }>;
+  documents?: Array<{
+    id: string;
+    documentType: string;
+    fileName: string;
+    fileUrl: string;
+    fileSize: number;
+    mimeType: string;
+    isVerified: boolean;
+    createdAt: Date;
+  }>;
+  disbursement?: {
+    id: string;
+    disbursementReference: string;
+    amount: number;
+    status: string;
+    bankName: string;
+    accountNumber: string;
+    accountName: string;
+    disbursedAt: Date | null;
+    transferReference: string | null;
+  } | null;
+  school?: {
+    id: string;
+    schoolName: string;
+    schoolAddress: string;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+  };
+}
+
 export interface ILoanRepository {
   create(input: CreateLoanData): Promise<LoanDTO>;
   findById(id: string): Promise<LoanDTO | null>;
+  findByIdDetailed(id: string): Promise<DetailedLoanDTO | null>;
   findByUserId(userId: string, filter: any, pagination: PaginationParams): Promise<{ loans: LoanDTO[]; total: number }>;
   update(id: string, data: Partial<Loan>): Promise<LoanDTO>;
   updateStatus(id: string, status: LoanStatus, options?: UpdateStatusOptions): Promise<LoanDTO>;
@@ -70,10 +111,12 @@ export class LoanRepository implements ILoanRepository {
   }
 
   async findById(id: string): Promise<LoanDTO | null> {
+    // Check if the id is a UUID or a loan number
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    
     const loan = await prisma.loan.findUnique({
-      where: { id },
+      where: isUUID ? { id } : { loanNumber: id },
       include: {
-        // student: true,
         user: true,
         school: true,
         installments: {
@@ -82,6 +125,82 @@ export class LoanRepository implements ILoanRepository {
       },
     });
     return loan ? this.toDTO(loan) : null;
+  }
+
+  /**
+   * Find loan by ID with all detailed information
+   * Includes installments, documents, disbursement, and school details
+   */
+  async findByIdDetailed(id: string): Promise<DetailedLoanDTO | null> {
+    // Check if the id is a UUID or a loan number
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    
+    const loan = await prisma.loan.findUnique({
+      where: isUUID ? { id } : { loanNumber: id },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            fullName: true,
+          },
+        },
+        school: {
+          select: {
+            id: true,
+            schoolName: true,
+            schoolAddress: true,
+            city: true,
+            state: true,
+            country: true,
+          },
+        },
+        installments: {
+          orderBy: { installmentNumber: 'asc' },
+          select: {
+            id: true,
+            installmentNumber: true,
+            amount: true,
+            dueDate: true,
+            paidDate: true,
+            status: true,
+            daysOverdue: true,
+            lateFee: true,
+          },
+        },
+        documents: {
+          select: {
+            id: true,
+            documentType: true,
+            fileName: true,
+            fileUrl: true,
+            fileSize: true,
+            mimeType: true,
+            isVerified: true,
+            createdAt: true,
+          },
+        },
+        disbursement: {
+          select: {
+            id: true,
+            disbursementReference: true,
+            amount: true,
+            status: true,
+            bankName: true,
+            accountNumber: true,
+            accountName: true,
+            disbursedAt: true,
+            transferReference: true,
+          },
+        },
+      },
+    });
+
+    if (!loan) {
+      return null;
+    }
+
+    return this.toDetailedDTO(loan);
   }
 
   async findByUserId(userId: string, filters: any, pagination: PaginationParams): Promise<{ loans: LoanDTO[]; total: number }> {
@@ -112,7 +231,6 @@ export class LoanRepository implements ILoanRepository {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          // student: true,
           user: true,
           school: true,
         },
@@ -195,7 +313,6 @@ export class LoanRepository implements ILoanRepository {
       id: loan.id,
       loanNumber: loan.loanNumber,
       userId: loan.userId,
-      // studentId: loan.studentId,
       schoolId: loan.schoolId,
       loanAmount: Number(loan.loanAmount),
       interestRate: Number(loan.interestRate),
@@ -236,6 +353,53 @@ export class LoanRepository implements ILoanRepository {
       notes: loan.notes,
       createdAt: loan.createdAt,
       updatedAt: loan.updatedAt,
+    };
+  }
+
+  private toDetailedDTO(loan: any): DetailedLoanDTO {
+    const baseDTO = this.toDTO(loan);
+    
+    return {
+      ...baseDTO,
+      installments: loan.installments?.map((inst: any) => ({
+        id: inst.id,
+        installmentNumber: inst.installmentNumber,
+        amount: Number(inst.amount),
+        dueDate: inst.dueDate,
+        paidDate: inst.paidDate,
+        status: inst.status,
+        daysOverdue: inst.daysOverdue,
+        lateFee: Number(inst.lateFee),
+      })),
+      documents: loan.documents?.map((doc: any) => ({
+        id: doc.id,
+        documentType: doc.documentType,
+        fileName: doc.fileName,
+        fileUrl: doc.fileUrl,
+        fileSize: doc.fileSize,
+        mimeType: doc.mimeType,
+        isVerified: doc.isVerified,
+        createdAt: doc.createdAt,
+      })),
+      disbursement: loan.disbursement ? {
+        id: loan.disbursement.id,
+        disbursementReference: loan.disbursement.disbursementReference,
+        amount: Number(loan.disbursement.amount),
+        status: loan.disbursement.status,
+        bankName: loan.disbursement.bankName,
+        accountNumber: loan.disbursement.accountNumber,
+        accountName: loan.disbursement.accountName,
+        disbursedAt: loan.disbursement.disbursedAt,
+        transferReference: loan.disbursement.transferReference,
+      } : null,
+      school: loan.school ? {
+        id: loan.school.id,
+        schoolName: loan.school.schoolName,
+        schoolAddress: loan.school.schoolAddress,
+        city: loan.school.city,
+        state: loan.school.state,
+        country: loan.school.country,
+      } : undefined,
     };
   }
 }

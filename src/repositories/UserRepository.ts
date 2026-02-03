@@ -145,6 +145,7 @@ export class UserRepository implements IUserRepository {
       fullName: user.fullName,
       profileImage: user.profileImage,
       emailVerified: user.emailVerified,
+      residencyStatus: user.residencyStatus,
       phoneVerified: user.phoneVerified,
       isActive: user.isActive,
       lastLogin: user.lastLogin,

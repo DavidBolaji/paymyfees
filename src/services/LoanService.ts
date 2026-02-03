@@ -1,13 +1,12 @@
 /**
- * Loan Service
- * Business logic for loan operations
- * Supports both local and international student loans
+ * Enhanced Loan Service with Document Handling
+ * Saves uploaded documents to database when creating loans
  */
 
-import { LoanRepository, ILoanRepository } from '@/src/repositories/LoanRepository';
+import { LoanRepository, ILoanRepository, DetailedLoanDTO } from '@/src/repositories/LoanRepository';
 import { executeTransaction } from '@/src/database/prisma';
 import { ValidationError, NotFoundError } from '@/src/types/errors';
-import { LoanStatus, ResidencyStatus } from '@prisma/client';
+import { LoanStatus, ResidencyStatus, DocumentType } from '@prisma/client';
 import {
   LoanDTO,
   LocalLoanInput,
@@ -18,12 +17,31 @@ import {
 } from '@/src/types';
 
 /**
+ * Uploaded file structure from frontend
+ */
+interface UploadedFileData {
+  url: string;
+  name: string;
+  size: number;
+  type: string;
+}
+
+/**
  * Loan Service Interface
  */
 export interface ILoanService {
-  createLocalLoan(input: Omit<LocalLoanInput, 'userId' | 'schoolId'> & { userId: string; schoolId: string }): Promise<LoanDTO>;
-  createInternationalLoan(input: Omit<InternationalLoanInput, 'userId' | 'schoolId'> & { userId: string; schoolId: string }): Promise<LoanDTO>;
+  createLocalLoan(input: Omit<LocalLoanInput, 'userId' | 'schoolId'> & { 
+    userId: string; 
+    schoolId: string;
+    uploadedFiles?: UploadedFileData[];
+  }): Promise<LoanDTO>;
+  createInternationalLoan(input: Omit<InternationalLoanInput, 'userId' | 'schoolId'> & { 
+    userId: string; 
+    schoolId: string;
+    uploadedFiles?: UploadedFileData[];
+  }): Promise<LoanDTO>;
   getLoanById(id: string): Promise<LoanDTO>;
+  getLoanByIdDetailed(id: string): Promise<DetailedLoanDTO>;
   getLoansByUserId(userId: string, status?: LoanStatus, pagination?: PaginationParams, residencyStatus?: ResidencyStatus): Promise<{ loans: LoanDTO[]; total: number; page: number; limit: number }>;
   updateLoanStatus(input: UpdateLoanStatusInput): Promise<LoanDTO>;
   calculateLoan(loanAmount: number, repaymentMonths: number): LoanCalculation;
@@ -48,6 +66,44 @@ function toLoanDTO(loan: any): LoanDTO {
 }
 
 /**
+ * Map file type/extension to DocumentType enum
+ */
+function mapFileTypeToDocumentType(fileName: string, fileType: string): DocumentType {
+  const lowerName = fileName.toLowerCase();
+  
+  if (lowerName.includes('bvn')) return DocumentType.BVN;
+  if (lowerName.includes('nin')) return DocumentType.NIN;
+  if (lowerName.includes('passport')) return DocumentType.PASSPORT;
+  if (lowerName.includes('driver') || lowerName.includes('license')) return DocumentType.DRIVERS_LICENSE;
+  if (lowerName.includes('voter')) return DocumentType.VOTERS_CARD;
+  if (lowerName.includes('salary') || lowerName.includes('slip')) return DocumentType.SALARY_SLIP;
+  if (lowerName.includes('bank') || lowerName.includes('statement')) return DocumentType.BANK_STATEMENT;
+  if (lowerName.includes('invoice')) return DocumentType.SCHOOL_INVOICE;
+  if (lowerName.includes('school') || lowerName.includes('id')) return DocumentType.SCHOOL_ID;
+  if (lowerName.includes('cac')) return DocumentType.CAC_DOCUMENT;
+  
+  return DocumentType.OTHER;
+}
+
+/**
+ * Get MIME type from file extension or type
+ */
+function getMimeType(fileName: string, fileType: string): string {
+  const extension = fileName.split('.').pop()?.toLowerCase();
+  
+  const mimeTypes: Record<string, string> = {
+    'pdf': 'application/pdf',
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  };
+  
+  return mimeTypes[extension || fileType] || 'application/octet-stream';
+}
+
+/**
  * Loan Service Implementation
  */
 export class LoanService implements ILoanService {
@@ -60,7 +116,11 @@ export class LoanService implements ILoanService {
   /**
    * Create a local student loan application
    */
-  async createLocalLoan(input: Omit<LocalLoanInput, 'userId' | 'schoolId'> & { userId: string; schoolId: string }): Promise<LoanDTO> {
+  async createLocalLoan(input: Omit<LocalLoanInput, 'userId' | 'schoolId'> & { 
+    userId: string; 
+    schoolId: string;
+    uploadedFiles?: UploadedFileData[];
+  }): Promise<LoanDTO> {
     console.log({ msg: 'Creating local loan application', userId: input.userId });
 
     // Check for existing active loans
@@ -77,7 +137,6 @@ export class LoanService implements ILoanService {
       // Create loan
       const newLoan = await this.loanRepository.create({
         userId: input.userId,
-        // studentId: input.studentId,
         schoolId: input.schoolId,
         loanNumber,
         loanAmount: input.loanAmount,
@@ -100,6 +159,11 @@ export class LoanService implements ILoanService {
       // Create installments
       await this.createInstallments(tx, newLoan.id, loanCalculation.monthlyPayment, input.repaymentMonths);
 
+      // Save uploaded documents
+      if (input.uploadedFiles && input.uploadedFiles.length > 0) {
+        await this.saveDocuments(tx, newLoan.id, input.userId, input.uploadedFiles);
+      }
+
       return newLoan;
     });
 
@@ -110,7 +174,11 @@ export class LoanService implements ILoanService {
   /**
    * Create an international student loan application
    */
-  async createInternationalLoan(input: Omit<InternationalLoanInput, 'userId' | 'schoolId'> & { userId: string; schoolId: string }): Promise<LoanDTO> {
+  async createInternationalLoan(input: Omit<InternationalLoanInput, 'userId' | 'schoolId'> & { 
+    userId: string; 
+    schoolId: string;
+    uploadedFiles?: UploadedFileData[];
+  }): Promise<LoanDTO> {
     console.log({ msg: 'Creating international loan application', userId: input.userId });
 
     // Check for existing active loans
@@ -127,7 +195,6 @@ export class LoanService implements ILoanService {
       // Create loan
       const newLoan = await this.loanRepository.create({
         userId: input.userId,
-        // studentId: input.studentId,
         schoolId: input.schoolId,
         loanNumber,
         loanAmount: input.loanAmount,
@@ -163,11 +230,45 @@ export class LoanService implements ILoanService {
       // Create installments
       await this.createInstallments(tx, newLoan.id, loanCalculation.monthlyPayment, input.repaymentMonths);
 
+      // Save uploaded documents
+      if (input.uploadedFiles && input.uploadedFiles.length > 0) {
+        await this.saveDocuments(tx, newLoan.id, input.userId, input.uploadedFiles);
+      }
+
       return newLoan;
     });
 
     console.log({ msg: 'International loan application created', loanId: loan.id });
     return toLoanDTO(loan);
+  }
+
+  /**
+   * Save uploaded documents to database
+   */
+  private async saveDocuments(
+    tx: any,
+    loanId: string,
+    userId: string,
+    uploadedFiles: UploadedFileData[]
+  ): Promise<void> {
+    console.log({ msg: 'Saving documents', loanId, fileCount: uploadedFiles.length });
+
+    const documents = uploadedFiles.map(file => ({
+      userId,
+      loanId,
+      documentType: mapFileTypeToDocumentType(file.name, file.type),
+      fileName: file.name,
+      fileUrl: file.url,
+      fileSize: file.size,
+      mimeType: getMimeType(file.name, file.type),
+      isVerified: false,
+    }));
+
+    await tx.document.createMany({
+      data: documents,
+    });
+
+    console.log({ msg: 'Documents saved successfully', count: documents.length });
   }
 
   /**
@@ -223,7 +324,7 @@ export class LoanService implements ILoanService {
   }
 
   /**
-   * Get loan by ID
+   * Get loan by ID (basic info)
    */
   async getLoanById(id: string): Promise<LoanDTO> {
     console.log({ msg: 'Getting loan by ID', loanId: id });
@@ -235,6 +336,22 @@ export class LoanService implements ILoanService {
     }
 
     return toLoanDTO(loan);
+  }
+
+  /**
+   * Get loan by ID with detailed information
+   * Includes installments, documents, disbursement details
+   */
+  async getLoanByIdDetailed(id: string): Promise<DetailedLoanDTO> {
+    console.log({ msg: 'Getting detailed loan by ID', loanId: id });
+
+    const loan = await this.loanRepository.findByIdDetailed(id);
+
+    if (!loan) {
+      throw new NotFoundError('Loan not found');
+    }
+
+    return loan;
   }
 
   /**

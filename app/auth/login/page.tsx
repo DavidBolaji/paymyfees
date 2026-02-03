@@ -35,7 +35,13 @@ export default function LoginPage() {
       if (data.success) {
         // Use Zustand to store user data
         login(data.data.user, data.data.token, data.data.refreshToken);
-        window.location.href = "/dashboard";
+        
+        // Redirect based on user role
+        if (data.data.user.role === 'ADMIN') {
+          window.location.href = "/admin";
+        } else {
+          window.location.href = "/dashboard";
+        }
       } else {
         // Handle login error
         alert(data.message || "Login failed. Please try again.");

@@ -1,296 +1,253 @@
 /**
  * Verification Utilities
- * Handles token generation, OTP generation, and validation for email verification
+ * Handles email verification and password reset token management
+ * Uses your existing VerificationToken model
  */
 
-import crypto from 'crypto';
 import { prisma } from '@/src/database/prisma';
-import { logger } from '@/src/utils/logger';
-
-// Constants
-const TOKEN_EXPIRY_HOURS = 24; // Link verification token expiry in hours
-const OTP_EXPIRY_MINUTES = 10; // OTP expiry in minutes
-const OTP_LENGTH = 6; // Length of OTP code
+import crypto from 'crypto';
 
 /**
- * Generate a secure random verification token
+ * Generate a random token
  */
-export const generateVerificationToken = (): string => {
+function generateToken(): string {
   return crypto.randomBytes(32).toString('hex');
-};
+}
 
 /**
- * Generate a numeric OTP code
+ * Generate a random 6-digit OTP
  */
-export const generateOTP = (): string => {
-  // Generate a random 6-digit number
-  const min = Math.pow(10, OTP_LENGTH - 1);
-  const max = Math.pow(10, OTP_LENGTH) - 1;
-  return Math.floor(min + Math.random() * (max - min + 1)).toString();
-};
+function generateOTP(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 /**
- * Save verification token to database
+ * Create email verification (link or OTP)
+ * Uses existing VerificationToken model with type field
  */
-export const saveVerificationToken = async (
+export async function createVerification(
   userId: string,
-  token: string,
-  type: 'link' | 'otp',
-  expiresAt: Date
-): Promise<void> => {
-  try {
+  mode: 'link' | 'otp'
+): Promise<{ token?: string; otp?: string; expiresAt: Date }> {
+  // Delete any existing email verifications for this user
+  await prisma.verificationToken.deleteMany({
+    where: { 
+      userId,
+      type: mode as any, // 'link' or 'otp' matches your VerificationType enum
+    },
+  });
+
+  const expiresAt = new Date();
+  
+  if (mode === 'link') {
+    // Link expires in 24 hours
+    expiresAt.setHours(expiresAt.getHours() + 24);
+    
+    const token = generateToken();
+    
     await prisma.verificationToken.create({
       data: {
         userId,
         token,
-        type,
         expiresAt,
+        type: 'link', // matches VerificationType.link
       },
     });
-    try {
-      console.log({
-        message: `Verification ${type} saved for user ${userId}`,
+    
+    return { token, expiresAt };
+  } else {
+    // OTP expires in 10 minutes
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+    
+    const otp = generateOTP();
+    
+    // Store OTP in the token field (since your schema doesn't have separate otp field)
+    await prisma.verificationToken.create({
+      data: {
         userId,
-        type
-      });
-    } catch (loggingError) {
-      // Fallback to simple console logging if structured logging fails
-      console.info(`Verification ${type} saved for user ${userId}`);
-    }
-  } catch (error) {
-    try {
-      console.error({
-        message: `Error saving verification ${type} for user ${userId}`,
-        userId,
-        type,
-        errorMessage: error instanceof Error ? error.message : String(error)
-      });
-    } catch (loggingError) {
-      // Fallback to simple console logging if structured logging fails
-      console.error(`Error saving verification ${type} for user ${userId}: ${error}`);
-    }
-    throw error;
-  }
-};
-
-/**
- * Create verification token or OTP based on mode
- */
-export const createVerification = async (
-  userId: string,
-  mode: 'link' | 'otp'
-): Promise<{ token?: string; otp?: string; expiresAt: Date }> => {
-  try {
-    // Delete any existing tokens for this user
-    await prisma.verificationToken.deleteMany({
-      where: { userId },
+        token: otp, // Store OTP in token field
+        expiresAt,
+        type: 'otp', // matches VerificationType.otp
+      },
     });
-
-    // Set expiry time based on verification type
-    const expiresAt = new Date();
-    if (mode === 'link') {
-      expiresAt.setHours(expiresAt.getHours() + TOKEN_EXPIRY_HOURS);
-      const token = generateVerificationToken();
-      await saveVerificationToken(userId, token, 'link', expiresAt);
-      return { token, expiresAt };
-    } else {
-      expiresAt.setMinutes(expiresAt.getMinutes() + OTP_EXPIRY_MINUTES);
-      const otp = generateOTP();
-      await saveVerificationToken(userId, otp, 'otp', expiresAt);
-      return { otp, expiresAt };
-    }
-  } catch (error) {
-    // Use a safer logging approach to avoid worker thread issues
-    try {
-      console.error({
-        message: `Error creating verification for user ${userId} with mode ${mode}`,
-        userId,
-        mode,
-        errorMessage: error instanceof Error ? error.message : String(error)
-      });
-    } catch (loggingError) {
-      // Fallback to simple string logging if structured logging fails
-      console.error(`Error creating verification for user ${userId} with mode ${mode}: ${error}`);
-    }
-    throw error;
+    
+    return { otp, expiresAt };
   }
-};
+}
 
 /**
- * Verify token or OTP
+ * Verify token or OTP and mark email as verified
  */
-export const verifyToken = async (
+export async function verifyToken(
   tokenOrOtp: string,
   mode: 'link' | 'otp'
-): Promise<boolean> => {
+): Promise<boolean> {
   try {
-    // Find token in database
     const verification = await prisma.verificationToken.findFirst({
       where: {
         token: tokenOrOtp,
-        type: mode,
+        type: mode as any,
+        expiresAt: {
+          gt: new Date(),
+        },
       },
-
     });
 
-    // Check if token exists and is not expired
     if (!verification) {
-      try {
-        console.warn({
-          message: `Invalid verification ${mode} for user`,
-          mode
-        });
-      } catch (loggingError) {
-        // Fallback to simple console logging if structured logging fails
-        console.warn(`Invalid verification ${mode} for user }`);
-      }
       return false;
     }
 
-    if (verification.expiresAt < new Date()) {
-      try {
-        console.warn({
-          message: `Expired verification ${mode} for user `,
-          mode
-        });
-      } catch (loggingError) {
-        // Fallback to simple console logging if structured logging fails
-        console.warn(`Expired verification ${mode} for user ${verification.userId}`);
-      }
-      return false;
-    }
-
-    // Delete the token after successful verification
-    await prisma.verificationToken.delete({
-      where: { id: verification.id },
-    });
-
-    // Update user's email verification status
+    // Mark email as verified
     await prisma.user.update({
       where: { id: verification.userId },
       data: { emailVerified: true },
     });
 
-    try {
-      console.log({
-        message: `Email verification successful for user ${verification.userId}`,
-        userId: verification.userId
-      });
-    } catch (loggingError) {
-      // Fallback to simple console logging if structured logging fails
-      console.info(`Email verification successful for user`);
-    }
+    // Delete the verification record
+    await prisma.verificationToken.delete({
+      where: { id: verification.id },
+    });
+
     return true;
   } catch (error) {
-    try {
-      console.error({
-        message: `Error verifying token for user with mode ${mode}`,
-        mode,
-        errorMessage: error instanceof Error ? error.message : String(error)
-      });
-    } catch (loggingError) {
-      // Fallback to simple console logging if structured logging fails
-      console.error(`Error verifying token for user with mode ${mode}: ${error}`);
-    }
-    throw error;
+    console.error('Error verifying token:', error);
+    return false;
   }
-};
+}
 
 /**
- * Get User By token
+ * Get user ID from token or OTP
  */
-export const getUserByToken = async (
+export async function getUserByToken(
   tokenOrOtp: string,
   mode: 'link' | 'otp'
-): Promise<string | null> => {
+): Promise<string | null> {
   try {
-    // Find token in database
     const verification = await prisma.verificationToken.findFirst({
       where: {
         token: tokenOrOtp,
-        type: mode,
+        type: mode as any,
+        expiresAt: {
+          gt: new Date(),
+        },
       },
-
     });
 
-    // Check if token exists and is not expired
-    if (!verification) {
-      try {
-        console.warn({
-          message: `Invalid verification ${mode} for user`,
-          mode
-        });
-      } catch (loggingError) {
-        // Fallback to simple console logging if structured logging fails
-        console.warn(`Invalid verification ${mode} for user }`);
-      }
-      return null;
-    }
-
-    if (verification.expiresAt < new Date()) {
-      try {
-        console.warn({
-          message: `Expired verification ${mode} for user `,
-          mode
-        });
-      } catch (loggingError) {
-        // Fallback to simple console logging if structured logging fails
-        console.warn(`Expired verification ${mode} for user ${verification.userId}`);
-      }
-      return null;
-    }
-
-   
-    try {
-      console.log({
-        message: `Email verification successful for user ${verification.userId}`,
-        userId: verification.userId
-      });
-    } catch (loggingError) {
-      // Fallback to simple console logging if structured logging fails
-      console.info(`Email verification successful for user`);
-    }
-    return verification.userId;
+    return verification?.userId || null;
   } catch (error) {
-    try {
-      console.error({
-        message: `Error verifying token for user with mode ${mode}`,
-        mode,
-        errorMessage: error instanceof Error ? error.message : String(error)
-      });
-    } catch (loggingError) {
-      // Fallback to simple console logging if structured logging fails
-      console.error(`Error verifying token for user with mode ${mode}: ${error}`);
-    }
-    throw error;
+    console.error('Error getting user by token:', error);
+    return null;
   }
-};
+}
 
 /**
- * Check if token is expired
+ * Create password reset token
+ * We'll use a custom type identifier in the token field to distinguish it
  */
-export const isTokenExpired = async (token: string): Promise<boolean> => {
+export async function createPasswordResetToken(
+  userId: string
+): Promise<{ token: string; expiresAt: Date }> {
+  // Delete any existing password reset tokens for this user
+  // We'll identify password reset tokens by checking if they start with 'reset_'
+  const existingTokens = await prisma.verificationToken.findMany({
+    where: {
+      userId,
+      token: {
+        startsWith: 'reset_',
+      },
+    },
+  });
+
+  // Delete existing reset tokens
+  if (existingTokens.length > 0) {
+    await prisma.verificationToken.deleteMany({
+      where: {
+        userId,
+        token: {
+          startsWith: 'reset_',
+        },
+      },
+    });
+  }
+
+  // Token expires in 1 hour
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + 1);
+  
+  const token = 'reset_' + generateToken(); // Prefix to identify password reset tokens
+  
+  // Use 'link' type for password reset tokens (since they're sent via link)
+  await prisma.verificationToken.create({
+    data: {
+      userId,
+      token,
+      expiresAt,
+      type: 'link',
+    },
+  });
+  
+  return { token, expiresAt };
+}
+
+/**
+ * Verify password reset token and return user ID
+ */
+export async function verifyPasswordResetToken(token: string): Promise<string | null> {
   try {
+    // Check if it's a password reset token (starts with 'reset_')
+    if (!token.startsWith('reset_')) {
+      return null;
+    }
+
     const verification = await prisma.verificationToken.findFirst({
-      where: { token },
+      where: {
+        token,
+        type: 'link',
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
     });
 
     if (!verification) {
-      return true;
+      return null;
     }
 
-    return verification.expiresAt < new Date();
+    // Delete the verification record after use (single-use token)
+    await prisma.verificationToken.delete({
+      where: { id: verification.id },
+    });
+
+    return verification.userId;
   } catch (error) {
-    try {
-      console.error({
-        message: `Error checking token expiration for token ${token.substring(0, 8)}...`,
-        tokenPrefix: token.substring(0, 8),
-        errorMessage: error instanceof Error ? error.message : String(error)
-      });
-    } catch (loggingError) {
-      // Fallback to simple console logging if structured logging fails
-      console.error(`Error checking token expiration for token ${token.substring(0, 8)}...: ${error}`);
-    }
-    throw error;
+    console.error('Error verifying password reset token:', error);
+    return null;
   }
-};
+}
+
+/**
+ * Check if password reset token is valid (without consuming it)
+ */
+export async function checkPasswordResetToken(token: string): Promise<boolean> {
+  try {
+    // Check if it's a password reset token (starts with 'reset_')
+    if (!token.startsWith('reset_')) {
+      return false;
+    }
+
+    const verification = await prisma.verificationToken.findFirst({
+      where: {
+        token,
+        type: 'link',
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    return !!verification;
+  } catch (error) {
+    console.error('Error checking password reset token:', error);
+    return false;
+  }
+}

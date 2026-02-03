@@ -649,6 +649,7 @@ model SchoolSupportMessage {
   @@map("school_support_messages")
 }
 
+
 enum VerificationType {
   link
   otp

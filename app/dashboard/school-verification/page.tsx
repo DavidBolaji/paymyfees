@@ -221,7 +221,16 @@ export default function SchoolVerificationPage() {
               <DataTable
                 title="Verification Logs"
                 columns={VERIFICATION_LOGS_COLUMNS}
-                data={verificationLogs}
+                data={verificationLogs.map(log => ({
+                  date: new Date(log.createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                  }),
+                  activities: log.activity,
+                  details: log.details || '-',
+                  status: log.status
+                }))}
                 viewAllHref="/dashboard/verifications"
                 paginationInfo={undefined}
                 onPageChange={() => { }}
