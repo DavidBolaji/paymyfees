@@ -25,13 +25,21 @@ export default function SupportMessageCard({
       {/* Message Content */}
       <div className="mb-6 px-6">
         <p className="text-center text-sm text-blue-900 leading-relaxed mb-3 min-h-16">
-          {messages.length ? messages[0]?.message: "-"}
+          {messages.length ? messages[0]?.message : "No support messages yet"}
         </p>
 
         {/* Date */}
         <div className="flex items-center justify-center gap-2 text-gray-600">
           <Calendar className="w-4 h-4" />
-          <span className="text-sm">-</span>
+          <span className="text-sm">
+            {messages.length && messages[0]?.createdAt
+              ? new Date(messages[0].createdAt).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                })
+              : '-'}
+          </span>
         </div>
       </div>
 

@@ -42,24 +42,20 @@ export function ApplyForLoanTabs() {
 
       {/* Tab Content */}
       <div className="py-6">
-        {activeTab === 'apply' && (
-          <div className="">
-            {user?.residencyStatus === "LOCAL" ?
-              <ApplyForLoanForm /> :
-              <ApplyForLoanFormInt />
-            }
-          </div>
-        )}
-        {activeTab === 'status' && (
-          <div className="py-8 text-center">
-            <ApplicationStatus />
-          </div>
-        )}
-        {activeTab === 'history' && (
-          <div className="py-8 text-center">
-            <LoanHistory />
-          </div>
-        )}
+        <div className={activeTab === 'apply' ? '' : 'hidden'}>
+          {user?.residencyStatus === "LOCAL" ?
+            <ApplyForLoanForm /> :
+            <ApplyForLoanFormInt />
+          }
+        </div>
+        
+        <div className={activeTab === 'status' ? 'py-8 text-center' : 'hidden'}>
+          <ApplicationStatus />
+        </div>
+        
+        <div className={activeTab === 'history' ? 'py-8 text-center' : 'hidden'}>
+          <LoanHistory />
+        </div>
       </div>
     </div>
   );

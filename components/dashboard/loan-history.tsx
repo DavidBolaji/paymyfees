@@ -1,6 +1,5 @@
 'use client';
 
-import { Clock } from 'lucide-react';
 import { DataTable } from './data-table';
 import { LOAN_HISTORY_COLUMNS } from '@/data';
 import useLoan from '@/hooks/useLoan';

@@ -13,14 +13,14 @@ interface FormData {
 // Props interface
 interface ResetFormProps {
     onSubmit: (data: FormData) => Promise<void>;
+    isSubmitting?: boolean;
 }
 
-export function ResetForm({ onSubmit }: ResetFormProps) {
+export function ResetForm({ onSubmit, isSubmitting = false }: ResetFormProps) {
     // Form state
     const [formData, setFormData] = useState<FormData>({
         password: "",
         confirmPassword: "",
-
     });
 
     // Validation state
@@ -28,8 +28,6 @@ export function ResetForm({ onSubmit }: ResetFormProps) {
     const [touched, setTouched] = useState<Record<string, boolean>>({});
     const [passwordFocused, setPasswordFocused] = useState(false);
     const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
-    // Loading state
-    const [loading, setLoading] = useState(false);
 
     // Handle input changes
     const handleChange = (field: string, value: string) => {
@@ -55,11 +53,29 @@ export function ResetForm({ onSubmit }: ResetFormProps) {
             case "password":
                 if (!value) {
                     newErrors.password = "Password is required";
+                } else if (value.length < 8) {
+                    newErrors.password = "Password must be at least 8 characters";
+                } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(value)) {
+                    newErrors.password = "Password must contain uppercase, lowercase, and number";
+                } else {
+                    delete newErrors.password;
+                }
+                // Re-validate confirm password if it's been touched
+                if (touched.confirmPassword && formData.confirmPassword) {
+                    if (formData.confirmPassword !== value) {
+                        newErrors.confirmPassword = "Passwords don't match";
+                    } else {
+                        delete newErrors.confirmPassword;
+                    }
                 }
                 break;
             case "confirmPassword":
                 if (!value) {
-                    newErrors.password = "Confirm password is required";
+                    newErrors.confirmPassword = "Please confirm your password";
+                } else if (value !== formData.password) {
+                    newErrors.confirmPassword = "Passwords don't match";
+                } else {
+                    delete newErrors.confirmPassword;
                 }
                 break;
             default:
@@ -92,7 +108,7 @@ export function ResetForm({ onSubmit }: ResetFormProps) {
     const isFormValid = () => {
         // Check if all required fields have values
         const requiredFields = ["confirmPassword", "password"];
-        const hasAllRequiredFields = requiredFields.every(field => {
+        const hasAllRequiredFields = requiredFields.every((field) => {
             return !!formData[field as keyof typeof formData];
         });
 
@@ -106,29 +122,20 @@ export function ResetForm({ onSubmit }: ResetFormProps) {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (validateForm()) {
-            try {
-                setLoading(true);
-                await onSubmit(formData);
-            } catch (error) {
-                console.error("Login error:", error);
-                // Handle submission error
-            } finally {
-                setLoading(false);
-            }
+        if (validateForm() && isFormValid()) {
+            await onSubmit(formData);
         }
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 md:min-w-96">
-          
             {/* Password */}
             <div>
                 <CustomInput
-                    label="Password"
+                    label="New Password"
                     type="password"
                     value={formData.password}
-                    placeholder="Enter your password"
+                    placeholder="Enter your new password"
                     onChange={(value) => handleChange("password", value)}
                     onFocus={() => setPasswordFocused(true)}
                     onBlur={() => {
@@ -137,7 +144,6 @@ export function ResetForm({ onSubmit }: ResetFormProps) {
                     }}
                     error={touched.password && !!errors.password && !passwordFocused}
                 />
-
 
                 <AnimatePresence>
                     {touched.password && errors.password && !passwordFocused && (
@@ -153,49 +159,52 @@ export function ResetForm({ onSubmit }: ResetFormProps) {
                     )}
                 </AnimatePresence>
             </div>
-            {/* Password */}
+
+            {/* Confirm Password */}
             <div>
                 <CustomInput
-                    label="Confirm password"
+                    label="Confirm Password"
                     type="password"
                     value={formData.confirmPassword}
-                    placeholder="Enter your password"
+                    placeholder="Confirm your new password"
                     onChange={(value) => handleChange("confirmPassword", value)}
                     onFocus={() => setConfirmPasswordFocused(true)}
                     onBlur={() => {
                         setConfirmPasswordFocused(false);
                         handleBlur("confirmPassword");
                     }}
-                    error={touched.confirmPassword && !!errors.confirmPassword && !confirmPasswordFocused}
+                    error={
+                        touched.confirmPassword &&
+                        !!errors.confirmPassword &&
+                        !confirmPasswordFocused
+                    }
                 />
 
-
                 <AnimatePresence>
-                    {touched.confirmPassword && errors.confirmPassword && !confirmPasswordFocused && (
-                        <motion.p
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.2 }}
-                            className="text-red-500 text-xs mt-1"
-                        >
-                            {errors.confirmPassword}
-                        </motion.p>
-                    )}
+                    {touched.confirmPassword &&
+                        errors.confirmPassword &&
+                        !confirmPasswordFocused && (
+                            <motion.p
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.2 }}
+                                className="text-red-500 text-xs mt-1"
+                            >
+                                {errors.confirmPassword}
+                            </motion.p>
+                        )}
                 </AnimatePresence>
             </div>
 
-
-
-          
             {/* Submit Button */}
             <button
                 type="submit"
-                disabled={loading || !isFormValid()}
-                className={`bg-[#002561] w-full font-bold py-[0.9375rem] rounded-lg text-white ${loading || !isFormValid() ? "opacity-50 cursor-not-allowed" : ""
+                disabled={isSubmitting || !isFormValid()}
+                className={`bg-[#002561] w-full font-bold py-[0.9375rem] rounded-lg text-white ${isSubmitting || !isFormValid() ? "opacity-50 cursor-not-allowed" : ""
                     }`}
             >
-                {loading ? "Sending" : "Send"}
+                {isSubmitting ? "Resetting Password..." : "Reset Password"}
             </button>
         </form>
     );

@@ -8,6 +8,12 @@ export async function authFetch(url: string, options: FetchOptions = {}) {
   const { token } = useAuthStore.getState();
   const { skipAuth, ...fetchOptions } = options;
   
+  // If no token and auth is required, don't make the request
+  if (!token && !skipAuth) {
+    console.warn('No auth token available, skipping request to:', url);
+    throw new Error('No authentication token available');
+  }
+  
   // Merge headers, adding Authorization if token exists and skipAuth is not true
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
@@ -62,7 +68,8 @@ export async function authFetch(url: string, options: FetchOptions = {}) {
     
     // If refresh fails or no refresh token, logout
     logout();
-    window.location.href = '/login';
+    window.location.replace('/auth/login');
+    throw new Error('Authentication failed');
   }
 
   return response;

@@ -12,15 +12,22 @@ import {
   Sun, 
   Moon, 
   LogOut,
-  ChevronRight
+  ChevronRight,
+  Users,
+  Building2,
+  FileText,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Logo from "@/assets/images/logo/logo.png";
 import Image from 'next/image';
 import useAuthStore from '@/src/authStore';
+import { api } from '@/src/lib/api';
+import { UserCircleIcon } from '@/assets/icons/UserCircleIcon';
 
 interface SidebarProps {
   className?: string;
+  isAdmin?: boolean;
 }
 
 interface NavItem {
@@ -34,7 +41,7 @@ interface NavGroup {
   items: NavItem[];
 }
 
-const navigationGroups: NavGroup[] = [
+const studentNavigationGroups: NavGroup[] = [
   {
     items: [
       { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }
@@ -58,13 +65,46 @@ const navigationGroups: NavGroup[] = [
     items: [
       { icon: HelpCircle, label: 'Help Center', href: '/dashboard/help' }
     ]
-  }
+  },
+  {
+    items: [
+      { icon: UserCircleIcon, label: 'Profile', href: '/dashboard/profile' }
+    ]
+  },
 ];
 
-export function Sidebar({ className }: SidebarProps) {
+const adminNavigationGroups: NavGroup[] = [
+  {
+    items: [
+      { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' }
+    ]
+  },
+  {
+    title: 'MANAGEMENT',
+    items: [
+      { icon: FileText, label: 'Loans', href: '/admin/loans' },
+      { icon: Building2, label: 'Schools', href: '/admin/schools' },
+      { icon: Users, label: 'Users', href: '/admin/users' }
+    ]
+  },
+  {
+    title: 'SUPPORT',
+    items: [
+      { icon: MessageSquare, label: 'Support Tickets', href: '/admin/support' }
+    ]
+  },
+  {
+    items: [
+      { icon: UserCircleIcon, label: 'Profile', href: '/admin/profile' }
+    ]
+  },
+];
+
+export function Sidebar({ className, isAdmin = false }: SidebarProps) {
   const [isDark, setIsDark] = useState(false);
-  const {logout, token} = useAuthStore()
+  const {logout} = useAuthStore()
   const pathname = usePathname();
+  const navigationGroups = isAdmin ? adminNavigationGroups : studentNavigationGroups;
 
   const toggleTheme = (dark: boolean) => {
     setIsDark(dark);
@@ -77,31 +117,22 @@ export function Sidebar({ className }: SidebarProps) {
 
   const handleLogout = async () => {
     try {
-      // Call API to register the user
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-         'Authorization': `Bearer ${token}`
-         },
+      // Clear session first to prevent any API calls
+      logout();
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Call API to logout (fire and forget)
+      api.post('/api/auth/logout').catch(() => {
+        // Ignore errors, we're logging out anyway
       });
       
-      const data = await response.json();
-      
-      if (data.success) {
-        // clear session
-        logout()
-        localStorage.clear()
-        // Redirect to appropriate verification page based on mode
-        window.location.href = "/auth/login";
-
-      } else {
-        // Handle registration error
-        alert(data.message || "Logout failed. Please try again.");
-      }
+      // Immediate redirect to login page
+      window.location.replace("/auth/login");
     } catch (error) {
-      console.error("Registration error:", error);
-      alert("An error occurred during registration. Please try again.");
+      console.error("Logout error:", error);
+      // Force redirect even on error
+      window.location.replace("/auth/login");
     }
   }
 
@@ -126,14 +157,16 @@ export function Sidebar({ className }: SidebarProps) {
             )}
             <div className="space-y-1">
               {group.items.map((item, itemIndex) => {
-                const isActive = item.href === '/dashboard' 
-                  ? pathname === '/dashboard' || 
-                    pathname.startsWith('/dashboard/loans') || 
-                    pathname.startsWith('/dashboard/timeline') || 
-                    pathname.startsWith('/dashboard/transactions') ||
-                    pathname.startsWith('/dashboard/apply-loan') ||
-                    pathname.startsWith('/dashboard/view-payment-plan')
-                  : pathname === item.href;
+                const isActive = (item.href === '/dashboard' || item.href === '/admin')
+                  ? pathname === item.href || 
+                    (item.href === '/dashboard' && (
+                      pathname.startsWith('/dashboard/loans') || 
+                      pathname.startsWith('/dashboard/timeline') || 
+                      pathname.startsWith('/dashboard/transactions') ||
+                      pathname.startsWith('/dashboard/apply-loan') ||
+                      pathname.startsWith('/dashboard/view-payment-plan')
+                    ))
+                  : pathname === item.href || pathname.startsWith(item.href + '/');
                 return (
                   <div key={itemIndex} className="group relative">
                     <Link

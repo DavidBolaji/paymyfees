@@ -14,6 +14,7 @@ import RegistrationModal from './registration-modal';
 import { ResidencyStatus } from '@prisma/client';
 import useAuthStore from '@/src/authStore';
 import { CloudinaryUploadResult } from '@/src/utils/cloudinary-api';
+import { useLoanApplicationStore } from '@/src/stores/loanApplicationStore';
 
 interface RepaymentPlan {
   months: number;
@@ -42,53 +43,36 @@ interface ExtendedLoanApplicationFormData extends Partial<LoanApplicationFormDat
 }
 
 export function ApplyForLoanForm() {
-  const { user } = useAuthStore()
+  const { user } = useAuthStore();
+  const { formData, updateFormData, updateConsent, resetForm } = useLoanApplicationStore();
   const fileUploadRef = useRef<any>(null);
-  // Form state
-  const [formData, setFormData] = useState<Partial<ExtendedLoanApplicationFormData>>({
-    selectedPlan: 6,
-    loanAmount: 0,
-    schoolId: '',
-    schoolName: '',
-    academicSession: '',
-    term: '',
-    uploadedFiles: [],
-    consents: {
-      schoolDetails: false,
-      directPayment: false,
-      terms: false
-    }
-  });
-
-
+  
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
 
   // Calculate repayment plans
-  const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
-    if (amount <= 0) return [];
+const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
+  if (amount <= 0) return [];
 
-    const plans: RepaymentPlan[] = [];
-    const interestRates = {
-      1: 0.05, 2: 0.08, 3: 0.10, 4: 0.12, 5: 0.15, 6: 0.18,
-      7: 0.20, 8: 0.22, 9: 0.25, 10: 0.28, 11: 0.30, 12: 0.32
-    };
+  const plans: RepaymentPlan[] = [];
+  const monthlyInterestRate = 0.02; // 2% per month
 
-    for (let months = 1; months <= 12; months++) {
-      const interestRate = interestRates[months as keyof typeof interestRates] || 0.35;
-      const totalAmount = amount * (1 + interestRate);
-      const monthlyAmount = totalAmount / months;
+  for (let months = 1; months <= 12; months++) {
+    // Calculate total interest: 2% * number of months
+    const totalInterestRate = monthlyInterestRate * months;
+    const totalAmount = amount * (1 + totalInterestRate);
+    const monthlyAmount = totalAmount / months;
 
-      plans.push({
-        months,
-        monthlyAmount: Math.round(monthlyAmount),
-        totalAmount: Math.round(totalAmount)
-      });
-    }
+    plans.push({
+      months,
+      monthlyAmount: Math.round(monthlyAmount),
+      totalAmount: Math.round(totalAmount)
+    });
+  }
 
-    return plans;
-  };
+  return plans;
+};
 
   const repaymentPlans = calculateRepaymentPlans(formData.loanAmount || 0);
   const selectedPlanData = repaymentPlans.find(plan => plan.months === formData.selectedPlan);
@@ -111,7 +95,7 @@ export function ApplyForLoanForm() {
 
   // Form handlers
   const handleInputChange = (field: keyof LoanApplicationFormData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    updateFormData({ [field]: value });
 
     // Clear field error when user starts typing
     if (errors[field as keyof FormErrors]) {
@@ -120,15 +104,7 @@ export function ApplyForLoanForm() {
   };
 
   const handleConsentChange = (key: keyof NonNullable<LoanApplicationFormData['consents']>, checked: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      consents: {
-        schoolDetails: prev.consents?.schoolDetails || false,
-        directPayment: prev.consents?.directPayment || false,
-        terms: prev.consents?.terms || false,
-        [key]: checked
-      }
-    }));
+    updateConsent(key, checked);
 
     // Clear consent error
     if (errors.consents?.[key]) {
@@ -242,19 +218,7 @@ export function ApplyForLoanForm() {
       alert('Loan application submitted successfully!');
 
       // Reset form
-      setFormData({
-        selectedPlan: 6,
-        loanAmount: 0,
-        schoolName: '',
-        academicSession: '',
-        term: '',
-        uploadedFiles: [],
-        consents: {
-          schoolDetails: false,
-          directPayment: false,
-          terms: false
-        }
-      });
+      resetForm();
 
     } catch (error) {
       console.error('Submission error:', error);
@@ -266,19 +230,7 @@ export function ApplyForLoanForm() {
 
   const handleCancel = () => {
     if (confirm('Are you sure you want to cancel? All form data will be lost.')) {
-      setFormData({
-        selectedPlan: 6,
-        loanAmount: 0,
-        schoolName: '',
-        academicSession: '',
-        term: '',
-        uploadedFiles: [],
-        consents: {
-          schoolDetails: false,
-          directPayment: false,
-          terms: false
-        }
-      });
+      resetForm();
       setErrors({});
     }
   };
@@ -297,7 +249,7 @@ export function ApplyForLoanForm() {
   };
 
   const handleSchoolChange = (schoolId: string, schoolName: string) => {
-    setFormData(prev => ({ ...prev, schoolId, schoolName }));
+    updateFormData({ schoolId, schoolName });
   };
 
   return (

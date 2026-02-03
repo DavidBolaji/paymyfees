@@ -16,7 +16,6 @@ import {
   UnauthorizedError,
 } from '@/src/types/errors';
 import {
-
   CreateUserInput,
   LoginInput,
   AuthResponse
@@ -24,7 +23,7 @@ import {
 import { executeTransaction } from '@/src/database/prisma';
 import { UserRole } from '@prisma/client';
 import { MailService, IMailService } from '@/src/services/MailService';
-import { createVerification, getUserByToken, verifyToken } from '@/src/utils/verification';
+import { createVerification, getUserByToken, verifyToken, createPasswordResetToken, verifyPasswordResetToken } from '@/src/utils/verification';
 
 /**
  * Auth Service Interface
@@ -76,13 +75,12 @@ export class AuthService implements IAuthService {
       const newUser = await tx.user.create({
         data: {
           email: input.email,
-          //phone: input.phone,
           password: hashedPassword,
           country: input.country,
           role: input.role,
           fullName: input.fullName,
           profileImage: input.profileImage,
-          emailVerified: false, // Ensure email is not verified until confirmation
+          emailVerified: false,
         },
       });
 
@@ -93,18 +91,16 @@ export class AuthService implements IAuthService {
             userId: newUser.id,
           },
         });
+
+        // Create wallet for parent
+        await tx.wallet.create({
+          data: {
+            userId: newUser.id,
+          },
+        });
       } else if (input.role === UserRole.SCHOOL) {
         // School profile will be created separately with full details
       }
-      
-      // Create wallet for all users
-      await tx.wallet.create({
-        data: {
-          userId: newUser.id,
-          balance: 0,
-          currency: 'NGN',
-        },
-      });
 
       return newUser;
     });
@@ -115,7 +111,6 @@ export class AuthService implements IAuthService {
         userId: user.id
       });
     } catch (loggingError) {
-      // Fallback to simple console logging if structured logging fails
       console.info(`User registered successfully with ID ${user.id}`);
     }
 
@@ -141,7 +136,6 @@ export class AuthService implements IAuthService {
           mode: input.mode
         });
       } catch (loggingError) {
-        // Fallback to simple console logging if structured logging fails
         console.info(`Verification email sent to ${user.email} using ${input.mode} mode`);
       }
     } catch (error) {
@@ -152,11 +146,8 @@ export class AuthService implements IAuthService {
           errorMessage: error instanceof Error ? error.message : String(error)
         });
       } catch (loggingError) {
-        // Fallback to simple console logging if structured logging fails
         console.error(`Failed to send verification email to ${user.email}: ${error}`);
       }
-      // Continue with registration even if email fails
-      // We can implement a resend verification email feature later
     }
 
     // Generate tokens
@@ -173,7 +164,6 @@ export class AuthService implements IAuthService {
       user: {
         id: user.id,
         email: user.email,
-        // phone: user.phone,
         role: user.role,
         fullName: user.fullName,
         profileImage: user.profileImage,
@@ -195,14 +185,12 @@ export class AuthService implements IAuthService {
    * Validates credentials and returns tokens
    */
   async login(input: LoginInput): Promise<AuthResponse> {
-    // @ts-ignore
     console.log('User login attempt', { email: input.email });
 
     // Find user by email
     const user = await this.userRepository.findByEmail(input.email);
 
     if (!user) {
-      // @ts-ignore
       console.warn('Login failed: user not found', { email: input.email });
       throw new UnauthorizedError('Invalid email or password');
     }
@@ -211,21 +199,18 @@ export class AuthService implements IAuthService {
     const isPasswordValid = await this.verifyPassword(input.password, user.password);
 
     if (!isPasswordValid) {
-      // @ts-ignore
       console.warn('Login failed: invalid password', { email: input.email });
       throw new UnauthorizedError('Invalid email or password');
     }
 
     // Check if user is active
     if (!user.isActive) {
-      // @ts-ignore
       console.warn('Login failed: user inactive', { email: input.email });
       throw new UnauthorizedError('Account is inactive');
     }
 
     // Update last login
     await this.userRepository.updateLastLogin(user.id);
-    // @ts-ignore
     console.log('User logged in successfully', { userId: user.id });
 
     // Generate tokens
@@ -242,7 +227,6 @@ export class AuthService implements IAuthService {
       user: {
         id: user.id,
         email: user.email,
-        // phone: user.phone,
         role: user.role,
         fullName: user.fullName,
         profileImage: user.profileImage,
@@ -290,7 +274,6 @@ export class AuthService implements IAuthService {
     const newToken = generateToken(authUser);
     const newRefreshToken = generateRefreshToken(authUser);
 
-    // @ts-ignore
     console.log('Token refreshed successfully', { userId: user.id });
 
     return {
@@ -308,14 +291,14 @@ export class AuthService implements IAuthService {
     mode: 'link' | 'otp'
   ): Promise<boolean> {
     try {
-      console.log(`Verifying email for user  using ${mode} mode`);
+      console.log(`Verifying email using ${mode} mode`);
       
       // Verify token or OTP
       const userId = await getUserByToken(tokenOrOtp, mode);
       const isVerified = await verifyToken(tokenOrOtp, mode);
 
-      console.log(userId, "UserId authservide")
-      console.log(isVerified, "usvrified")
+      console.log(userId, "UserId authservice");
+      console.log(isVerified, "isVerified");
       
       if (isVerified) {
         // Send welcome email
@@ -334,8 +317,7 @@ export class AuthService implements IAuthService {
           errorMessage: error instanceof Error ? error.message : String(error)
         });
       } catch (loggingError) {
-        // Fallback to simple console logging if structured logging fails
-        console.error(`Email verification failed for user : ${error}`);
+        console.error(`Email verification failed: ${error}`);
       }
       return false;
     }
@@ -343,31 +325,90 @@ export class AuthService implements IAuthService {
 
   /**
    * Request password reset
+   * Generates reset token and sends email
    */
   async requestPasswordReset(email: string): Promise<void> {
-    const user = await this.userRepository.findByEmail(email);
+    try {
+      console.log('Password reset requested', { email });
 
-    if (!user) {
-      // Don't reveal if email exists
-      // @ts-ignore
-      console.warn('Password reset requested for non-existent email', { email });
-      return;
+      // Find user by email
+      const user = await this.userRepository.findByEmail(email);
+
+      if (!user) {
+        // Don't reveal if email exists for security
+        console.warn('Password reset requested for non-existent email', { email });
+        // Still return success to prevent email enumeration
+        return;
+      }
+
+      // Check if user is active
+      if (!user.isActive) {
+        console.warn('Password reset requested for inactive user', { email });
+        // Still return success to prevent account status enumeration
+        return;
+      }
+
+      // Generate password reset token
+      const resetData = await createPasswordResetToken(user.id);
+
+      // Send password reset email
+      await this.mailService.sendResetPasswordEmail(
+        user.email,
+        user.fullName,
+        resetData
+      );
+
+      console.log('Password reset email sent successfully', { email });
+    } catch (error) {
+      console.error('Error in requestPasswordReset', {
+        email,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      // Don't throw error to prevent information leakage
     }
-
-    // TODO: Generate reset token and send email
-    // @ts-ignore
-    console.log('Password reset requested', { userId: user.id });
   }
 
   /**
    * Reset password
+   * Verifies token and updates password
    */
-  async resetPassword(_token: string, _newPassword: string): Promise<void> {
-    // TODO: Implement password reset logic
-    // 1. Verify reset token
-    // 2. Hash new password
-    // 3. Update user password
-    console.log('Password reset');
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    try {
+      console.log('Password reset attempt');
+
+      // Verify reset token and get user ID
+      const userId = await verifyPasswordResetToken(token);
+
+      if (!userId) {
+        throw new UnauthorizedError('Invalid or expired reset token');
+      }
+
+      // Find user
+      const user = await this.userRepository.findById(userId);
+
+      if (!user) {
+        throw new UnauthorizedError('User not found');
+      }
+
+      if (!user.isActive) {
+        throw new UnauthorizedError('Account is inactive');
+      }
+
+      // Hash new password
+      const hashedPassword = await this.hashPassword(newPassword);
+
+      // Update user password
+      await this.userRepository.update(userId, {
+        password: hashedPassword,
+      });
+
+      console.log('Password reset successful', { userId });
+    } catch (error) {
+      console.error('Error in resetPassword', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
   }
 
   /**
@@ -385,4 +426,3 @@ export class AuthService implements IAuthService {
     return await bcrypt.compare(password, hash);
   }
 }
-

@@ -210,19 +210,19 @@ export function ViewPaymentPlan({ paymentPlan }: ViewPaymentPlanProps) {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex sm:flex-row flex-col gap-4">
-        <Button
-          variant="outline"
-          className="flex-1 hover:bg-gray-50 border-2 border-gray-300 h-12 text-gray-700"
-        >
-          Cancel
-        </Button>
-        <Button
-          className="flex-1 bg-[#00296B] hover:bg-[#002561] h-12 text-white"
-        >
-          Request Payment Extension
-        </Button>
-      </div>
     </div>
   );
 }
+{/* <div className="flex sm:flex-row flex-col gap-4">
+  <Button
+    variant="outline"
+    className="flex-1 hover:bg-gray-50 border-2 border-gray-300 h-12 text-gray-700"
+  >
+    Cancel
+  </Button>
+  <Button
+    className="flex-1 bg-[#00296B] hover:bg-[#002561] h-12 text-white"
+  >
+    Request Payment Extension
+  </Button>
+</div> */}
