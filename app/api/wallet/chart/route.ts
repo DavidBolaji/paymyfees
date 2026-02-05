@@ -3,7 +3,7 @@
  * GET /api/wallet/chart
  */
 
-import { NextResponse } from 'next/server';
+
 import { WalletController } from '@/src/controllers/WalletController';
 import { asyncHandler } from '@/src/middleware/errorHandler';
 import { lenientRateLimiter } from '@/src/middleware/rateLimiter';

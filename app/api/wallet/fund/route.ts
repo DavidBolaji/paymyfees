@@ -6,8 +6,7 @@
 import { WalletController } from '@/src/controllers/WalletController';
 import { asyncHandler } from '@/src/middleware/errorHandler';
 import { lenientRateLimiter } from '@/src/middleware/rateLimiter';
-import { studentAuthMiddleware } from '@/src/middleware/authMiddleware';
-import { UserRole } from '@prisma/client';
+import { authMiddleware } from '@/src/middleware/authMiddleware';
 
 const walletController = new WalletController();
 
@@ -20,15 +19,11 @@ export const POST = asyncHandler(async (req: Request) => {
   await lenientRateLimiter(req);
 
   // Authenticate user
-  const authResult = await studentAuthMiddleware(req);
+  const authResult = await authMiddleware(req);
   if (!authResult.success) {
     return authResult.response!;
   }
 
   // Delegate to controller
-  // return await walletController.fundWallet(req, {
-  //   id: authResult.userId!,
-  //   email: '',
-  //   role: authResult.role as UserRole
-  // });
+  return await walletController.initializePayment(req, { id: authResult.userId!, email: '', role: 'PARENT' as any });
 });

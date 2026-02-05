@@ -6,7 +6,6 @@
 
 import { AdminRepository, IAdminRepository } from '@/src/repositories/AdminRepository';
 import { LoanRepository } from '@/src/repositories/LoanRepository';
-import { SchoolRepository } from '@/src/repositories/SchoolRepository';
 import { NotFoundError, BadRequestError } from '@/src/types/errors';
 import { LoanStatus } from '@prisma/client';
 
@@ -38,12 +37,10 @@ export interface IAdminService {
 export class AdminService implements IAdminService {
   private adminRepository: IAdminRepository;
   private loanRepository: LoanRepository;
-  private schoolRepository: SchoolRepository;
 
   constructor(adminRepository?: IAdminRepository) {
     this.adminRepository = adminRepository || new AdminRepository();
     this.loanRepository = new LoanRepository();
-    this.schoolRepository = new SchoolRepository();
   }
 
   /**

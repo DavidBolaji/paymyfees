@@ -3,7 +3,7 @@
  * Registers all services, repositories, and controllers in the container
  */
 
-import { container, ServiceLifecycle } from './container';
+import { container } from './container';
 import { UserRepository, IUserRepository } from '@/src/repositories/UserRepository';
 import { AuthService, IAuthService } from '@/src/services/AuthService';
 import { AuthController } from '@/src/controllers/AuthController';

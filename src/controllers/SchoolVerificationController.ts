@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server';
 import { SchoolVerificationService, ISchoolVerificationService } from '@/src/services/SchoolVerificationService';
 import { ApiResponse } from '@/src/types';
-import { logger } from '@/src/utils/logger';
+
 import { ValidationError } from '@/src/types/errors';
 
 /**

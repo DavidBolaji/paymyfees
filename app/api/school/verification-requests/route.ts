@@ -25,5 +25,5 @@ export const GET = asyncHandler(async (req: Request) => {
   }
 
   // Delegate to controller
-  return await schoolController.getVerificationRequests(req, authResult.userId!);
+  return await schoolController.getVerificationRequests(req, authResult.userId!, undefined as any);
 });

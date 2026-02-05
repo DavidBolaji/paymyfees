@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CustomInput } from "@/components/ui/custom-input";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 
 // Password validation criteria
 const PASSWORD_CRITERIA = {

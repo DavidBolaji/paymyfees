@@ -37,11 +37,6 @@ interface FormErrors {
   };
 }
 
-// Extended interface for form data with proper file typing
-interface ExtendedLoanApplicationFormData extends Partial<LoanApplicationFormData> {
-  uploadedFiles?: UploadedFile[]; // Use proper type here
-}
-
 export function ApplyForLoanForm() {
   const { user } = useAuthStore();
   const { formData, updateFormData, updateConsent, resetForm } = useLoanApplicationStore();

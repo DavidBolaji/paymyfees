@@ -26,11 +26,23 @@ export class DashboardRepository implements IDashboardRepository {
     console.log({ msg: 'Fetching user dashboard stats from database', userId });
     
     try {
-      // Get active loans
+      // Get user to check role
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true }
+      });
+
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Get active loans (includes DISBURSED and ACTIVE status)
       const activeLoans = await prisma.loan.findMany({
         where: {
           userId,
-          status: LoanStatus.ACTIVE,
+          status: {
+            in: [LoanStatus.DISBURSED, LoanStatus.ACTIVE],
+          },
         },
         orderBy: {
           createdAt: 'desc',
@@ -47,6 +59,7 @@ export class DashboardRepository implements IDashboardRepository {
       return {
         activeLoans,
         wallet,
+        userRole: user.role,
       };
     } catch (error) {
       console.error({ 
@@ -65,10 +78,13 @@ export class DashboardRepository implements IDashboardRepository {
     console.log({ msg: 'Fetching user analytics from database', userId });
     
     try {
-      // Get all loans
+      // Get all loans (excluding only CANCELLED and REJECTED)
       const loans = await prisma.loan.findMany({
         where: {
           userId,
+          status: {
+            notIn: [LoanStatus.CANCELLED, LoanStatus.REJECTED],
+          },
         },
       });
       

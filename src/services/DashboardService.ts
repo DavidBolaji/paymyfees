@@ -42,26 +42,33 @@ export class DashboardService implements IDashboardService {
     
     // Get upcoming payment
     let upcomingPayment = null;
-    if (data.activeLoans.length > 0) {
+    if (data.activeLoans && data.activeLoans.length > 0) {
       const firstLoan = data.activeLoans[0];
       
-      // Calculate the next payment date (30 days from disbursement date or today if no disbursement date)
-      const disbursementDate = firstLoan?.disbursementDate || new Date();
-      const nextPaymentDate = new Date(disbursementDate);
-      nextPaymentDate.setDate(nextPaymentDate.getDate() + 30); // 30 days from disbursement
+      // Get the next pending installment
+      const nextInstallment = await this.getNextPendingInstallment(firstLoan.id);
       
-      // Format the date properly
-      const formattedDate = this.formatDate(nextPaymentDate);
-      
-      upcomingPayment = {
-        amount: firstLoan?.monthlyPayment || 0,
-        dueDate: formattedDate,
-      };
+      if (nextInstallment) {
+        upcomingPayment = {
+          amount: nextInstallment.amount,
+          dueDate: this.formatDate(new Date(nextInstallment.dueDate)),
+        };
+      } else {
+        // Fallback: Calculate the next payment date (30 days from disbursement date or today)
+        const disbursementDate = firstLoan?.disbursementDate || new Date();
+        const nextPaymentDate = new Date(disbursementDate);
+        nextPaymentDate.setDate(nextPaymentDate.getDate() + 30);
+        
+        upcomingPayment = {
+          amount: firstLoan?.monthlyPayment || 0,
+          dueDate: this.formatDate(nextPaymentDate),
+        };
+      }
     }
 
     // Get active plan
     let activePlan = null;
-    if (data.activeLoans.length > 0) {
+    if (data.activeLoans && data.activeLoans.length > 0) {
       const loan = data.activeLoans[0];
       
       // Calculate the number of installments paid and total installments
@@ -76,7 +83,7 @@ export class DashboardService implements IDashboardService {
     }
 
     // Calculate total outstanding balance
-    const totalOutstandingBalance = data.activeLoans.reduce(
+    const totalOutstandingBalance = (data.activeLoans || []).reduce(
       (sum: number, loan: any) => sum + (loan.outstandingBalance || 0),
       0
     );
@@ -93,6 +100,25 @@ export class DashboardService implements IDashboardService {
         description: 'Current wallet balance',
       },
     };
+  }
+  
+  /**
+   * Get next pending installment for a loan
+   */
+  private async getNextPendingInstallment(loanId: string): Promise<any> {
+    const { prisma } = await import('@/src/lib/prisma');
+    
+    const nextInstallment = await prisma.installment.findFirst({
+      where: {
+        loanId,
+        status: 'PENDING',
+      },
+      orderBy: {
+        dueDate: 'asc',
+      },
+    });
+    
+    return nextInstallment;
   }
   
   /**

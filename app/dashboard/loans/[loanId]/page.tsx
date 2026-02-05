@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Download, Headphones, CheckSquare, X } from 'lucide-react';
+import { Download, Headphones, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { BackNavigation } from '@/components/dashboard/back-navigation';

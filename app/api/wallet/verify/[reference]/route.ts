@@ -16,7 +16,7 @@ const walletController = new WalletController();
  * GET /api/wallet/verify/:reference
  * Verify a payment reference
  */
-export const GET = asyncHandler(async (req: Request, context?: { params: { reference: string } }) => {
+export const GET = asyncHandler(async (req: Request, context?: { params: Promise<{ reference: string }> }) => {
   // Apply lenient rate limiting for payment verification
   await lenientRateLimiter(req);
 
@@ -27,7 +27,23 @@ export const GET = asyncHandler(async (req: Request, context?: { params: { refer
   }
 
   // Ensure context and params exist
-  if (!context || !context.params || !context.params.reference) {
+  if (!context || !context.params) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Missing reference parameter',
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 400 }
+    );
+  }
+
+  // Await params (Next.js 15 requirement)
+  const params = await context.params;
+
+  if (!params.reference) {
     return NextResponse.json(
       {
         success: false,
@@ -41,7 +57,7 @@ export const GET = asyncHandler(async (req: Request, context?: { params: { refer
   }
 
   // Delegate to controller
-  return await walletController.verifyPayment(req, context.params.reference, {
+  return await walletController.verifyPayment(req, params.reference, {
     id: authResult.userId!,
     email: '',
     role: authResult.role as UserRole

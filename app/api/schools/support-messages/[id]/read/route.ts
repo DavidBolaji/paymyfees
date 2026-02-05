@@ -12,7 +12,7 @@ import { asyncHandler } from '@/src/middleware/errorHandler';
  */
 export const PUT = asyncHandler(async (
   req: Request,
-  context: { params: { schoolId: string; id: string } }
+  context: { params: Promise<{ schoolId: string; id: string }> }
 ) => {
   await lenientRateLimiter(req);
 
@@ -21,7 +21,8 @@ export const PUT = asyncHandler(async (
     return authResult.response;
   }
 
-  const { schoolId, id } = await context.params;
+  const params = await context.params;
+  const { schoolId, id } = params;
 
   // Ensure this school belongs to the user
   const school = await prisma.schoolProfile.findFirst({

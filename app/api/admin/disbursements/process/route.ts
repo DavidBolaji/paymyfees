@@ -15,7 +15,7 @@ const adminController = new AdminController();
  * POST /api/admin/disbursements/process
  * Process loan disbursements
  */
-export const POST = asyncHandler(async (req: Request, context?: unknown): Promise<NextResponse> => {
+export const POST = asyncHandler(async (req: Request): Promise<NextResponse> => {
   // Apply lenient rate limiting for admin operations
   await lenientRateLimiter(req);
 
@@ -31,6 +31,14 @@ export const POST = asyncHandler(async (req: Request, context?: unknown): Promis
     return adminResult.response || NextResponse.json({ success: false, error: 'Admin privileges required' }, { status: 403 });
   }
 
+  // Get loanId from request body
+  const body = await req.json();
+  const { loanId } = body;
+
+  if (!loanId) {
+    return NextResponse.json({ success: false, error: 'Loan ID is required' }, { status: 400 });
+  }
+
   // Delegate to controller
-  return await adminController.processDisbursement(req);
+  return await adminController.disburseLoan(req, loanId, authResult.userId!);
 });

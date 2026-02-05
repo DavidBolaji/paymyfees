@@ -28,7 +28,7 @@ export const GET = asyncHandler(async (req: Request) => {
 
   try {
     // Get school profile to get schoolId
-    const schoolProfile = await prisma.schoolProfile.findUnique({
+    const schoolProfile = await prisma.schoolProfile.findFirst({
       where: { userId: authResult.userId! },
     });
 

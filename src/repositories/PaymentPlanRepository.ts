@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '@/src/lib/prisma';
-import { logger } from '@/src/utils/logger';
+
 import { NotFoundError } from '@/src/types/errors';
 
 /**

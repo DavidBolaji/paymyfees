@@ -5,7 +5,7 @@
 
 import { WalletRepository, IWalletRepository } from '@/src/repositories/WalletRepository';
 import { TransactionRepository, ITransactionRepository } from '@/src/repositories/TransactionRepository';
-import { PaystackService, IPaystackService, PaymentInitializationResult } from '@/src/services/PaystackService';
+import { PaystackService, IPaystackService } from '@/src/services/PaystackService';
 import { executeWalletOperation, prisma } from '@/src/database/prisma';
 import { ValidationError, NotFoundError, PaymentError } from '@/src/types/errors';
 
@@ -317,7 +317,7 @@ export class WalletService implements IWalletService {
 
     if (!verificationResult.success) {
       // Update transaction status to failed
-      const updatedTransaction = await executeWalletOperation(async (tx) => {
+      await executeWalletOperation(async (tx) => {
         return await tx.transaction.update({
           where: { id: transaction.id },
           data: {

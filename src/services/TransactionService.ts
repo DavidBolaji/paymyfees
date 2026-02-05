@@ -5,8 +5,7 @@
  */
 
 import { TransactionRepository, ITransactionRepository, TransactionFilters } from '@/src/repositories/TransactionRepository';
-import { ValidationError, NotFoundError } from '@/src/types/errors';
-import { logger } from '@/src/utils/logger';
+import { NotFoundError } from '@/src/types/errors';
 import { 
   TransactionDTO, 
   PaginationParams

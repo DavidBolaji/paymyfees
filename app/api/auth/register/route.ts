@@ -7,7 +7,6 @@ import { NextResponse } from 'next/server';
 import { AuthController } from '@/src/controllers/AuthController';
 import { asyncHandler } from '@/src/middleware/errorHandler';
 import { lenientRateLimiter } from '@/src/middleware/rateLimiter';
-import { logger } from '@/src/utils/logger';
 
 const authController = new AuthController();
 

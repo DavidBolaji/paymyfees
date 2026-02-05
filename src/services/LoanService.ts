@@ -68,7 +68,7 @@ function toLoanDTO(loan: any): LoanDTO {
 /**
  * Map file type/extension to DocumentType enum
  */
-function mapFileTypeToDocumentType(fileName: string, fileType: string): DocumentType {
+function mapFileTypeToDocumentType(fileName: string, _fileType: string): DocumentType {
   const lowerName = fileName.toLowerCase();
   
   if (lowerName.includes('bvn')) return DocumentType.BVN;

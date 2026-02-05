@@ -16,7 +16,7 @@ const loanController = new LoanController();
  * POST /api/loans/:loanId/documents
  * Upload documents for a loan
  */
-export const POST = asyncHandler(async (req: Request, context?: { params: { loanId: string } }) => {
+export const POST = asyncHandler(async (req: Request, context?: { params: Promise<{ loanId: string }> }) => {
   // Apply standard rate limiting for document uploads
   await standardRateLimiter(req);
 
@@ -27,7 +27,23 @@ export const POST = asyncHandler(async (req: Request, context?: { params: { loan
   }
 
   // Ensure context and params exist
-  if (!context || !context.params || !context.params.loanId) {
+  if (!context || !context.params) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Missing loan ID parameter',
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 400 }
+    );
+  }
+
+  // Await params (Next.js 15 requirement)
+  const params = await context.params;
+
+  if (!params.loanId) {
     return NextResponse.json(
       {
         success: false,
@@ -41,7 +57,7 @@ export const POST = asyncHandler(async (req: Request, context?: { params: { loan
   }
 
   // Delegate to controller
-  return await loanController.uploadDocuments(req, context.params.loanId, {
+  return await loanController.uploadDocuments(req, params.loanId, {
     id: authResult.userId!,
     email: '',
     role: authResult.role as UserRole

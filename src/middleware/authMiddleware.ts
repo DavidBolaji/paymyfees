@@ -5,8 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { requireAuth, requireParent, requireSchool, requireAdmin, requireStudent } from '@/src/middleware/auth';
-import { UnauthorizedError, ForbiddenError } from '@/src/types/errors';
-import { logger } from '@/src/utils/logger';
+import { UnauthorizedError } from '@/src/types/errors';
 
 /**
  * Authentication middleware result
