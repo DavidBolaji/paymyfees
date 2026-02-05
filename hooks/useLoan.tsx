@@ -21,9 +21,9 @@ const useLoan = (forceRefresh = false) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(10);
+    const [limit, ] = useState(10);
     const [searchTerm, setSearchTerm] = useState("");
-    const [status, setStatus] = useState<string | undefined>(undefined);
+    const [status, ] = useState<string | undefined>(undefined);
 
     // Define active statuses
     const activeStatuses = [

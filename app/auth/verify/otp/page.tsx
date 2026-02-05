@@ -31,16 +31,10 @@ export default function VerifyOtpPage() {
   // ✅ Zustand auth store
   const { user, hasHydrated, login } = useAuthStore();
 
-
-  // Refs for OTP inputs
-  const inputRefs = Array.from({ length: 6 }, () =>
-    useRef<HTMLInputElement>(null)
+  // Refs for OTP inputs - moved before early return
+  const inputRefs = useRef<(HTMLInputElement | null)[]>(
+    Array(6).fill(null)
   );
-
-  // Block render until Zustand rehydrates
-  if (!hasHydrated) {
-    return null;
-  }
 
   // Guard: missing user session
   useEffect(() => {
@@ -61,6 +55,11 @@ export default function VerifyOtpPage() {
     return () => clearInterval(timer);
   }, [timeLeft]);
 
+  // Block render until Zustand rehydrates
+  if (!hasHydrated) {
+    return null;
+  }
+
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -78,9 +77,9 @@ export default function VerifyOtpPage() {
     setOtp(newOtp);
 
     if (value && index < 5) {
-      const nextInput = inputRefs[index + 1];
-      if (nextInput && nextInput.current) {
-        nextInput.current.focus();
+      const nextInput = inputRefs.current[index + 1];
+      if (nextInput) {
+        nextInput.focus();
       }
     }
 
@@ -95,9 +94,9 @@ export default function VerifyOtpPage() {
   ) => {
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       // Focus previous input on backspace if current input is empty 
-      const prevInput = inputRefs[index - 1]; 
-      if (prevInput && prevInput.current) { 
-        prevInput.current.focus(); 
+      const prevInput = inputRefs.current[index - 1]; 
+      if (prevInput) { 
+        prevInput.focus(); 
       }
     }
   };
@@ -203,7 +202,9 @@ export default function VerifyOtpPage() {
               {otp.map((digit, i) => (
                 <input
                   key={i}
-                  ref={inputRefs[i]}
+                  ref={(el) => {
+                    inputRefs.current[i] = el;
+                  }}
                   type="text"
                   value={digit}
                   onChange={(e) => handleChange(i, e.target.value)}

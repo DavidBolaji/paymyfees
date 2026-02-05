@@ -3,7 +3,6 @@
  * POST /api/payments/make
  */
 
-import { NextResponse } from 'next/server';
 import { PaymentController } from '@/src/controllers/PaymentController';
 import { asyncHandler } from '@/src/middleware/errorHandler';
 import { standardRateLimiter } from '@/src/middleware/rateLimiter';

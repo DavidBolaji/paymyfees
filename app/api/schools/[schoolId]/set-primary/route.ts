@@ -12,7 +12,7 @@ const schoolController = new SchoolController();
 
 export async function PUT(
   req: Request,
-  context: { params: { schoolId: string } }
+  context: { params: Promise<{ schoolId: string }> }
 ) {
   return asyncHandler(async (req: Request) => {
     await lenientRateLimiter(req);
@@ -22,6 +22,7 @@ export async function PUT(
       return authResult.response;
     }
     
-    return await schoolController.setPrimarySchool(req, authResult.userId!, context.params);
+    const params = await context.params;
+    return await schoolController.setPrimarySchool(req, authResult.userId!, params);
   })(req, context);
 }

@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { logger } from '@/src/utils/logger';
+
 
 /**
  * Admin middleware result
@@ -21,7 +21,7 @@ export interface AdminMiddlewareResult {
  * @param userId User ID from auth middleware
  * @returns AdminMiddlewareResult with success status and response if failed
  */
-export async function adminMiddleware(req: Request, userId?: string): Promise<AdminMiddlewareResult> {
+export async function adminMiddleware(_req: Request, userId?: string): Promise<AdminMiddlewareResult> {
   try {
     // In a real implementation, you would check if the user has admin privileges
     // For example, by checking a database or an admin role in the JWT token

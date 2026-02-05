@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+
 import { AdminController } from '@/src/controllers/AdminController';
 import { authMiddleware } from '@/src/middleware/authMiddleware';
 import { adminMiddleware } from '@/src/middleware/adminMiddleware';
@@ -9,7 +9,7 @@ const controller = new AdminController();
 export async function GET(req: Request) {
   try {
     const user = await authMiddleware(req);
-    await adminMiddleware(user);
+    await adminMiddleware(user as any);
     
     return await controller.getSchools(req);
   } catch (error) {
@@ -20,9 +20,9 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const user = await authMiddleware(req);
-    await adminMiddleware(user);
+    await adminMiddleware(user as any);
     
-    return await controller.addSchool(req, user.id);
+    return await controller.addSchool(req, user.userId as any);
   } catch (error) {
     return errorHandler(error);
   }

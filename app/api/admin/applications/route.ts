@@ -32,7 +32,7 @@ export async function GET(req: Request): Promise<NextResponse>{
     }
 
     // Delegate to controller
-    return await adminController.getLoanApplications(req);
+    return await adminController.getLoans(req);
   } catch (error) {
     console.error('Error in GET /api/admin/applications:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });

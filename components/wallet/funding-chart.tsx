@@ -14,7 +14,7 @@ interface FundingChartProps {
 
 export function FundingChart({ data, isLoading, className }: FundingChartProps) {
   const [period, setPeriod] = useState('6 months');
-  const [source, setSource] = useState('All Sources');
+  const [source, ] = useState('All Sources');
   const [hoveredPoint, setHoveredPoint] = useState<{ index: number; type: 'funding' | 'repayment' } | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   

@@ -3,7 +3,7 @@
  * Business logic for payment plan operations
  */
 
-import { logger } from '@/src/utils/logger';
+
 import { PaymentPlanRepository, IPaymentPlanRepository } from '@/src/repositories/PaymentPlanRepository';
 
 /**

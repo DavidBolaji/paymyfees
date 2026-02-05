@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+
 import { AdminController } from '@/src/controllers/AdminController';
 import { authMiddleware } from '@/src/middleware/authMiddleware';
 import { adminMiddleware } from '@/src/middleware/adminMiddleware';
@@ -8,13 +8,14 @@ const controller = new AdminController();
 
 export async function POST(
   req: Request,
-  { params }: { params: { schoolId: string } }
+  { params }: { params: Promise<{ schoolId: string }> }
 ) {
   try {
     const user = await authMiddleware(req);
-    await adminMiddleware(user);
+    await adminMiddleware(user as any);
     
-    return await controller.rejectSchool(req, params.schoolId, user.id);
+    const { schoolId } = await params;
+    return await controller.rejectSchool(req, schoolId, user.userId as any);
   } catch (error) {
     return errorHandler(error);
   }

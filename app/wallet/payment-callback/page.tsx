@@ -35,7 +35,7 @@ export default function PaymentCallbackPage() {
 
         // Get stored payment details
         const storedReference = sessionStorage.getItem('pending_payment_reference');
-        const storedAmount = sessionStorage.getItem('pending_payment_amount');
+        // const storedAmount = sessionStorage.getItem('pending_payment_amount');
 
         if (storedReference !== reference) {
           setStatus('failed');

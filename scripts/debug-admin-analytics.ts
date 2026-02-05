@@ -3,7 +3,7 @@
  * Run with: node scripts/run-debug-admin-analytics.js
  */
 
-import { PrismaClient, LoanStatus, SupportTicketStatus, UserRole } from '@prisma/client';
+import { PrismaClient, LoanStatus, SupportTicketStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 

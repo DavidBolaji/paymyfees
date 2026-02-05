@@ -7,7 +7,6 @@
 
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
-import { FormSelect } from '@/components/ui/form-input';
 import { useSchoolProfile } from '@/hooks/useSchoolProfile';
 import { cn } from '@/lib/utils';
 

@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '@/src/database/prisma';
-import { LoanStatus, SupportTicketStatus, UserRole } from '@prisma/client';
+import { Installment, LoanStatus, SupportTicketStatus, UserRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 export interface IAdminRepository {
@@ -151,7 +151,7 @@ export class AdminRepository implements IAdminRepository {
     ]);
 
     return {
-      loans: loans.map(loan => ({
+      loans: loans.map((loan: any) => ({
         id: loan.id,
         loanNumber: loan.loanNumber,
         userId: loan.userId,
@@ -172,7 +172,7 @@ export class AdminRepository implements IAdminRepository {
         approvalDate: loan.approvalDate,
         disbursementDate: loan.disbursementDate,
         documents: loan.documents,
-        installments: loan.installments.map(inst => ({
+        installments: loan.installments.map((inst: Installment) => ({
           ...inst,
           amount: Number(inst.amount)
         })),
@@ -334,7 +334,7 @@ export class AdminRepository implements IAdminRepository {
     ]);
 
     return {
-      schools: schools.map(school => ({
+      schools: schools.map((school: any) => ({
         id: school.id,
         userId: school.userId,
         schoolName: school.schoolName,
@@ -372,7 +372,7 @@ export class AdminRepository implements IAdminRepository {
   /**
    * Approve school
    */
-  async approveSchool(schoolId: string, adminId: string): Promise<any> {
+  async approveSchool(schoolId: string, _adminId: string): Promise<any> {
     return await prisma.schoolProfile.update({
       where: { id: schoolId },
       data: {
@@ -385,7 +385,7 @@ export class AdminRepository implements IAdminRepository {
   /**
    * Reject school
    */
-  async rejectSchool(schoolId: string, adminId: string, reason: string): Promise<any> {
+  async rejectSchool(schoolId: string, _adminId: string, reason: string): Promise<any> {
     await prisma.schoolSupportMessage.create({
       data: {
         schoolId,
@@ -407,7 +407,7 @@ export class AdminRepository implements IAdminRepository {
   /**
    * Add new school
    */
-  async addSchool(data: any, adminId: string): Promise<any> {
+  async addSchool(data: any, _adminId: string): Promise<any> {
     const hashedPassword = await bcrypt.hash(data.password || 'School@123456', 10);
 
     const user = await prisma.user.create({
@@ -556,7 +556,7 @@ export class AdminRepository implements IAdminRepository {
   /**
    * Add verification message
    */
-  async addVerificationMessage(schoolId: string, message: string, adminId: string): Promise<any> {
+  async addVerificationMessage(schoolId: string, message: string, _adminId: string): Promise<any> {
     return await prisma.schoolSupportMessage.create({
       data: {
         schoolId,

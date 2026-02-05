@@ -15,16 +15,22 @@ const adminController = new AdminController();
  * POST /api/admin/applications/:loanId/review
  * Review a loan application
  */
-export async function POST(req: Request, context: { params: { loanId: string } }): Promise<NextResponse> {
+export async function POST(
+  req: Request,
+  context: { params: Promise<{ loanId: string }> }
+): Promise<NextResponse> {
   // Apply lenient rate limiting for admin operations
   await lenientRateLimiter(req);
 
-  // Ensure context and params exist
-  if (!context || !context.params || !context.params.loanId) {
+  // Await params (Next.js 15 requirement)
+  const params = await context.params;
+
+  // Ensure params exist
+  if (!params || !params.loanId) {
     return NextResponse.json({ success: false, error: 'Loan ID is required' }, { status: 400 });
   }
 
-  const { loanId } = context.params;
+  const { loanId } = params;
 
   // Authenticate user
   const authResult = await authMiddleware(req);
@@ -39,5 +45,5 @@ export async function POST(req: Request, context: { params: { loanId: string } }
   }
 
   // Delegate to controller
-  return await adminController.reviewLoanApplication(req, loanId);
+  return await adminController.updateLoanStatus(req, loanId, authResult.userId!);
 };

@@ -283,7 +283,7 @@ export class SchoolController {
    * Set primary school
    * PUT /api/schools/set-primary/:schoolId
    */
-  async setPrimarySchool(req: Request, userId: string, params: { schoolId: string }): Promise<NextResponse> {
+  async setPrimarySchool(_req: Request, userId: string, params: { schoolId: string }): Promise<NextResponse> {
     const { schoolId } = params;
     console.log({ msg: 'Setting primary school', userId, schoolId });
     

@@ -222,11 +222,7 @@ export default function SchoolVerificationPage() {
                 title="Verification Logs"
                 columns={VERIFICATION_LOGS_COLUMNS}
                 data={verificationLogs.map(log => ({
-                  date: new Date(log.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric'
-                  }),
+                  date: log.date,
                   activities: log.activity,
                   details: log.details || '-',
                   status: log.status

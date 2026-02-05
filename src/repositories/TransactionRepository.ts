@@ -5,8 +5,7 @@
  */
 
 import { prisma } from '@/src/database/prisma';
-import { Transaction, TransactionType, TransactionStatus } from '@/prisma/app/generated/prisma-client';
-import { NotFoundError } from '@/src/types/errors';
+import { Transaction, TransactionType, TransactionStatus } from '@prisma/client';
 
 export interface TransactionFilters {
   userId?: string;

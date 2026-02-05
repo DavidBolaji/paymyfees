@@ -6,7 +6,7 @@
 
 import { NotificationRepository, INotificationRepository } from '@/src/repositories/NotificationRepository';
 import { ValidationError, NotFoundError } from '@/src/types/errors';
-import { logger } from '@/src/utils/logger';
+
 import { Notification, NotificationType, Prisma } from '@prisma/client';
 
 /**
