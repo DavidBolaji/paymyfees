@@ -10,7 +10,7 @@ import { lenientRateLimiter } from '@/src/middleware/rateLimiter';
 
 const adminController = new AdminController();
 
-export async function POST(req: Request, { params }: { params: { loanId: string } }): Promise<NextResponse> {
+export async function POST(req: Request, { params }: { params: Promise<{ loanId: string }> }): Promise<NextResponse> {
   try {
     await lenientRateLimiter(req);
 
@@ -19,7 +19,8 @@ export async function POST(req: Request, { params }: { params: { loanId: string 
       return authResult.response || NextResponse.json({ success: false, error: 'Authentication failed' }, { status: 401 });
     }
 
-    return await adminController.disburseLoan(req, params.loanId, authResult.userId!);
+    const { loanId } = await params;
+    return await adminController.disburseLoan(req, loanId, authResult.userId!);
   } catch (error) {
     console.error('Error in POST /api/admin/loans/:loanId/disburse:', error);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });

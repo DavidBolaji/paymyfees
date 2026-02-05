@@ -16,7 +16,7 @@ const transactionController = new TransactionController();
  * GET /api/transactions/:transactionId
  * Get transaction details by ID
  */
-export const GET = asyncHandler(async (req: Request, context?: { params: { transactionId: string } }) => {
+export const GET = asyncHandler(async (req: Request, context?: { params: Promise<{ transactionId: string }> }) => {
   // Apply lenient rate limiting for transaction details
   await lenientRateLimiter(req);
 
@@ -27,7 +27,23 @@ export const GET = asyncHandler(async (req: Request, context?: { params: { trans
   }
 
   // Ensure context and params exist
-  if (!context || !context.params || !context.params.transactionId) {
+  if (!context || !context.params) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Missing transaction ID parameter',
+        metadata: {
+          timestamp: new Date().toISOString(),
+        },
+      },
+      { status: 400 }
+    );
+  }
+
+  // Await params (Next.js 15 requirement)
+  const params = await context.params;
+
+  if (!params.transactionId) {
     return NextResponse.json(
       {
         success: false,
@@ -41,7 +57,7 @@ export const GET = asyncHandler(async (req: Request, context?: { params: { trans
   }
 
   // Delegate to controller
-  return await transactionController.getTransactionById(req, context.params.transactionId, {
+  return await transactionController.getTransactionById(req, params.transactionId, {
     id: authResult.userId!,
     email: '',
     role: authResult.role as UserRole

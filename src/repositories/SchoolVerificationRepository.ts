@@ -176,11 +176,7 @@ export class SchoolVerificationRepository implements ISchoolVerificationReposito
           where: { id: verificationId },
           include: {
             school: true,
-            loan: {
-              include: {
-                student: true
-              }
-            }
+            loan: true
           }
         });
 
@@ -264,12 +260,7 @@ export class SchoolVerificationRepository implements ISchoolVerificationReposito
             include: {
               loan: {
                 select: {
-                  loanNumber: true,
-                  student: {
-                    select: {
-                      fullName: true,
-                    }
-                  }
+                  loanNumber: true
                 }
               }
             }
@@ -348,11 +339,6 @@ export class SchoolVerificationRepository implements ISchoolVerificationReposito
                   id: true,
                   fullName: true,
                   email: true,
-                }
-              },
-              student: {
-                select: {
-                  fullName: true,
                 }
               }
             }

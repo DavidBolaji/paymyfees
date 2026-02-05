@@ -9,8 +9,7 @@
  * 4. Confirmation modal before deduction (handled in UI)
  */
 import { WalletRepository, IWalletRepository } from '@/src/repositories/WalletRepository';
-import { InstallmentRepository, IInstallmentRepository } from '@/src/repositories/InstalmentRepository';
-import { TransactionRepository, ITransactionRepository } from '@/src/repositories/TransactionRepository';
+
 import { executeWalletOperation, prisma } from '@/src/database/prisma';
 import { ValidationError, NotFoundError } from '@/src/types/errors';
 
@@ -81,17 +80,11 @@ export interface IRepaymentService {
  */
 export class RepaymentService implements IRepaymentService {
   private walletRepository: IWalletRepository;
-  private installmentRepository: IInstallmentRepository;
-  private transactionRepository: ITransactionRepository;
 
   constructor(
-    walletRepository?: IWalletRepository,
-    installmentRepository?: IInstallmentRepository,
-    transactionRepository?: ITransactionRepository
+    walletRepository?: IWalletRepository
   ) {
     this.walletRepository = walletRepository || new WalletRepository();
-    this.installmentRepository = installmentRepository || new InstallmentRepository();
-    this.transactionRepository = transactionRepository || new TransactionRepository();
   }
 
   /**

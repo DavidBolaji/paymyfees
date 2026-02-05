@@ -11,7 +11,7 @@ interface FundWalletModalProps {
   onSuccess?: () => void;
 }
 
-export default function FundWalletModal({ isOpen, onClose, onSuccess }: FundWalletModalProps) {
+export default function FundWalletModal({ isOpen, onClose}: FundWalletModalProps) {
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('NGN');
   const [paymentMethod, setPaymentMethod] = useState('');

@@ -3,6 +3,7 @@
  * Run with: node scripts/run-debug-payment-plan.js
  */
 
+import { Installment } from '@prisma/client';
 import { prisma } from '../src/database/prisma';
 
 async function debugPaymentPlan() {
@@ -58,9 +59,9 @@ async function debugPaymentPlan() {
         console.log(`   Installments: ${loan.installments.length}`);
 
         if (loan.installments.length > 0) {
-          const paidCount = loan.installments.filter(i => i.status === 'PAID').length;
-          const pendingCount = loan.installments.filter(i => i.status === 'PENDING').length;
-          const overdueCount = loan.installments.filter(i => i.status === 'OVERDUE').length;
+          const paidCount = loan.installments.filter((i: any) => i.status === 'PAID').length;
+          const pendingCount = loan.installments.filter((i: any) => i.status === 'PENDING').length;
+          const overdueCount = loan.installments.filter((i: any) => i.status === 'OVERDUE').length;
 
           console.log(`     - Paid: ${paidCount}`);
           console.log(`     - Pending: ${pendingCount}`);
@@ -68,7 +69,7 @@ async function debugPaymentPlan() {
 
           // Show first few installments
           console.log(`\n   First 3 installments:`);
-          loan.installments.slice(0, 3).forEach(inst => {
+          loan.installments.slice(0, 3).forEach((inst: Installment) => {
             console.log(`     #${inst.installmentNumber}: ₦${inst.amount.toLocaleString()} - ${inst.status} - Due: ${inst.dueDate.toLocaleDateString()}`);
           });
         }
@@ -78,13 +79,13 @@ async function debugPaymentPlan() {
 
       // Check which statuses would match the active payment plan filter
       const activeStatuses = ['ACTIVE', 'DISBURSED', 'APPROVED'];
-      const activeLoans = loans.filter(l => activeStatuses.includes(l.status));
+      const activeLoans = loans.filter((l: any) => activeStatuses.includes(l.status));
 
       if (activeLoans.length > 0) {
         console.log(`   ✅ ${activeLoans.length} loan(s) would show in payment plan`);
       } else {
         console.log(`   ⚠️  No loans with status: ${activeStatuses.join(', ')}`);
-        console.log(`   Current statuses: ${loans.map(l => l.status).join(', ')}`);
+        console.log(`   Current statuses: ${loans.map((l: any) => l.status).join(', ')}`);
       }
     }
 

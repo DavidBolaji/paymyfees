@@ -6,7 +6,6 @@
 import { NextResponse } from 'next/server';
 import { AdminService, IAdminService } from '@/src/services/AdminService';
 import { ApiResponse } from '@/src/types';
-import { logger } from '@/src/utils/logger';
 import { LoanStatus } from '@prisma/client';
 
 export class AdminController {
@@ -19,7 +18,7 @@ export class AdminController {
   /**
    * GET /api/admin/analytics
    */
-  async getAnalytics(req: Request): Promise<NextResponse> {
+  async getAnalytics(_req: Request): Promise<NextResponse> {
     console.log({ msg: 'Admin analytics request' });
     
     const analyticsData = await this.adminService.getAnalytics();
@@ -63,7 +62,7 @@ export class AdminController {
   /**
    * GET /api/admin/loans/:loanId
    */
-  async getLoanDetails(req: Request, loanId: string): Promise<NextResponse> {
+  async getLoanDetails(_req: Request, loanId: string): Promise<NextResponse> {
     console.log({ msg: 'Admin loan details request', loanId });
     
     const loan = await this.adminService.getLoanDetails(loanId);
@@ -105,7 +104,7 @@ export class AdminController {
   /**
    * POST /api/admin/loans/:loanId/disburse
    */
-  async disburseLoan(req: Request, loanId: string, adminId: string): Promise<NextResponse> {
+  async disburseLoan(_req: Request, loanId: string, adminId: string): Promise<NextResponse> {
     console.log({ msg: 'Disburse loan request', loanId });
     
     const result = await this.adminService.processDisbursement(loanId, adminId);
@@ -150,7 +149,7 @@ export class AdminController {
   /**
    * GET /api/admin/schools/:schoolId
    */
-  async getSchoolDetails(req: Request, schoolId: string): Promise<NextResponse> {
+  async getSchoolDetails(_req: Request, schoolId: string): Promise<NextResponse> {
     console.log({ msg: 'Admin school details request', schoolId });
     
     const school = await this.adminService.getSchoolDetails(schoolId);
@@ -169,7 +168,7 @@ export class AdminController {
   /**
    * POST /api/admin/schools/:schoolId/approve
    */
-  async approveSchool(req: Request, schoolId: string, adminId: string): Promise<NextResponse> {
+  async approveSchool(_req: Request, schoolId: string, adminId: string): Promise<NextResponse> {
     console.log({ msg: 'Approve school request', schoolId });
     
     const school = await this.adminService.approveSchool(schoolId, adminId);
@@ -304,7 +303,7 @@ export class AdminController {
   /**
    * GET /api/admin/schools/:schoolId/verification-logs
    */
-  async getVerificationLogs(req: Request, schoolId: string): Promise<NextResponse> {
+  async getVerificationLogs(_req: Request, schoolId: string): Promise<NextResponse> {
     console.log({ msg: 'Get verification logs request', schoolId });
     
     const logs = await this.adminService.getVerificationLogs(schoolId);

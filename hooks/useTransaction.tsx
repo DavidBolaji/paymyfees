@@ -19,9 +19,9 @@ const useTransaction = (forceRefresh = false) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [page, setPage] = useState(1);
-    const [limit, setLimit] = useState(5);
+    const [limit, ] = useState(5);
     const [searchTerm, setSearchTerm] = useState("");
-    const [type, setType] = useState<string | undefined>(undefined);
+    const [type, ] = useState<string | undefined>(undefined);
 
     useEffect(() => {
         // Wait for hydration before checking cache

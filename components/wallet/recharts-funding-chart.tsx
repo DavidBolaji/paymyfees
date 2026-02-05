@@ -12,7 +12,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer
 } from 'recharts';
 
@@ -44,7 +43,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export function RechartsFundingChart({ data, isLoading, className }: FundingChartProps) {
   const [period, setPeriod] = useState('6 months');
-  const [source, setSource] = useState('All Sources');
+  const [source,] = useState('All Sources');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   
   // Get the fetchChartData function from the wallet store

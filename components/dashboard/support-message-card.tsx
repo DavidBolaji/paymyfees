@@ -4,9 +4,7 @@ import { SupportMessage } from '@/src/schoolStore';
 
 
 export default function SupportMessageCard({
-  messages,
-  unreadCount,
-  onMarkAsRead
+  messages
 }: {
   messages: SupportMessage[],
   unreadCount: number,

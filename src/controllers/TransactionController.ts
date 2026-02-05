@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 import { TransactionService, ITransactionService } from '@/src/services/TransactionService';
 import { transactionQuerySchema } from '@/src/validation/schemas';
 import { ApiResponse } from '@/src/types';
-import { logger } from '@/src/utils/logger';
+
 import { AuthUser } from '@/src/middleware/auth';
 
 /**

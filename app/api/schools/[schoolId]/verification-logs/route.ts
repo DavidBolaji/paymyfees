@@ -7,7 +7,7 @@ import { ApiResponse } from '@/src/types';
 
 export const GET = asyncHandler(async (
   req: Request,
-  context: { params: { schoolId: string } }
+  context: { params: Promise<{ schoolId: string }> }
 ) => {
   await lenientRateLimiter(req);
 
@@ -16,7 +16,8 @@ export const GET = asyncHandler(async (
     return authResult.response;
   }
 
-  const { schoolId } = await context.params;
+  const params = await context.params;
+  const { schoolId } = params;
 
   // Ensure this school belongs to the user
   const school = await prisma.schoolProfile.findFirst({

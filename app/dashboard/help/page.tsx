@@ -45,7 +45,7 @@ export default function HelpPage() {
       {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-          Let's Get You Sorted
+          Let&apos;s Get You Sorted
         </h1>
         <p className="text-gray-600 max-w-2xl mx-auto">
           Quick answers, step-by-step guides, and fast support to make using
@@ -103,7 +103,7 @@ export default function HelpPage() {
                       Create Your Account
                     </h3>
                     <p className="text-sm text-gray-600">
-                      Sign up using your email and phone number. You'll receive
+                      Sign up using your email and phone number. You&apos;ll receive
                       a verification code to secure your account.
                     </p>
                   </div>
@@ -160,7 +160,7 @@ export default function HelpPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-1">
-                      You're Ready to Go
+                      You&apos;re Ready to Go
                     </h3>
                     <p className="text-sm text-gray-600">
                       Apply for loans, track payments, and manage your education

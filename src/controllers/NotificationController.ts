@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server';
 import { NotificationService, INotificationService } from '@/src/services/NotificationService';
 import { ApiResponse } from '@/src/types';
-import { logger } from '@/src/utils/logger';
+
 
 /**
  * Notification Controller

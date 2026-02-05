@@ -7,7 +7,6 @@
 import { NextResponse } from 'next/server';
 import { DashboardService, IDashboardService } from '@/src/services/DashboardService';
 import { ApiResponse } from '@/src/types';
-import { logger } from '@/src/utils/logger';
 // import { AuthUser } from '@/src/middleware/auth';
 
 /**

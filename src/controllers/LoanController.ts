@@ -269,7 +269,7 @@ export class LoanController {
  * Get active loan payment plan for user
  * GET /api/loans/payment-plan
  */
-async getActivePaymentPlan(req: Request, user: AuthUser): Promise<NextResponse> {
+  async getActivePaymentPlan(_req: Request, user: AuthUser): Promise<NextResponse> {
   console.log({ msg: 'Get active payment plan', userId: user.id });
 
   // Get all user's loans
@@ -296,7 +296,7 @@ async getActivePaymentPlan(req: Request, user: AuthUser): Promise<NextResponse> 
 
   // Filter for loans with payment plans
   const activeLoan = loans.find(loan => 
-    activeStatuses.includes(loan.status as LoanStatus)
+    activeStatuses.includes(loan.status as 'ACTIVE')
   );
 
   if (!activeLoan) {

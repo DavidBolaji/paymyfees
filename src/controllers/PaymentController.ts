@@ -9,7 +9,7 @@ import { PaymentService, IPaymentService } from '@/src/services/PaymentService';
 import { PaymentPlanService, IPaymentPlanService } from '@/src/services/PaymentPlanService';
 import { makePaymentSchema } from '@/src/validation/schemas';
 import { ApiResponse } from '@/src/types';
-import { logger } from '@/src/utils/logger';
+
 import { AuthUser } from '@/src/middleware/auth';
 import { NotFoundError } from '@/src/types/errors';
 

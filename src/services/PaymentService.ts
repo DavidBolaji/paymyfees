@@ -6,7 +6,7 @@
 
 import { executePaymentProcessing } from '@/src/database/prisma';
 import { ValidationError, NotFoundError, PaymentError } from '@/src/types/errors';
-import { logger } from '@/src/utils/logger';
+
 import { 
   PaymentStatus,
   TransactionStatus,
