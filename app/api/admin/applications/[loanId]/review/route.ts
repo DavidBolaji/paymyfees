@@ -19,10 +19,10 @@ const adminController = new AdminController();
 export const POST = asyncHandler(async (
   req: Request,
   context?: { params: Promise<{ loanId: string }> }
-): Promise<NextResponse> => {
+): Promise<any> => {
   await lenientRateLimiter(req);
 
-  const params = await context!.params;
+  const params = await context?.params;
 
   if (!params || !params.loanId) {
     return NextResponse.json({ success: false, error: 'Loan ID is required' }, { status: 400 });

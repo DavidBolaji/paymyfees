@@ -743,7 +743,7 @@ export default function ProfilePage() {
                 </p>
                 {qrCode && (
                   <div className="flex justify-center mb-4">
-                    <img src={qrCode} alt="2FA QR Code" className="w-48 h-48" />
+                    <Image src={qrCode} alt="2FA QR Code" className="w-48 h-48" width={192} height={192} />
                   </div>
                 )}
               </div>
