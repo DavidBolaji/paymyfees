@@ -65,6 +65,8 @@ export interface UserDTO {
   phoneVerified: boolean;
   residencyStatus: ResidencyStatus;
   isActive: boolean;
+  twoFactorEnabled?: boolean;
+  twoFactorSecret?: string | null;
   lastLogin: Date | null;
   createdAt: Date;
   updatedAt: Date;

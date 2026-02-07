@@ -3,7 +3,7 @@
 /**
  * Clear Next.js cache script
  * Safely removes .next directory and other cache files
- * Run with: node scripts/clear-cache.js
+ * Run with: node scripts/clear-cache.js or pnpm dev:clean
  */
 
 const fs = require('fs');
@@ -52,4 +52,4 @@ filesToRemove.forEach(file => {
 });
 
 console.log('\n✨ Cache cleared successfully!');
-console.log('💡 Run "npm run dev" or "pnpm dev" to restart your development server.\n');
+console.log('💡 Run "pnpm dev" to restart your development server.\n');

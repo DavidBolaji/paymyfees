@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { AdminController } from '@/src/controllers/AdminController';
 import { adminAuthMiddleware, authMiddleware } from '@/src/middleware/authMiddleware';
+import { asyncHandler } from '@/src/middleware/errorHandler';
 import { lenientRateLimiter } from '@/src/middleware/rateLimiter';
 
 const adminController = new AdminController();
@@ -14,27 +15,18 @@ const adminController = new AdminController();
  * GET /api/admin/applications
  * Get loan applications for admin review
  */
-export async function GET(req: Request): Promise<NextResponse>{
-  try {
-    // Apply lenient rate limiting for admin operations
-    await lenientRateLimiter(req);
+export const GET = asyncHandler(async (req: Request): Promise<NextResponse> => {
+  await lenientRateLimiter(req);
 
-    // Authenticate user
-    const authResult = await authMiddleware(req);
-    if (!authResult.success) {
-      return authResult.response || NextResponse.json({ success: false, error: 'Authentication failed' }, { status: 401 });
-    }
-
-    // Verify admin privileges
-    const adminResult = await adminAuthMiddleware(req);
-    if (!adminResult.success) {
-      return adminResult.response || NextResponse.json({ success: false, error: 'Admin privileges required' }, { status: 403 });
-    }
-
-    // Delegate to controller
-    return await adminController.getLoans(req);
-  } catch (error) {
-    console.error('Error in GET /api/admin/applications:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+  const authResult = await authMiddleware(req);
+  if (!authResult.success) {
+    return authResult.response || NextResponse.json({ success: false, error: 'Authentication failed' }, { status: 401 });
   }
-};
+
+  const adminResult = await adminAuthMiddleware(req);
+  if (!adminResult.success) {
+    return adminResult.response || NextResponse.json({ success: false, error: 'Admin privileges required' }, { status: 403 });
+  }
+
+  return await adminController.getLoans(req);
+});

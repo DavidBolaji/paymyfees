@@ -22,15 +22,18 @@ model User {
   phoneVerified      Boolean             @default(false)
   isActive           Boolean             @default(true)
   isFirstTime        Boolean             @default(true)
+  twoFactorEnabled   Boolean             @default(false)
+  twoFactorSecret    String?             @db.VarChar(255)
   lastLogin          DateTime?           @db.Timestamptz(3)
   createdAt          DateTime            @default(now()) @db.Timestamptz(3)
   updatedAt          DateTime            @updatedAt @db.Timestamptz(3)
   country            String              @db.VarChar(255)
-  residencyStatus   ResidencyStatus      @default(LOCAL)
+  residencyStatus    ResidencyStatus     @default(LOCAL)
   auditLogs          AuditLog[]
   documents          Document[]
   loans              Loan[]
   notifications      Notification[]
+  notificationSettings NotificationSettings?
   parentProfile      ParentProfile?
   payments           Payment[]
   schoolProfile      SchoolProfile[]
@@ -53,7 +56,9 @@ model ParentProfile {
   address            String?    @db.VarChar(500)
   city               String?    @db.VarChar(100)
   state              String?    @db.VarChar(100)
+  postalCode         String?    @db.VarChar(20)
   country            String     @default("Nigeria") @db.VarChar(100)
+  language           String?    @db.VarChar(50)
   bvn                String?    @unique @db.VarChar(11)
   nin                String?    @unique @db.VarChar(11)
   bvnVerified        Boolean    @default(false)
@@ -116,6 +121,7 @@ model SchoolProfile {
   loans                Loan[]
   user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   verificationRequests SchoolVerification[]
+  profileVerifications SchoolProfileVerification[]
   // students             Student[]
 
   @@index([schoolEmail])
@@ -298,6 +304,46 @@ model LoanStatusHistory {
   @@map("loan_status_history")
 }
 
+// School Profile Verification - For verifying school entities created by parents/students
+model SchoolProfileVerification {
+  id          String                           @id @default(uuid()) @db.Uuid
+  schoolId    String                           @db.Uuid
+  userId      String                           @db.Uuid // The user who created the school
+  status      VerificationStatus               @default(PENDING)
+  submittedAt DateTime                         @default(now()) @db.Timestamptz(3)
+  reviewedAt  DateTime?                        @db.Timestamptz(3)
+  reviewedBy  String?                          @db.Uuid // Admin who reviewed
+  notes       String? // Admin notes
+  createdAt   DateTime                         @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime                         @updatedAt @db.Timestamptz(3)
+  school      SchoolProfile                    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  logs        SchoolProfileVerificationLog[]
+
+  @@index([schoolId])
+  @@index([userId])
+  @@index([status])
+  @@map("school_profile_verifications")
+}
+
+// Logs for school profile verification activities
+model SchoolProfileVerificationLog {
+  id             String                      @id @default(uuid()) @db.Uuid
+  verificationId String                      @db.Uuid
+  schoolId       String                      @db.Uuid
+  activity       String                      @db.VarChar(255)
+  details        String?
+  status         VerificationStatus
+  performedBy    String?                     @db.Uuid // Admin who performed the action
+  createdAt      DateTime                    @default(now()) @db.Timestamptz(3)
+  verification   SchoolProfileVerification   @relation(fields: [verificationId], references: [id], onDelete: Cascade)
+
+  @@index([verificationId])
+  @@index([schoolId])
+  @@index([createdAt])
+  @@map("school_profile_verification_logs")
+}
+
+// Student Enrollment Verification - For verifying student enrollment for loan applications
 // Add this new model to track verification activity logs
 model VerificationLog {
   id             String             @id @default(uuid()) @db.Uuid
@@ -647,6 +693,25 @@ model SchoolSupportMessage {
   @@index([isRead])
   @@index([createdAt])
   @@map("school_support_messages")
+}
+
+model NotificationSettings {
+  id                   String   @id @default(uuid()) @db.Uuid
+  userId               String   @unique @db.Uuid
+  emailNotifications   Boolean  @default(true)
+  inAppNotifications   Boolean  @default(true)
+  walletFunding        Boolean  @default(true)
+  loanApproval         Boolean  @default(true)
+  repaymentReminders   Boolean  @default(true)
+  verificationStatus   Boolean  @default(true)
+  securityAlerts       Boolean  @default(true)
+  promotions           Boolean  @default(true)
+  createdAt            DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime @updatedAt @db.Timestamptz(3)
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notification_settings")
 }
 
 

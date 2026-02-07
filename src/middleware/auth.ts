@@ -56,6 +56,13 @@ function verifyToken(token: string): AuthUser {
 }
 
 /**
+ * Verify JWT token (public export for use outside middleware)
+ */
+export function verifyJwtToken(token: string): AuthUser {
+  return verifyToken(token);
+}
+
+/**
  * Authentication middleware
  * Requires valid JWT token
  */
@@ -107,7 +114,7 @@ export async function optionalAuth(req: Request): Promise<AuthUser | null> {
 /**
  * Generate JWT token
  */
-export function generateToken(user: AuthUser): string {
+export function generateToken(user: AuthUser, expiresIn?: string): string {
   //@ts-ignore
   return jwt.sign(
     {
@@ -117,7 +124,7 @@ export function generateToken(user: AuthUser): string {
     },
     env.get('JWT_SECRET'),
     {
-      expiresIn: env.get('JWT_EXPIRES_IN'),
+      expiresIn: expiresIn || env.get('JWT_EXPIRES_IN'),
     }
   );
 }
