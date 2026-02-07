@@ -7,7 +7,7 @@ import { ApiResponse } from '@/src/types';
 
 export const GET = asyncHandler(async (
   req: Request,
-  context: { params: Promise<{ schoolId: string }> }
+  context?: { params: Promise<{ schoolId: string }> }
 ) => {
   await lenientRateLimiter(req);
 
@@ -16,7 +16,7 @@ export const GET = asyncHandler(async (
     return authResult.response;
   }
 
-  const params = await context.params;
+  const params = await context!.params;
   const { schoolId } = params;
 
   // Ensure this school belongs to the user
@@ -42,7 +42,8 @@ export const GET = asyncHandler(async (
   const url = new URL(req.url);
   const limit = parseInt(url.searchParams.get('limit') || '10');
 
-  const logs = await prisma.verificationLog.findMany({
+  // Fetch school profile verification logs
+  const logs = await prisma.schoolProfileVerificationLog.findMany({
     where: { schoolId },
     orderBy: { createdAt: 'desc' },
     take: limit,
@@ -50,17 +51,30 @@ export const GET = asyncHandler(async (
       verification: {
         select: {
           id: true,
-          loanId: true,
           status: true,
-          studentName: true,
+          submittedAt: true,
+          reviewedAt: true,
+          reviewedBy: true,
+          notes: true,
         },
       },
     },
   });
 
+  // Format the logs for display
+  const formattedLogs = logs.map(log => ({
+    id: log.id,
+    date: log.createdAt,
+    activity: log.activity,
+    details: log.details || '-',
+    status: log.status,
+    performedBy: log.performedBy,
+    verification: log.verification,
+  }));
+
   const response: ApiResponse = {
     success: true,
-    data: logs,
+    data: formattedLogs,
     metadata: { timestamp: new Date().toISOString() },
   };
 

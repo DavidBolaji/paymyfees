@@ -341,4 +341,27 @@ export class AdminController {
 
     return NextResponse.json(response, { status: 201 });
   }
+
+  /**
+   * POST /api/admin/schools/:schoolId/verification-log
+   */
+  async addVerificationLog(req: Request, schoolId: string, adminId: string): Promise<NextResponse> {
+    console.log({ msg: 'Add verification log request', schoolId });
+    
+    const body = await req.json();
+    const { activity, details, status } = body;
+
+    const result = await this.adminService.addVerificationLog(schoolId, activity, details, status, adminId);
+
+    const response: ApiResponse = {
+      success: true,
+      data: result,
+      message: 'Verification log added',
+      metadata: {
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    return NextResponse.json(response, { status: 201 });
+  }
 }

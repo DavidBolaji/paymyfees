@@ -12,11 +12,13 @@ async function seedAdmin() {
   try {
     console.log('🌱 Seeding admin user...');
 
+    const adminEmail = 'admin@paymyfees.com'.toLowerCase();
+
     // Check if admin already exists
     const existingAdmin = await prisma.user.findFirst({
       where: {
         role: 'ADMIN',
-        email: 'admin@paymyfees.com'
+        email: adminEmail
       }
     });
 
@@ -32,7 +34,7 @@ async function seedAdmin() {
     // Create admin user
     const admin = await prisma.user.create({
       data: {
-        email: 'admin@paymyfees.com',
+        email: adminEmail,
         phone: '+2348012345678',
         password: hashedPassword,
         role: 'ADMIN',

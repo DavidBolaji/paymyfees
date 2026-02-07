@@ -10,12 +10,19 @@ import { UnauthorizedError } from '@/src/types/errors';
 /**
  * Authentication middleware result
  */
-export interface AuthMiddlewareResult {
-  success: boolean;
-  userId?: string;
-  role?: string;
-  response?: NextResponse;
-}
+export type AuthMiddlewareResult =
+  | {
+      success: true;
+      userId: string;
+      role: string;
+      response?: never;
+    }
+  | {
+      success: false;
+      userId?: never;
+      role?: never;
+      response: NextResponse;
+    };
 
 /**
  * General authentication middleware

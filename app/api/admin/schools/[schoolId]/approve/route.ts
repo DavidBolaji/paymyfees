@@ -1,33 +1,28 @@
-
+import { NextResponse } from 'next/server';
 import { AdminController } from '@/src/controllers/AdminController';
 import { authMiddleware } from '@/src/middleware/authMiddleware';
 import { adminMiddleware } from '@/src/middleware/adminMiddleware';
-import { errorHandler } from '@/src/middleware/errorHandler';
-import { NextResponse } from 'next/server';
+import { asyncHandler } from '@/src/middleware/errorHandler';
+import { lenientRateLimiter } from '@/src/middleware/rateLimiter';
 
 const controller = new AdminController();
 
-export async function POST(
+export const POST = asyncHandler(async (
   req: Request,
-  { params }: { params: Promise<{ schoolId: string }> }
-) {
-  try {
-    // Authenticate user
-    const authResult = await authMiddleware(req);
-    if (!authResult.success) {
-      return authResult.response || NextResponse.json({ success: false, error: 'Authentication failed' }, { status: 401 });
-    }
+  context?: { params: Promise<{ schoolId: string }> }
+): Promise<NextResponse> => {
+  await lenientRateLimiter(req);
 
-    // Verify admin privileges
-    const adminResult = await adminMiddleware(req, authResult.userId);
-    if (!adminResult.success) {
-      return adminResult.response || NextResponse.json({ success: false, error: 'Admin privileges required' }, { status: 403 });
-    }
-
-
-    const { schoolId } = await params;
-    return await controller.approveSchool(req, schoolId, authResult.userId as any);
-  } catch (error) {
-    return errorHandler(error);
+  const authResult = await authMiddleware(req);
+  if (!authResult.success) {
+    return authResult.response || NextResponse.json({ success: false, error: 'Authentication failed' }, { status: 401 });
   }
-}
+
+  const adminResult = await adminMiddleware(req, authResult.userId);
+  if (!adminResult.success) {
+    return adminResult.response || NextResponse.json({ success: false, error: 'Admin privileges required' }, { status: 403 });
+  }
+
+  const { schoolId } = await context!.params;
+  return await controller.approveSchool(req, schoolId, authResult.userId as any);
+});

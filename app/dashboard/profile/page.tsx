@@ -31,8 +31,8 @@ interface UserProfile {
 }
 
 interface NotificationSettings {
-  email: boolean;
-  inApp: boolean;
+  emailNotifications: boolean;
+  inAppNotifications: boolean;
   walletFunding: boolean;
   loanApproval: boolean;
   repaymentReminders: boolean;
@@ -63,22 +63,32 @@ export default function ProfilePage() {
 
   // Notification settings
   const [notifications, setNotifications] = useState<NotificationSettings>({
-    email: true,
-    inApp: true,
+    emailNotifications: true,
+    inAppNotifications: true,
     walletFunding: true,
     loanApproval: true,
     repaymentReminders: true,
     verificationStatus: true,
-    securityAlerts: false,
+    securityAlerts: true,
     promotions: true,
   });
+
+  // 2FA state
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [is2FALoading, setIs2FALoading] = useState(false);
+  const [show2FASetup, setShow2FASetup] = useState(false);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [twoFactorSecret, setTwoFactorSecret] = useState<string | null>(null);
+  const [verificationCode, setVerificationCode] = useState("");
 
   // Loading states
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isUpdatingAddress, setIsUpdatingAddress] = useState(false);
+  const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
 
   useEffect(() => {
     fetchProfile();
+    fetchNotificationSettings();
   }, []);
 
   const fetchProfile = async () => {
@@ -92,6 +102,9 @@ export default function ProfilePage() {
       if (data.success) {
         const profileData = data.data;
         setProfile(profileData);
+
+        // Set 2FA status
+        setTwoFactorEnabled(profileData.twoFactorEnabled || false);
 
         // Split full name
         const nameParts = profileData.fullName.split(" ");
@@ -117,6 +130,19 @@ export default function ProfilePage() {
       setError("Failed to load profile");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchNotificationSettings = async () => {
+    try {
+      const response = await api.get("/api/user/settings/notifications");
+      const data = await response.json();
+
+      if (data.success) {
+        setNotifications(data.data);
+      }
+    } catch (err) {
+      console.error("Error fetching notification settings:", err);
     }
   };
 
@@ -179,11 +205,133 @@ export default function ProfilePage() {
     }
   };
 
-  const toggleNotification = (key: keyof NotificationSettings) => {
+  const toggleNotification = async (key: keyof NotificationSettings) => {
+    const newValue = !notifications[key];
+    
+    // Optimistic update
     setNotifications((prev) => ({
       ...prev,
-      [key]: !prev[key],
+      [key]: newValue,
     }));
+
+    try {
+      setIsUpdatingNotifications(true);
+      
+      const response = await api.put("/api/user/settings/notifications", {
+        ...notifications,
+        [key]: newValue,
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        // Revert on error
+        setNotifications((prev) => ({
+          ...prev,
+          [key]: !newValue,
+        }));
+        setError(data.message || "Failed to update notification settings");
+      }
+    } catch (err) {
+      console.error("Error updating notification settings:", err);
+      // Revert on error
+      setNotifications((prev) => ({
+        ...prev,
+        [key]: !newValue,
+      }));
+      setError("Failed to update notification settings");
+    } finally {
+      setIsUpdatingNotifications(false);
+    }
+  };
+
+  const handle2FAToggle = async () => {
+    if (twoFactorEnabled) {
+      // Disable 2FA - need verification code
+      const code = prompt("Enter your 2FA code to disable:");
+      if (!code) return;
+
+      try {
+        setIs2FALoading(true);
+        const response = await api.post("/api/user/settings/2fa", {
+          action: "disable",
+          code,
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          setTwoFactorEnabled(false);
+          setError(null);
+          alert("2FA has been disabled successfully");
+        } else {
+          setError(data.message || "Failed to disable 2FA");
+        }
+      } catch (err) {
+        console.error("Error disabling 2FA:", err);
+        setError("Failed to disable 2FA");
+      } finally {
+        setIs2FALoading(false);
+      }
+    } else {
+      // Enable 2FA - show setup modal
+      try {
+        setIs2FALoading(true);
+        const response = await api.post("/api/user/settings/2fa", {
+          action: "setup",
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          setQrCode(data.data.qrCode);
+          setTwoFactorSecret(data.data.secret);
+          setShow2FASetup(true);
+          setError(null);
+        } else {
+          setError(data.message || "Failed to setup 2FA");
+        }
+      } catch (err) {
+        console.error("Error setting up 2FA:", err);
+        setError("Failed to setup 2FA");
+      } finally {
+        setIs2FALoading(false);
+      }
+    }
+  };
+
+  const handleEnable2FA = async () => {
+    if (!verificationCode || verificationCode.length !== 6) {
+      setError("Please enter a valid 6-digit code");
+      return;
+    }
+
+    try {
+      setIs2FALoading(true);
+      const response = await api.post("/api/user/settings/2fa", {
+        action: "enable",
+        code: verificationCode,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setTwoFactorEnabled(true);
+        setShow2FASetup(false);
+        setQrCode(null);
+        setTwoFactorSecret(null);
+        setVerificationCode("");
+        setError(null);
+        alert("2FA has been enabled successfully");
+      } else {
+        setError(data.message || "Invalid verification code");
+      }
+    } catch (err) {
+      console.error("Error enabling 2FA:", err);
+      setError("Failed to enable 2FA");
+    } finally {
+      setIs2FALoading(false);
+    }
   };
 
   if (isLoading) {
@@ -454,13 +602,15 @@ export default function ProfilePage() {
                 <div className="space-y-3">
                   <NotificationToggle
                     label="Email:"
-                    checked={notifications.email}
-                    onChange={() => toggleNotification("email")}
+                    checked={notifications.emailNotifications}
+                    onChange={() => toggleNotification("emailNotifications")}
+                    disabled={isUpdatingNotifications}
                   />
                   <NotificationToggle
                     label="In-app notifications:"
-                    checked={notifications.inApp}
-                    onChange={() => toggleNotification("inApp")}
+                    checked={notifications.inAppNotifications}
+                    onChange={() => toggleNotification("inAppNotifications")}
+                    disabled={isUpdatingNotifications}
                   />
                 </div>
               </div>
@@ -475,31 +625,37 @@ export default function ProfilePage() {
                     label="Wallet Funding Confirmations"
                     checked={notifications.walletFunding}
                     onChange={() => toggleNotification("walletFunding")}
+                    disabled={isUpdatingNotifications}
                   />
                   <NotificationToggle
                     label="Loan Approval Updates"
                     checked={notifications.loanApproval}
                     onChange={() => toggleNotification("loanApproval")}
+                    disabled={isUpdatingNotifications}
                   />
                   <NotificationToggle
                     label="Repayment Reminders"
                     checked={notifications.repaymentReminders}
                     onChange={() => toggleNotification("repaymentReminders")}
+                    disabled={isUpdatingNotifications}
                   />
                   <NotificationToggle
                     label="Verification Status Updates"
                     checked={notifications.verificationStatus}
                     onChange={() => toggleNotification("verificationStatus")}
+                    disabled={isUpdatingNotifications}
                   />
                   <NotificationToggle
                     label="Security Alerts"
                     checked={notifications.securityAlerts}
                     onChange={() => toggleNotification("securityAlerts")}
+                    disabled={isUpdatingNotifications}
                   />
                   <NotificationToggle
                     label="Promotions & Tips"
                     checked={notifications.promotions}
                     onChange={() => toggleNotification("promotions")}
+                    disabled={isUpdatingNotifications}
                   />
                 </div>
               </div>
@@ -522,13 +678,16 @@ export default function ProfilePage() {
                     Two-Factor Authentication
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    Add an extra layer of security to your account
+                    {twoFactorEnabled 
+                      ? "2FA is currently enabled" 
+                      : "Add an extra layer of security to your account"}
                   </p>
                 </div>
                 <NotificationToggle
                   label=""
-                  checked={false}
-                  onChange={() => { }}
+                  checked={twoFactorEnabled}
+                  onChange={handle2FAToggle}
+                  disabled={is2FALoading}
                 />
               </div>
 
@@ -568,6 +727,84 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* 2FA Setup Modal */}
+      {show2FASetup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <h3 className="text-xl font-semibold text-[#292929] mb-4">
+              Enable Two-Factor Authentication
+            </h3>
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-gray-600 mb-3">
+                  Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+                </p>
+                {qrCode && (
+                  <div className="flex justify-center mb-4">
+                    <img src={qrCode} alt="2FA QR Code" className="w-48 h-48" />
+                  </div>
+                )}
+              </div>
+
+              {twoFactorSecret && (
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <p className="text-xs text-gray-600 mb-1">
+                    Or enter this code manually:
+                  </p>
+                  <p className="text-sm font-mono font-semibold text-[#00296B] break-all">
+                    {twoFactorSecret}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Enter verification code from your app:
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ""))}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-xl tracking-widest"
+                  placeholder="000000"
+                />
+              </div>
+
+              {error && (
+                <p className="text-red-600 text-sm">{error}</p>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShow2FASetup(false);
+                    setQrCode(null);
+                    setTwoFactorSecret(null);
+                    setVerificationCode("");
+                    setError(null);
+                  }}
+                  className="flex-1 h-12 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                  disabled={is2FALoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleEnable2FA}
+                  disabled={is2FALoading || verificationCode.length !== 6}
+                  className="flex-1 h-12 bg-[#00296B] text-white rounded-lg hover:bg-[#002561] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {is2FALoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Enable 2FA
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -577,22 +814,27 @@ function NotificationToggle({
   label,
   checked,
   onChange,
+  disabled = false,
 }: {
   label: string;
   checked: boolean;
   onChange: () => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-sm text-gray-600">{label}</span>
       <button
         onClick={onChange}
-        className={`w-14 h-7 rounded-lg relative transition-colors ${checked ? "bg-[#00296B]" : "bg-gray-300"
-          }`}
+        disabled={disabled}
+        className={`w-14 h-7 rounded-lg relative transition-colors ${
+          checked ? "bg-[#00296B]" : "bg-gray-300"
+        } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       >
         <span
-          className={`absolute top-1 w-5 h-5 bg-white rounded-md transition-transform shadow-sm ${checked ? "translate-x-0.5" : "-translate-x-6"
-            }`}
+          className={`absolute top-1 w-5 h-5 bg-white rounded-md transition-transform shadow-sm ${
+            checked ? "translate-x-0.5" : "-translate-x-6"
+          }`}
         ></span>
       </button>
     </div>

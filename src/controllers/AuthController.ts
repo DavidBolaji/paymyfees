@@ -222,7 +222,10 @@ export class AuthController {
       );
     }
 
-    const user = await this.userRepository.findByEmail(email);
+    // Normalize email to lowercase for case-insensitive lookup
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await this.userRepository.findByEmail(normalizedEmail);
 
     if (!user) {
       return NextResponse.json(
@@ -318,6 +321,74 @@ export class AuthController {
     const response: ApiResponse = {
       success: true,
       message: "Email verified successfully",
+      metadata: {
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    return NextResponse.json(response, { status: 200 });
+  }
+
+  /**
+   * Verify 2FA code during login
+   * POST /api/auth/verify-2fa
+   */
+  async verify2FALogin(req: Request): Promise<NextResponse> {
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "invalid_request",
+          message: "Invalid request body",
+        },
+        { status: 400 }
+      );
+    }
+
+    const tempToken = body?.tempToken;
+    const code = body?.code;
+
+    if (!tempToken || typeof tempToken !== "string") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "missing_token",
+          message: "Temporary token is required. Please login again.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!code || typeof code !== "string" || code.length !== 6) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "invalid_code",
+          message: "A valid 6-digit 2FA code is required",
+        },
+        { status: 400 }
+      );
+    }
+
+    const result = await this.authService.verify2FA(tempToken, code);
+
+    if (!result) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "invalid_code",
+          message: "Invalid or expired 2FA code. Please try again.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const response: ApiResponse = {
+      success: true,
+      data: result,
       metadata: {
         timestamp: new Date().toISOString(),
       },

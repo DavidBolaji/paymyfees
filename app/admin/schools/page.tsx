@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { DataTable, PaginationInfo } from '@/components/dashboard/data-table';
 import { CustomInput } from '@/components/ui/custom-input';
 import { Modal } from '@/components/ui/modal';
-import { Eye, FileText, CheckCircle, XCircle, Plus, MessageSquare } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { SchoolDetailDrawer } from '@/components/dashboard/school-detail-drawer';
 
 const SCHOOL_COLUMNS = [
   { key: 'schoolName', label: 'School Name' },
@@ -15,22 +16,47 @@ const SCHOOL_COLUMNS = [
   { key: 'createdAt', label: 'Registered' },
 ];
 
+const ACTIVITY_OPTIONS = [
+  { value: 'SUBMISSION_RECEIVED', label: 'Submission Received' },
+  { value: 'DOCUMENT_REVIEW', label: 'Document Review' },
+  { value: 'SCHOOL_VERIFICATION', label: 'School Verification' },
+  { value: 'BANK_VERIFICATION', label: 'Bank Verification' },
+  { value: 'CONTACT_VERIFICATION', label: 'Contact Verification' },
+  { value: 'ADDITIONAL_INFO_REQUESTED', label: 'Additional Info Requested' },
+  { value: 'VERIFICATION_COMPLETE', label: 'Verification Complete' },
+];
+
+const STATUS_OPTIONS = [
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'IN_PROGRESS', label: 'In Progress' },
+  { value: 'APPROVED', label: 'Approved' },
+  { value: 'REJECTED', label: 'Rejected' },
+  { value: 'REQUIRES_INFO', label: 'Requires Info' },
+];
+
 export default function AdminSchoolsPage() {
   const [schools, setSchools] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [selectedSchool, setSelectedSchool] = useState<any>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
   const [showAddSchoolModal, setShowAddSchoolModal] = useState(false);
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
-  const [showMessageModal, setShowMessageModal] = useState(false);
-  const [showLogsModal, setShowLogsModal] = useState(false);
-  const [approvalAction, setApprovalAction] = useState<'approve' | 'reject' | null>(null);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [message, setMessage] = useState('');
-  const [logs, setLogs] = useState<any[]>([]);
   const [processing, setProcessing] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
+  const [loadingSchoolDetails, setLoadingSchoolDetails] = useState(false);
+  
+  // Approval/Rejection modals
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  
+  // Log modal
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [logForm, setLogForm] = useState({
+    activity: '',
+    details: '',
+    status: 'IN_PROGRESS'
+  });
   
   // Add school form state
   const [schoolForm, setSchoolForm] = useState({
@@ -72,41 +98,102 @@ export default function AdminSchoolsPage() {
   };
 
   const handleViewDetails = async (school: any) => {
+    // Show drawer immediately with basic data
+    setSelectedSchool(school);
+    setShowDrawer(true);
+    
+    // Fetch full details in background
     try {
+      setLoadingSchoolDetails(true);
       const res = await fetch(`/api/admin/schools/${school.id}`);
       const data = await res.json();
       
       if (data.success) {
         setSelectedSchool(data.data);
-        setShowDetailsModal(true);
       }
     } catch (error) {
       console.error('Error fetching school details:', error);
+    } finally {
+      setLoadingSchoolDetails(false);
     }
   };
 
-  const handleApprovalAction = async () => {
-    if (!selectedSchool || !approvalAction) return;
-
+  const handleApprove = async (schoolId: string) => {
+    if (!schoolId) return;
+    
     try {
       setProcessing(true);
-      const endpoint = approvalAction === 'approve' ? 'approve' : 'reject';
-      const res = await fetch(`/api/admin/schools/${selectedSchool.id}/${endpoint}`, {
+      const res = await fetch(`/api/admin/schools/${schoolId}/approve`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: rejectionReason })
+        headers: { 'Content-Type': 'application/json' }
       });
 
       const data = await res.json();
       
       if (data.success) {
         setShowApprovalModal(false);
-        setShowDetailsModal(false);
-        setRejectionReason('');
+        setShowDrawer(false);
+        setSelectedSchool(null);
         fetchSchools(pagination?.page || 1);
       }
     } catch (error) {
-      console.error('Error updating school status:', error);
+      console.error('Error approving school:', error);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleReject = async (schoolId: string, reason: string) => {
+    if (!schoolId || !reason) return;
+    
+    try {
+      setProcessing(true);
+      const res = await fetch(`/api/admin/schools/${schoolId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason })
+      });
+
+      const data = await res.json();
+      
+      if (data.success) {
+        setShowRejectionModal(false);
+        setRejectionReason('');
+        setShowDrawer(false);
+        setSelectedSchool(null);
+        fetchSchools(pagination?.page || 1);
+      }
+    } catch (error) {
+      console.error('Error rejecting school:', error);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleAddLog = async () => {
+    if (!logForm.activity || !logForm.details || !selectedSchool) return;
+
+    try {
+      setProcessing(true);
+      const res = await fetch(`/api/admin/schools/${selectedSchool.id}/verification-log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(logForm)
+      });
+
+      const data = await res.json();
+      
+      if (data.success) {
+        setShowLogModal(false);
+        setLogForm({
+          activity: '',
+          details: '',
+          status: 'IN_PROGRESS'
+        });
+        fetchSchools(pagination?.page || 1);
+      }
+    } catch (error) {
+      console.error('Error adding verification log:', error);
     } finally {
       setProcessing(false);
     }
@@ -146,46 +233,6 @@ export default function AdminSchoolsPage() {
       console.error('Error adding school:', error);
     } finally {
       setProcessing(false);
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!selectedSchool || !message) return;
-
-    try {
-      setProcessing(true);
-      const res = await fetch(`/api/admin/schools/${selectedSchool.id}/verification-message`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message })
-      });
-
-      const data = await res.json();
-      
-      if (data.success) {
-        setShowMessageModal(false);
-        setMessage('');
-        alert('Message sent successfully');
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleViewLogs = async (school: any) => {
-    try {
-      const res = await fetch(`/api/admin/schools/${school.id}/verification-logs`);
-      const data = await res.json();
-      
-      if (data.success) {
-        setLogs(data.data || []);
-        setSelectedSchool(school);
-        setShowLogsModal(true);
-      }
-    } catch (error) {
-      console.error('Error fetching logs:', error);
     }
   };
 
@@ -238,165 +285,29 @@ export default function AdminSchoolsPage() {
         filterable={true}
       />
 
-      {/* School Details Modal */}
-      {showDetailsModal && selectedSchool && (
-        <Modal
-          isOpen={showDetailsModal}
-          onClose={() => setShowDetailsModal(false)}
-          title="School Details"
-        >
-          <div className="space-y-6 max-h-[70vh] overflow-y-auto">
-            {/* School Information */}
-            <div>
-              <h3 className="font-semibold text-lg mb-3">School Information</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-gray-500">School Name</p>
-                  <p className="font-medium">{selectedSchool.schoolName}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Email</p>
-                  <p className="font-medium">{selectedSchool.schoolEmail}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Phone</p>
-                  <p className="font-medium">{selectedSchool.schoolPhone}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Address</p>
-                  <p className="font-medium">{selectedSchool.schoolAddress}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">City</p>
-                  <p className="font-medium">{selectedSchool.city}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">State</p>
-                  <p className="font-medium">{selectedSchool.state}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Status</p>
-                  <p className={`font-medium ${selectedSchool.isVerified ? 'text-green-600' : 'text-yellow-600'}`}>
-                    {selectedSchool.isVerified ? 'Verified' : 'Pending'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Total Students</p>
-                  <p className="font-medium">{selectedSchool.totalStudents}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Person */}
-            <div>
-              <h3 className="font-semibold text-lg mb-3">Contact Person</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-gray-500">Name</p>
-                  <p className="font-medium">{selectedSchool.contactPersonName}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Email</p>
-                  <p className="font-medium">{selectedSchool.contactPersonEmail}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Phone</p>
-                  <p className="font-medium">{selectedSchool.contactPersonPhone}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Bank Details */}
-            <div>
-              <h3 className="font-semibold text-lg mb-3">Bank Details</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-gray-500">Bank Name</p>
-                  <p className="font-medium">{selectedSchool.bankName || 'N/A'}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Account Number</p>
-                  <p className="font-medium">{selectedSchool.accountNumber || 'N/A'}</p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-gray-500">Account Name</p>
-                  <p className="font-medium">{selectedSchool.accountName || 'N/A'}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Documents */}
-            {selectedSchool.documents && selectedSchool.documents.length > 0 && (
-              <div>
-                <h3 className="font-semibold text-lg mb-3">Documents ({selectedSchool.documents.length})</h3>
-                <div className="space-y-2">
-                  {selectedSchool.documents.map((doc: any) => (
-                    <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <FileText className="w-5 h-5 text-gray-400" />
-                        <div>
-                          <p className="font-medium text-sm">{doc.documentType}</p>
-                          <p className="text-xs text-gray-500">{doc.fileName}</p>
-                        </div>
-                      </div>
-                      <a
-                        href={doc.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1"
-                      >
-                        <Eye className="w-4 h-4" />
-                        View
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 pt-4 border-t sticky bottom-0 bg-white">
-              {!selectedSchool.isVerified && (
-                <>
-                  <button
-                    onClick={() => {
-                      setApprovalAction('approve');
-                      setShowApprovalModal(true);
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => {
-                      setApprovalAction('reject');
-                      setShowApprovalModal(true);
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                  >
-                    <XCircle className="w-4 h-4" />
-                    Reject
-                  </button>
-                </>
-              )}
-              <button
-                onClick={() => setShowMessageModal(true)}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-              >
-                <MessageSquare className="w-4 h-4" />
-                Send Message
-              </button>
-              <button
-                onClick={() => handleViewLogs(selectedSchool)}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                View Logs
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      {/* School Detail Drawer */}
+      <SchoolDetailDrawer
+        isOpen={showDrawer}
+        onClose={() => {
+          setShowDrawer(false);
+          setSelectedSchool(null);
+        }}
+        school={selectedSchool}
+        onApprove={() => {
+          setShowDrawer(false);
+          setShowApprovalModal(true);
+        }}
+        onReject={() => {
+          setShowDrawer(false);
+          setShowRejectionModal(true);
+        }}
+        onAddLog={() => {
+          setShowDrawer(false);
+          setShowLogModal(true);
+        }}
+        onRefresh={() => fetchSchools(pagination?.page || 1)}
+        isLoading={loadingSchoolDetails}
+      />
 
       {/* Add School Modal */}
       {showAddSchoolModal && (
@@ -514,36 +425,64 @@ export default function AdminSchoolsPage() {
       )}
 
       {/* Approval Modal */}
-      {showApprovalModal && (
+      {selectedSchool && (
         <Modal
           isOpen={showApprovalModal}
-          onClose={() => {
-            setShowApprovalModal(false);
-            setRejectionReason('');
-          }}
-          title={approvalAction === 'approve' ? 'Approve School' : 'Reject School'}
+          onClose={() => setShowApprovalModal(false)}
+          title="Approve School"
         >
           <div className="space-y-4">
             <p className="text-gray-600">
-              {approvalAction === 'approve'
-                ? 'Are you sure you want to approve this school?'
-                : 'Please provide a reason for rejecting this school.'}
+              Are you sure you want to approve <strong>{selectedSchool.schoolName}</strong>?
             </p>
 
-            {approvalAction === 'reject' && (
-              <CustomInput
-                label="Rejection Reason"
-                type="text"
-                value={rejectionReason}
-                onChange={setRejectionReason}
-                placeholder="Enter reason for rejection"
-              />
-            )}
+            <div className="flex gap-3 pt-4">
+              <button
+                onClick={() => setShowApprovalModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                disabled={processing}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleApprove(selectedSchool.id)}
+                disabled={processing}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {processing ? 'Processing...' : 'Approve'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Rejection Modal */}
+      {selectedSchool && (
+        <Modal
+          isOpen={showRejectionModal}
+          onClose={() => {
+            setShowRejectionModal(false);
+            setRejectionReason('');
+          }}
+          title="Reject School"
+        >
+          <div className="space-y-4">
+            <p className="text-gray-600">
+              Please provide a reason for rejecting <strong>{selectedSchool.schoolName}</strong>.
+            </p>
+
+            <CustomInput
+              label="Rejection Reason"
+              type="text"
+              value={rejectionReason}
+              onChange={setRejectionReason}
+              placeholder="Enter reason for rejection"
+            />
 
             <div className="flex gap-3 pt-4">
               <button
                 onClick={() => {
-                  setShowApprovalModal(false);
+                  setShowRejectionModal(false);
                   setRejectionReason('');
                 }}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
@@ -552,45 +491,66 @@ export default function AdminSchoolsPage() {
                 Cancel
               </button>
               <button
-                onClick={handleApprovalAction}
-                disabled={processing || (approvalAction === 'reject' && !rejectionReason)}
-                className={`flex-1 px-4 py-2 text-white rounded-lg ${
-                  approvalAction === 'approve'
-                    ? 'bg-green-600 hover:bg-green-700'
-                    : 'bg-red-600 hover:bg-red-700'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                onClick={() => handleReject(selectedSchool.id, rejectionReason)}
+                disabled={processing || !rejectionReason}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {processing ? 'Processing...' : 'Confirm'}
+                {processing ? 'Processing...' : 'Reject'}
               </button>
             </div>
           </div>
         </Modal>
       )}
 
-      {/* Send Message Modal */}
-      {showMessageModal && (
+      {/* Add Verification Log Modal */}
+      {selectedSchool && (
         <Modal
-          isOpen={showMessageModal}
+          isOpen={showLogModal}
           onClose={() => {
-            setShowMessageModal(false);
-            setMessage('');
+            setShowLogModal(false);
+            setLogForm({
+              activity: '',
+              details: '',
+              status: 'IN_PROGRESS'
+            });
           }}
-          title="Send Verification Message"
+          title="Add Verification Log"
         >
           <div className="space-y-4">
             <CustomInput
-              label="Message"
+              label="Activity"
+              type="select"
+              value={logForm.activity}
+              onChange={(val) => setLogForm({ ...logForm, activity: val })}
+              options={ACTIVITY_OPTIONS}
+              placeholder="Select activity"
+            />
+
+            <CustomInput
+              label="Status"
+              type="select"
+              value={logForm.status}
+              onChange={(val) => setLogForm({ ...logForm, status: val })}
+              options={STATUS_OPTIONS}
+            />
+
+            <CustomInput
+              label="Details"
               type="text"
-              value={message}
-              onChange={setMessage}
-              placeholder="Enter message for school"
+              value={logForm.details}
+              onChange={(val) => setLogForm({ ...logForm, details: val })}
+              placeholder="Enter details about this activity"
             />
 
             <div className="flex gap-3 pt-4">
               <button
                 onClick={() => {
-                  setShowMessageModal(false);
-                  setMessage('');
+                  setShowLogModal(false);
+                  setLogForm({
+                    activity: '',
+                    details: '',
+                    status: 'IN_PROGRESS'
+                  });
                 }}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                 disabled={processing}
@@ -598,40 +558,13 @@ export default function AdminSchoolsPage() {
                 Cancel
               </button>
               <button
-                onClick={handleSendMessage}
-                disabled={processing || !message}
+                onClick={handleAddLog}
+                disabled={processing || !logForm.activity || !logForm.details}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {processing ? 'Sending...' : 'Send Message'}
+                {processing ? 'Adding...' : 'Add Log'}
               </button>
             </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Verification Logs Modal */}
-      {showLogsModal && (
-        <Modal
-          isOpen={showLogsModal}
-          onClose={() => setShowLogsModal(false)}
-          title="Verification Logs"
-        >
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-            {logs.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No logs available</p>
-            ) : (
-              logs.map((log: any) => (
-                <div key={log.id} className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm font-medium text-gray-900">{log.message}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {new Date(log.createdAt).toLocaleString()}
-                  </p>
-                  <p className={`text-xs mt-1 ${log.isRead ? 'text-gray-500' : 'text-blue-600 font-medium'}`}>
-                    {log.isRead ? 'Read' : 'Unread'}
-                  </p>
-                </div>
-              ))
-            )}
           </div>
         </Modal>
       )}

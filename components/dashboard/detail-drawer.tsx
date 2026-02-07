@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, CheckSquare } from 'lucide-react';
 import { StatusBadge } from './status-badge';
 
-interface DrawerSection {
+export interface DrawerSection {
   title: string;
   items: Array<{
     label: string;
@@ -13,7 +13,7 @@ interface DrawerSection {
   }>;
 }
 
-interface DrawerAction {
+export interface DrawerAction {
   label: string;
   onClick: () => void;
   variant?: 'primary' | 'secondary';

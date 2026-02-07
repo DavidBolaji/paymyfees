@@ -105,7 +105,12 @@ export function ForgotForm({ onSubmit }: ForgotFormProps) {
     if (validateForm()) {
       try {
         setLoading(true);
-        await onSubmit(formData);
+        // Normalize email before submission
+        const normalizedFormData = {
+          ...formData,
+          email: formData.email.trim().toLowerCase()
+        };
+        await onSubmit(normalizedFormData);
       } catch (error) {
         console.error("Forgot password error:", error);
         // Handle submission error
