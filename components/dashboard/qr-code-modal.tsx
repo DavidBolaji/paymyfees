@@ -135,7 +135,7 @@ export function QRCodeModal({ isOpen, onClose, qrCodeUrl, secret }: QRCodeModalP
           onClick={onClose}
           className="w-full h-12 bg-[#00296B] text-white rounded-lg hover:bg-[#002561] transition-colors font-medium"
         >
-          I've Saved My Secret Key
+          I&apos;ve Saved My Secret Key
         </button>
       </div>
     </div>
