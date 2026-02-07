@@ -33,6 +33,17 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (data.success) {
+        // Check if 2FA is required
+        if (data.data.requires2FA || data.data.user.twoFactorEnabled) {
+          // Store temporary token and email in sessionStorage
+          sessionStorage.setItem('2fa_temp_token', data.data.token);
+          sessionStorage.setItem('2fa_email', formData.email);
+          
+          // Redirect to 2FA verification page
+          window.location.href = "/auth/verify-2fa";
+          return;
+        }
+
         // Use Zustand to store user data
         login(data.data.user, data.data.token, data.data.refreshToken);
         

@@ -15,7 +15,7 @@ const notificationController = new NotificationController();
  * PUT /api/notifications/:notificationId/read
  * Mark a specific notification as read
  */
-export const PUT = asyncHandler(async (req: Request, { params }: { params: Promise<{ notificationId: string }> }) => {
+export const PUT = asyncHandler(async (req: Request, context?: { params: Promise<{ notificationId: string }> }) => {
   // Apply lenient rate limiting for notification updates
   await lenientRateLimiter(req);
 
@@ -25,7 +25,7 @@ export const PUT = asyncHandler(async (req: Request, { params }: { params: Promi
     return authResult.response;
   }
 
-  const { notificationId } = await params;
+  const { notificationId } = await context!.params;
 
   // Delegate to controller
   return await notificationController.markNotificationAsRead(req, notificationId, authResult.userId);

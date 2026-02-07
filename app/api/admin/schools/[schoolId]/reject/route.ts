@@ -1,22 +1,21 @@
-
+import { NextResponse } from 'next/server';
 import { AdminController } from '@/src/controllers/AdminController';
 import { authMiddleware } from '@/src/middleware/authMiddleware';
 import { adminMiddleware } from '@/src/middleware/adminMiddleware';
-import { errorHandler } from '@/src/middleware/errorHandler';
+import { asyncHandler } from '@/src/middleware/errorHandler';
+import { lenientRateLimiter } from '@/src/middleware/rateLimiter';
 
 const controller = new AdminController();
 
-export async function POST(
+export const POST = asyncHandler(async (
   req: Request,
-  { params }: { params: Promise<{ schoolId: string }> }
-) {
-  try {
-    const user = await authMiddleware(req);
-    await adminMiddleware(user as any);
-    
-    const { schoolId } = await params;
-    return await controller.rejectSchool(req, schoolId, user.userId as any);
-  } catch (error) {
-    return errorHandler(error);
-  }
-}
+  context?: { params: Promise<{ schoolId: string }> }
+): Promise<NextResponse> => {
+  await lenientRateLimiter(req);
+  
+  const user = await authMiddleware(req);
+  await adminMiddleware(user as any);
+  
+  const { schoolId } = await context!.params;
+  return await controller.rejectSchool(req, schoolId, user.userId as any);
+});

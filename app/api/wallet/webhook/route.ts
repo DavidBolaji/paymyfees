@@ -5,8 +5,9 @@
  * This endpoint receives webhook notifications from Paystack
  * about payment status changes
  */
-import { WalletController } from '@/src/controllers/WalletController';
 import { NextResponse } from 'next/server';
+import { WalletController } from '@/src/controllers/WalletController';
+import { asyncHandler } from '@/src/middleware/errorHandler';
 
 const walletController = new WalletController();
 
@@ -17,17 +18,6 @@ const walletController = new WalletController();
  * Note: This endpoint should NOT be protected by authentication
  * as it's called by Paystack's servers
  */
-export async function POST(req: Request) {
-  try {
-    return await walletController.handleWebhook(req);
-  } catch (error) {
-    console.error('Webhook handler error:', error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        message: 'Internal server error' 
-      },
-      { status: 500 }
-    );
-  }
-}
+export const POST = asyncHandler(async (req: Request): Promise<NextResponse> => {
+  return await walletController.handleWebhook(req);
+});

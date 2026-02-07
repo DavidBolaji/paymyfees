@@ -5,11 +5,13 @@
  */
 
 import bcrypt from 'bcryptjs';
+import speakeasy from 'speakeasy';
 import { UserRepository, IUserRepository } from '@/src/repositories/UserRepository';
 import {
   generateToken,
   generateRefreshToken,
   verifyRefreshToken,
+  verifyJwtToken,
   AuthUser
 } from '@/src/middleware/auth';
 import {
@@ -35,6 +37,7 @@ export interface IAuthService {
   verifyEmail(tokenOrOtp: string, mode: 'link' | 'otp'): Promise<boolean>;
   requestPasswordReset(email: string): Promise<void>;
   resetPassword(token: string, newPassword: string): Promise<void>;
+  verify2FA(tempToken: string, code: string): Promise<AuthResponse | null>;
 }
 
 /**
@@ -69,12 +72,15 @@ export class AuthService implements IAuthService {
     // Hash password
     const hashedPassword = await this.hashPassword(input.password);
 
+    // Normalize email to lowercase
+    const normalizedEmail = input.email.trim().toLowerCase();
+
     // Create user with transaction
     const user = await executeTransaction(async (tx) => {
       // Create user
       const newUser = await tx.user.create({
         data: {
-          email: input.email,
+          email: normalizedEmail,
           password: hashedPassword,
           country: input.country,
           role: input.role,
@@ -185,13 +191,16 @@ export class AuthService implements IAuthService {
    * Validates credentials and returns tokens
    */
   async login(input: LoginInput): Promise<AuthResponse> {
-    console.log('User login attempt', { email: input.email });
+    // Normalize email to lowercase for case-insensitive lookup
+    const normalizedEmail = input.email.trim().toLowerCase();
+    
+    console.log('User login attempt', { email: normalizedEmail });
 
     // Find user by email
-    const user = await this.userRepository.findByEmail(input.email);
+    const user = await this.userRepository.findByEmail(normalizedEmail);
 
     if (!user) {
-      console.warn('Login failed: user not found', { email: input.email });
+      console.warn('Login failed: user not found', { email: normalizedEmail });
       throw new UnauthorizedError('Invalid email or password');
     }
 
@@ -199,14 +208,48 @@ export class AuthService implements IAuthService {
     const isPasswordValid = await this.verifyPassword(input.password, user.password);
 
     if (!isPasswordValid) {
-      console.warn('Login failed: invalid password', { email: input.email });
+      console.warn('Login failed: invalid password', { email: normalizedEmail });
       throw new UnauthorizedError('Invalid email or password');
     }
 
     // Check if user is active
     if (!user.isActive) {
-      console.warn('Login failed: user inactive', { email: input.email });
+      console.warn('Login failed: user inactive', { email: normalizedEmail });
       throw new UnauthorizedError('Account is inactive');
+    }
+
+    // Check if 2FA is enabled
+    if (user.twoFactorEnabled) {
+      console.log('2FA required for user', { userId: user.id });
+      
+      // Generate temporary token for 2FA verification
+      const tempToken = generateToken({
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      }, '10m'); // 10 minutes expiry
+      
+      // Return response indicating 2FA is required
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          fullName: user.fullName,
+          profileImage: user.profileImage,
+          emailVerified: user.emailVerified,
+          phoneVerified: user.phoneVerified,
+          residencyStatus: user.residencyStatus,
+          isActive: user.isActive,
+          twoFactorEnabled: true,
+          lastLogin: user.lastLogin,
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        },
+        token: tempToken,
+        refreshToken: '',
+        requires2FA: true,
+      } as any;
     }
 
     // Update last login
@@ -234,6 +277,7 @@ export class AuthService implements IAuthService {
         phoneVerified: user.phoneVerified,
         residencyStatus: user.residencyStatus,
         isActive: user.isActive,
+        twoFactorEnabled: user.twoFactorEnabled,
         lastLogin: new Date(),
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
@@ -293,19 +337,33 @@ export class AuthService implements IAuthService {
     try {
       console.log(`Verifying email using ${mode} mode`);
       
-      // Verify token or OTP
+      // Get user ID first to check if token exists
       const userId = await getUserByToken(tokenOrOtp, mode);
-      const isVerified = await verifyToken(tokenOrOtp, mode);
-
+      
       console.log(userId, "UserId authservice");
+      
+      // If no user found, token is invalid or expired
+      if (!userId) {
+        console.log('Token not found or expired');
+        return false;
+      }
+      
+      // Verify token or OTP (this also marks email as verified)
+      const isVerified = await verifyToken(tokenOrOtp, mode);
+      
       console.log(isVerified, "isVerified");
       
       if (isVerified) {
-        // Send welcome email
-        const user = await this.userRepository.findById(userId!);
-        if (user) {
-          await this.mailService.sendWelcomeEmail(user.email, user.fullName);
-          console.log(`Welcome email sent to ${user.email}`);
+        // Send welcome email (don't let email failure break verification)
+        try {
+          const user = await this.userRepository.findById(userId);
+          if (user && user.email) {
+            await this.mailService.sendWelcomeEmail(user.email, user.fullName);
+            console.log(`Welcome email sent to ${user.email}`);
+          }
+        } catch (emailError) {
+          // Log but don't fail verification if email fails
+          console.error('Failed to send welcome email:', emailError);
         }
       }
       
@@ -329,21 +387,24 @@ export class AuthService implements IAuthService {
    */
   async requestPasswordReset(email: string): Promise<void> {
     try {
-      console.log('Password reset requested', { email });
+      // Normalize email to lowercase for case-insensitive lookup
+      const normalizedEmail = email.trim().toLowerCase();
+      
+      console.log('Password reset requested', { email: normalizedEmail });
 
       // Find user by email
-      const user = await this.userRepository.findByEmail(email);
+      const user = await this.userRepository.findByEmail(normalizedEmail);
 
       if (!user) {
         // Don't reveal if email exists for security
-        console.warn('Password reset requested for non-existent email', { email });
+        console.warn('Password reset requested for non-existent email', { email: normalizedEmail });
         // Still return success to prevent email enumeration
         return;
       }
 
       // Check if user is active
       if (!user.isActive) {
-        console.warn('Password reset requested for inactive user', { email });
+        console.warn('Password reset requested for inactive user', { email: normalizedEmail });
         // Still return success to prevent account status enumeration
         return;
       }
@@ -358,7 +419,7 @@ export class AuthService implements IAuthService {
         resetData
       );
 
-      console.log('Password reset email sent successfully', { email });
+      console.log('Password reset email sent successfully', { email: normalizedEmail });
     } catch (error) {
       console.error('Error in requestPasswordReset', {
         email,
@@ -424,5 +485,102 @@ export class AuthService implements IAuthService {
    */
   private async verifyPassword(password: string, hash: string): Promise<boolean> {
     return await bcrypt.compare(password, hash);
+  }
+
+  /**
+   * Verify 2FA code during login
+   * Validates 2FA code and completes authentication
+   */
+  async verify2FA(tempToken: string, code: string): Promise<AuthResponse | null> {
+    try {
+      console.log('2FA verification attempt');
+
+      if (!tempToken || !code) {
+        throw new UnauthorizedError('Temporary token and 2FA code are required');
+      }
+
+      // Verify the temporary token using JWT_SECRET (same key used to generate it)
+      let decoded: AuthUser;
+      try {
+        decoded = verifyJwtToken(tempToken);
+      } catch (tokenError) {
+        console.error('Failed to verify temp token:', tokenError);
+        throw new UnauthorizedError('Invalid or expired session. Please login again.');
+      }
+
+      // Get user
+      const user = await this.userRepository.findById(decoded.id);
+
+      if (!user) {
+        throw new UnauthorizedError('User not found');
+      }
+
+      if (!user.twoFactorEnabled || !user.twoFactorSecret) {
+        throw new UnauthorizedError('2FA is not enabled for this account');
+      }
+
+      // Verify the 2FA code using speakeasy
+      let verified = false;
+      try {
+        verified = speakeasy.totp.verify({
+          secret: user.twoFactorSecret,
+          encoding: 'base32',
+          token: code,
+          window: 2,
+        });
+      } catch (speakeasyError) {
+        console.error('Speakeasy verification error:', speakeasyError);
+        throw new UnauthorizedError('Failed to verify 2FA code. Please try again.');
+      }
+
+      if (!verified) {
+        console.warn('2FA verification failed: invalid code', { userId: user.id });
+        throw new UnauthorizedError('Invalid 2FA code');
+      }
+
+      // Update last login
+      await this.userRepository.updateLastLogin(user.id);
+      console.log('2FA verification successful', { userId: user.id });
+
+      // Generate final auth tokens
+      const authUser: AuthUser = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      };
+
+      const token = generateToken(authUser);
+      const refreshToken = generateRefreshToken(authUser);
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          fullName: user.fullName,
+          profileImage: user.profileImage,
+          emailVerified: user.emailVerified,
+          phoneVerified: user.phoneVerified,
+          residencyStatus: user.residencyStatus,
+          isActive: user.isActive,
+          twoFactorEnabled: user.twoFactorEnabled,
+          lastLogin: new Date(),
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt,
+        },
+        token,
+        refreshToken,
+      };
+    } catch (error) {
+      console.error('Error in verify2FA', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+
+      if (error instanceof UnauthorizedError) {
+        throw error;
+      }
+
+      throw new UnauthorizedError('2FA verification failed. Please try again.');
+    }
   }
 }

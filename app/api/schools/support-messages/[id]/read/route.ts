@@ -7,12 +7,12 @@ import { asyncHandler } from '@/src/middleware/errorHandler';
 
 
 /**
- * PUT /api/schools/[schoolId]/support-messages/[id]/read
+ * PUT /api/schools/support-messages/[id]/read
  * Mark a support message as read
  */
 export const PUT = asyncHandler(async (
   req: Request,
-  context: { params: Promise<{ schoolId: string; id: string }> }
+  context?: { params: Promise<{ id: string }> }
 ) => {
   await lenientRateLimiter(req);
 
@@ -21,33 +21,19 @@ export const PUT = asyncHandler(async (
     return authResult.response;
   }
 
-  const params = await context.params;
-  const { schoolId, id } = params;
+  const params = await context!.params;
+  const { id } = params;
 
-  // Ensure this school belongs to the user
-  const school = await prisma.schoolProfile.findFirst({
-    where: {
-      id: schoolId,
-      userId: authResult.userId!,
-    },
-  });
-
-  if (!school) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Forbidden',
-        message: 'You do not have access to this school',
-        metadata: { timestamp: new Date().toISOString() },
-      },
-      { status: 403 }
-    );
-  }
-
+  // Find the message and verify it belongs to one of the user's schools
   const message = await prisma.schoolSupportMessage.findFirst({
     where: {
       id,
-      schoolId,
+      schoolId: {
+        in: await prisma.schoolProfile.findMany({
+          where: { userId: authResult.userId },
+          select: { id: true },
+        }).then(schools => schools.map(s => s.id)),
+      },
     },
   });
 
@@ -56,7 +42,7 @@ export const PUT = asyncHandler(async (
       {
         success: false,
         error: 'Not Found',
-        message: 'Support message not found',
+        message: 'Support message not found or you do not have access',
         metadata: { timestamp: new Date().toISOString() },
       },
       { status: 404 }

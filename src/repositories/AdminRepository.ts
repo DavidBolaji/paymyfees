@@ -13,6 +13,7 @@ export interface IAdminRepository {
   updateLoanStatus(loanId: string, status: LoanStatus, adminId: string, reason?: string): Promise<any>;
   processDisbursement(loanId: string, adminId: string): Promise<any>;
   getSchools(page: number, limit: number, status?: string): Promise<any>;
+  getSchoolById(schoolId: string): Promise<any>;
   approveSchool(schoolId: string, adminId: string): Promise<any>;
   rejectSchool(schoolId: string, adminId: string, reason: string): Promise<any>;
   addSchool(data: any, adminId: string): Promise<any>;
@@ -21,6 +22,7 @@ export interface IAdminRepository {
   updateTicketStatus(ticketId: string, status: string, adminId: string): Promise<any>;
   getVerificationLogs(schoolId: string): Promise<any>;
   addVerificationMessage(schoolId: string, message: string, adminId: string): Promise<any>;
+  addVerificationLog(schoolId: string, activity: string, details: string, status: string, adminId: string): Promise<any>;
 }
 
 export class AdminRepository implements IAdminRepository {
@@ -370,6 +372,80 @@ export class AdminRepository implements IAdminRepository {
   }
 
   /**
+   * Get school by ID (optimized for single school fetch)
+   */
+  async getSchoolById(schoolId: string): Promise<any> {
+    const school = await prisma.schoolProfile.findUnique({
+      where: { id: schoolId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            phone: true
+          }
+        },
+        documents: {
+          select: {
+            id: true,
+            documentType: true,
+            fileName: true,
+            fileUrl: true,
+            isVerified: true
+          }
+        },
+        loans: {
+          select: {
+            id: true,
+            loanNumber: true,
+            status: true,
+            loanAmount: true
+          },
+          take: 10,
+          orderBy: {
+            createdAt: 'desc'
+          }
+        }
+      }
+    });
+
+    if (!school) {
+      throw new Error('School not found');
+    }
+
+    return {
+      id: school.id,
+      userId: school.userId,
+      schoolName: school.schoolName,
+      schoolEmail: school.schoolEmail,
+      schoolPhone: school.schoolPhone,
+      schoolAddress: school.schoolAddress,
+      city: school.city,
+      state: school.state,
+      country: school.country,
+      contactPersonName: school.contactPersonName,
+      contactPersonEmail: school.contactPersonEmail,
+      contactPersonPhone: school.contactPersonPhone,
+      contactPersonPosition: school.contactPersonPosition,
+      bankName: school.bankName,
+      accountNumber: school.accountNumber,
+      accountName: school.accountName,
+      isVerified: school.isVerified,
+      verifiedAt: school.verifiedAt,
+      totalStudents: school.totalStudents,
+      totalDisbursements: Number(school.totalDisbursements),
+      createdAt: school.createdAt,
+      updatedAt: school.updatedAt,
+      documents: school.documents,
+      loans: school.loans.map((loan: any) => ({
+        ...loan,
+        loanAmount: Number(loan.loanAmount)
+      }))
+    };
+  }
+
+  /**
    * Approve school
    */
   async approveSchool(schoolId: string, _adminId: string): Promise<any> {
@@ -410,9 +486,13 @@ export class AdminRepository implements IAdminRepository {
   async addSchool(data: any, _adminId: string): Promise<any> {
     const hashedPassword = await bcrypt.hash(data.password || 'School@123456', 10);
 
+    // Normalize emails to lowercase
+    const normalizedSchoolEmail = data.schoolEmail.trim().toLowerCase();
+    const normalizedContactEmail = data.contactPersonEmail?.trim().toLowerCase();
+
     const user = await prisma.user.create({
       data: {
-        email: data.schoolEmail,
+        email: normalizedSchoolEmail,
         phone: data.schoolPhone,
         password: hashedPassword,
         role: UserRole.SCHOOL,
@@ -434,12 +514,12 @@ export class AdminRepository implements IAdminRepository {
         city: data.city,
         state: data.state,
         country: data.country || 'Nigeria',
-        schoolEmail: data.schoolEmail,
+        schoolEmail: normalizedSchoolEmail,
         schoolPhone: data.schoolPhone,
         website: data.website,
         contactPersonName: data.contactPersonName,
         contactPersonPosition: data.contactPersonPosition,
-        contactPersonEmail: data.contactPersonEmail,
+        contactPersonEmail: normalizedContactEmail,
         contactPersonPhone: data.contactPersonPhone,
         bankName: data.bankName,
         accountNumber: data.accountNumber,
@@ -563,6 +643,68 @@ export class AdminRepository implements IAdminRepository {
         message,
         priority: 'normal',
         isRead: false
+      }
+    });
+  }
+
+  /**
+   * Add verification log for school profile verification
+   */
+  async addVerificationLog(schoolId: string, activity: string, details: string, status: string, adminId: string): Promise<any> {
+    // Map status to VerificationStatus enum
+    const statusMap: Record<string, string> = {
+      'APPROVED': 'VERIFIED',
+      'REJECTED': 'REJECTED',
+      'PENDING': 'PENDING',
+      'VERIFIED': 'VERIFIED',
+      'EXPIRED': 'EXPIRED'
+    };
+
+    const mappedStatus = statusMap[status] || 'PENDING';
+
+    // Get the school and user information
+    const schoolProfile = await prisma.schoolProfile.findUnique({
+      where: { id: schoolId },
+      include: {
+        user: true,
+        profileVerifications: {
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        }
+      }
+    });
+
+    if (!schoolProfile) {
+      throw new Error('School not found');
+    }
+
+    let verificationId: string;
+
+    // Use existing profile verification or create a new one
+    if (schoolProfile.profileVerifications.length > 0) {
+      verificationId = schoolProfile.profileVerifications[0].id;
+    } else {
+      // Create a new school profile verification record
+      const verification = await prisma.schoolProfileVerification.create({
+        data: {
+          schoolId,
+          userId: schoolProfile.userId,
+          status: mappedStatus as any,
+          submittedAt: new Date()
+        }
+      });
+      verificationId = verification.id;
+    }
+
+    // Create the verification log
+    return await prisma.schoolProfileVerificationLog.create({
+      data: {
+        verificationId,
+        schoolId,
+        activity,
+        details,
+        status: mappedStatus as any,
+        performedBy: adminId
       }
     });
   }

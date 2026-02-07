@@ -141,6 +141,38 @@ export async function getUserByToken(
 }
 
 /**
+ * Get user email from token or OTP
+ */
+export async function getUserEmailByToken(
+  tokenOrOtp: string,
+  mode: 'link' | 'otp'
+): Promise<string | null> {
+  try {
+    const verification = await prisma.verificationToken.findFirst({
+      where: {
+        token: tokenOrOtp,
+        type: mode as any,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      include: {
+        user: {
+          select: {
+            email: true,
+          },
+        },
+      },
+    });
+
+    return verification?.user.email || null;
+  } catch (error) {
+    console.error('Error getting user email by token:', error);
+    return null;
+  }
+}
+
+/**
  * Create password reset token
  * We'll use a custom type identifier in the token field to distinguish it
  */

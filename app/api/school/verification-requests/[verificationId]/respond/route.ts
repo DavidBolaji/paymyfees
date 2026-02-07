@@ -14,7 +14,7 @@ const schoolController = new SchoolController();
  * POST /api/school/verification-requests/:verificationId/respond
  * Respond to a verification request
  */
-export const POST = asyncHandler(async (req: Request, { params }: { params: Promise<{ verificationId: string }> }) => {
+export const POST = asyncHandler(async (req: Request, context?: { params: Promise<{ verificationId: string }> }) => {
   // Apply lenient rate limiting for verification responses
   await lenientRateLimiter(req);
 
@@ -24,7 +24,7 @@ export const POST = asyncHandler(async (req: Request, { params }: { params: Prom
     return authResult.response;
   }
 
-  const { verificationId } = await params;
+  const { verificationId } = await context!.params;
 
   // Delegate to controller
   return await schoolController.respondToVerificationRequest(req, authResult.userId!, { verificationId });

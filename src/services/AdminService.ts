@@ -28,6 +28,7 @@ export interface IAdminService {
   updateTicketStatus(ticketId: string, status: string, adminId: string): Promise<any>;
   getVerificationLogs(schoolId: string): Promise<any>;
   addVerificationMessage(schoolId: string, message: string, adminId: string): Promise<any>;
+  addVerificationLog(schoolId: string, activity: string, details: string, status: string, adminId: string): Promise<any>;
 }
 
 /**
@@ -118,15 +119,7 @@ export class AdminService implements IAdminService {
    */
   async getSchoolDetails(schoolId: string): Promise<any> {
     console.log({ msg: 'Getting school details', schoolId });
-    
-    const school = await this.adminRepository.getSchools(1, 1, undefined);
-    const foundSchool = school.schools.find((s: any) => s.id === schoolId);
-    
-    if (!foundSchool) {
-      throw new NotFoundError('School not found');
-    }
-
-    return foundSchool;
+    return await this.adminRepository.getSchoolById(schoolId);
   }
 
   /**
@@ -207,5 +200,13 @@ export class AdminService implements IAdminService {
   async addVerificationMessage(schoolId: string, message: string, adminId: string): Promise<any> {
     console.log({ msg: 'Adding verification message', schoolId, adminId });
     return await this.adminRepository.addVerificationMessage(schoolId, message, adminId);
+  }
+
+  /**
+   * Add verification log
+   */
+  async addVerificationLog(schoolId: string, activity: string, details: string, status: string, adminId: string): Promise<any> {
+    console.log({ msg: 'Adding verification log', schoolId, activity, adminId });
+    return await this.adminRepository.addVerificationLog(schoolId, activity, details, status, adminId);
   }
 }

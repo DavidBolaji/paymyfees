@@ -150,6 +150,17 @@ export class MailService implements IMailService {
    */
   async sendWelcomeEmail(to: string, fullName: string): Promise<boolean> {
     try {
+      // Validate inputs
+      if (!to || typeof to !== 'string') {
+        console.error('Invalid email address for welcome email');
+        return false;
+      }
+
+      if (!fullName || typeof fullName !== 'string') {
+        console.error('Invalid fullName for welcome email');
+        fullName = 'User'; // Fallback to generic name
+      }
+
       const subject = `Welcome to ${this.appName}!`;
       
       // Prepare template data
@@ -164,22 +175,25 @@ export class MailService implements IMailService {
       const html = await this.renderTemplate('welcome', templateData);
 
       // Send email
-      const { error } = await this.resend.emails.send({
+      const result = await this.resend.emails.send({
         from: `${this.appName} <${this.fromEmail}>`,
         to: [to],
         subject,
         html,
       });
 
+      // Check for errors safely
+      const error = result?.error;
+
       if (error) {
-        console.error(`Failed to send welcome email to ${to}`);
+        console.error(`Failed to send welcome email to ${to}:`, error);
         return false;
       }
 
       console.log(`Welcome email sent successfully to ${to}`);
       return true;
     } catch (error) {
-      console.error(`Error sending welcome email to ${to}`);
+      console.error(`Error sending welcome email to ${to}:`, error);
       return false;
     }
   }
