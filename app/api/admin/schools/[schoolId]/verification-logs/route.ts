@@ -1,5 +1,5 @@
 
-import { container } from '@/src/di/container';
+
 import { AdminController } from '@/src/controllers/AdminController';
 import { asyncHandler } from '@/src/middleware/errorHandler';
 import { NextResponse } from 'next/server';
@@ -7,7 +7,7 @@ import { lenientRateLimiter } from '@/src/middleware/rateLimiter';
 import { authMiddleware } from '@/src/middleware/authMiddleware';
 
 
-const controller = container.resolve<AdminController>('AdminController');
+const controller = new AdminController();
 
 /**
  * GET /api/admin/schools/:schoolId/verification-logs
