@@ -123,7 +123,6 @@ export default function VerifyOtpPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: user.id,
           token: otp.join(''),
           mode: 'otp',
         }),

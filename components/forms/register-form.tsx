@@ -37,7 +37,7 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
     password: "",
     country: "",
     agreeToTerms: false,
-    verificationMode: "link", // Default to link verification
+    verificationMode: "otp", // Default to link verification
   });
 
   // Validation state
@@ -199,7 +199,12 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
     if (validateForm()) {
       try {
         setLoading(true);
-        await onSubmit(formData);
+        // Normalize email before submission
+        const normalizedFormData = {
+          ...formData,
+          email: formData.email.trim().toLowerCase()
+        };
+        await onSubmit(normalizedFormData);
       } catch (error) {
         console.error("Registration error:", error);
         // Handle submission error
@@ -412,67 +417,6 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
         </AnimatePresence>
       </div>
 
-      {/* Verification Mode Selection */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Verification Method
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <div
-            className={`
-              border rounded-lg p-3 cursor-pointer transition-colors
-              ${formData.verificationMode === 'link'
-                ? 'border-[#00296B] bg-blue-50'
-                : 'border-gray-300 hover:border-gray-400'}
-            `}
-            onClick={() => handleChange("verificationMode", "link")}
-          >
-            <div className="flex items-center">
-              <div className={`
-                w-5 h-5 rounded-full border flex items-center justify-center mr-2
-                ${formData.verificationMode === 'link'
-                  ? 'border-[#00296B]'
-                  : 'border-gray-400'}
-              `}>
-                {formData.verificationMode === 'link' && (
-                  <div className="w-3 h-3 rounded-full bg-[#00296B]"></div>
-                )}
-              </div>
-              <div>
-                <p className="font-medium">Email Link</p>
-                <p className="text-xs text-gray-500">Receive a verification link via email</p>
-              </div>
-            </div>
-          </div>
-          
-          <div
-            className={`
-              border rounded-lg p-3 cursor-pointer transition-colors
-              ${formData.verificationMode === 'otp'
-                ? 'border-[#00296B] bg-blue-50'
-                : 'border-gray-300 hover:border-gray-400'}
-            `}
-            onClick={() => handleChange("verificationMode", "otp")}
-          >
-            <div className="flex items-center">
-              <div className={`
-                w-5 h-5 rounded-full border flex items-center justify-center mr-2
-                ${formData.verificationMode === 'otp'
-                  ? 'border-[#00296B]'
-                  : 'border-gray-400'}
-              `}>
-                {formData.verificationMode === 'otp' && (
-                  <div className="w-3 h-3 rounded-full bg-[#00296B]"></div>
-                )}
-              </div>
-              <div>
-                <p className="font-medium">OTP Code</p>
-                <p className="text-xs text-gray-500">Receive a 6-digit code via email</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Forgot Password Link */}
       <div className="-translate-y-3">

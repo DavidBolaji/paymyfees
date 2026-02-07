@@ -15,14 +15,14 @@ import { UserDTO } from '@/src/types';
 export interface IUserRepository {
   getUserById(id: string): Promise<UserDTO | null>;
   updateUser(id: string, data: Partial<User>): Promise<UserDTO>;
-  // other methods...
-  // create(input: CreateUserInput): Promise<UserDTO>;
-  findById(id: string): Promise<UserDTO | null>;
+  findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   findByPhone(phone: string): Promise<User | null>;
   update(id: string, data: Partial<User>): Promise<UserDTO>;
   delete(id: string): Promise<void>;
   updateLastLogin(id: string): Promise<void>;
+  getNotificationSettings(userId: string): Promise<any | null>;
+  updateNotificationSettings(userId: string, data: any): Promise<any>;
 }
 
 /**
@@ -74,22 +74,24 @@ export class UserRepository implements IUserRepository {
   }
  */
   /**
-   * Find user by ID
+   * Find user by ID (returns full User entity with all fields including password)
+   * Used for authentication and internal operations
    */
-  async findById(id: string): Promise<UserDTO | null> {
+  async findById(id: string): Promise<User | null> {
     const user = await prisma.user.findUnique({
       where: { id },
     });
 
-    return user ? this.toDTO(user) : null;
+    return user;
   }
 
   /**
    * Find user by email (includes password for authentication)
+   * Email is normalized to lowercase for case-insensitive lookup
    */
   async findByEmail(email: string): Promise<User | null> {
     return await prisma.user.findUnique({
-      where: { email },
+      where: { email: email.trim().toLowerCase() },
     });
   }
 
@@ -134,13 +136,39 @@ export class UserRepository implements IUserRepository {
   }
 
   /**
-   * Convert User entity to DTO (excludes password)
+   * Get notification settings for a user
+   */
+  async getNotificationSettings(userId: string): Promise<any | null> {
+    const settings = await prisma.notificationSettings.findUnique({
+      where: { userId },
+    });
+
+    return settings;
+  }
+
+  /**
+   * Update or create notification settings for a user
+   */
+  async updateNotificationSettings(userId: string, data: any): Promise<any> {
+    const settings = await prisma.notificationSettings.upsert({
+      where: { userId },
+      update: data,
+      create: {
+        userId,
+        ...data,
+      },
+    });
+
+    return settings;
+  }
+
+  /**
+   * Convert User entity to DTO (excludes password and sensitive fields)
    */
   private toDTO(user: User): UserDTO {
     return {
       id: user.id,
       email: user.email,
-      // phone: user.phone,
       role: user.role,
       fullName: user.fullName,
       profileImage: user.profileImage,
@@ -151,6 +179,8 @@ export class UserRepository implements IUserRepository {
       lastLogin: user.lastLogin,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+      twoFactorEnabled: user.twoFactorEnabled,
+      twoFactorSecret: user.twoFactorSecret,
     };
   }
 }

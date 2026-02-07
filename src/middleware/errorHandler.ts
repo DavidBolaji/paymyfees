@@ -286,13 +286,15 @@ export function errorHandler(error: unknown): NextResponse {
  * Async error wrapper for route handlers
  * Catches async errors and passes them to error handler
  * CRITICAL: Always returns a valid NextResponse to prevent build cache corruption
+ * 
+ * Next.js 15 compatible - handles both simple routes and routes with context
  */
 export function asyncHandler<T = any>(
-  handler: (req: Request, context: T) => Promise<any>
-) {
-  return async (req: Request, context: any): Promise<NextResponse> => {
+  handler: (req: Request, context?: T) => Promise<NextResponse>
+): (req: Request, context?: T) => Promise<NextResponse> {
+  return async (req: Request, context?: T): Promise<NextResponse> => {
     try {
-      // Execute the handler
+      // Execute the handler with proper context handling
       const response = await handler(req, context);
       
       // Validate response exists

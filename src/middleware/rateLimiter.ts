@@ -4,7 +4,6 @@
  */
 
 import { RateLimitError } from '@/src/types/errors';
-import { env } from '@/src/config/env';
 
 interface RateLimitStore {
   count: number;
@@ -55,33 +54,30 @@ function getClientIdentifier(req: Request): string {
 }
 
 /**
+ * Safely read an environment variable with a numeric fallback
+ */
+function getEnvNumber(key: string, fallback: number): number {
+  try {
+    const value = process.env[key];
+    if (value) {
+      const parsed = parseInt(value, 10);
+      return isNaN(parsed) ? fallback : parsed;
+    }
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
  * Rate limiter middleware
  */
 export function rateLimiter(options?: {
   windowMs?: number;
   maxRequests?: number;
 }): (req: Request) => Promise<void> {
-  // Default values in case environment variables are missing or invalid
-  const defaultWindowMs = 900000; // 15 minutes in milliseconds
-  const defaultMaxRequests = 100;
-  
-  // Safely parse environment variables with fallbacks
-  let windowMs: number;
-  let maxRequests: number;
-  
-  try {
-    windowMs = options?.windowMs || parseInt(env.get('RATE_LIMIT_WINDOW_MS')) || defaultWindowMs;
-  } catch (error) {
-    console.warn('Error parsing RATE_LIMIT_WINDOW_MS, using default value:', error);
-    windowMs = defaultWindowMs;
-  }
-  
-  try {
-    maxRequests = options?.maxRequests || parseInt(env.get('RATE_LIMIT_MAX_REQUESTS')) || defaultMaxRequests;
-  } catch (error) {
-    console.warn('Error parsing RATE_LIMIT_MAX_REQUESTS, using default value:', error);
-    maxRequests = defaultMaxRequests;
-  }
+  const windowMs = options?.windowMs || getEnvNumber('RATE_LIMIT_WINDOW_MS', 900000);
+  const maxRequests = options?.maxRequests || getEnvNumber('RATE_LIMIT_MAX_REQUESTS', 100);
 
   return async (req: Request): Promise<void> => {
     const clientId = getClientIdentifier(req);

@@ -24,7 +24,10 @@ export const paginationSchema = z.object({
 
 export const idSchema = z.string().uuid({ message: 'Invalid ID format' });
 
-export const emailSchema = z.string().email({ message: 'Invalid email address' });
+export const emailSchema = z
+  .string()
+  .email({ message: 'Invalid email address' })
+  .transform(email => email.trim().toLowerCase());
 
 export const phoneSchema = z.string().regex(
   /^\+?[1-9]\d{1,14}$/,

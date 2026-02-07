@@ -290,12 +290,12 @@ export class SchoolRepository implements ISchoolRepository {
       if (data.city !== undefined) updateData.city = data.city;
       if (data.state !== undefined) updateData.state = data.state;
       if (data.country !== undefined) updateData.country = data.country;
-      if (data.schoolEmail !== undefined) updateData.schoolEmail = data.schoolEmail;
+      if (data.schoolEmail !== undefined) updateData.schoolEmail = data.schoolEmail.trim().toLowerCase();
       if (data.schoolPhone !== undefined) updateData.schoolPhone = data.schoolPhone;
       if (data.website !== undefined) updateData.website = data.website;
       if (data.contactPersonName !== undefined) updateData.contactPersonName = data.contactPersonName;
       if (data.contactPersonPosition !== undefined) updateData.contactPersonPosition = data.contactPersonPosition;
-      if (data.contactPersonEmail !== undefined) updateData.contactPersonEmail = data.contactPersonEmail;
+      if (data.contactPersonEmail !== undefined) updateData.contactPersonEmail = data.contactPersonEmail.trim().toLowerCase();
       if (data.contactPersonPhone !== undefined) updateData.contactPersonPhone = data.contactPersonPhone;
       if (data.bankName !== undefined) updateData.bankName = data.bankName;
       if (data.accountNumber !== undefined) updateData.accountNumber = data.accountNumber;

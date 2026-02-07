@@ -117,12 +117,12 @@ export type EnvConfig = z.infer<typeof envSchema>;
 
 class EnvironmentConfig {
   private static instance: EnvironmentConfig;
-  private config: EnvConfig;
+  private config: EnvConfig | null = null;
   private currentEnv: string;
+  private initError: Error | null = null;
 
   private constructor() {
     this.currentEnv = process.env.APP_ENV || process.env.NODE_ENV || 'development';
-    this.config = this.validateEnv();
   }
 
   public static getInstance(): EnvironmentConfig {
@@ -132,29 +132,38 @@ class EnvironmentConfig {
     return EnvironmentConfig.instance;
   }
 
-  private validateEnv(): EnvConfig {
+  /**
+   * Lazily validate and cache the environment config.
+   * Only throws when a value is actually accessed, not at import time.
+   */
+  private ensureConfig(): EnvConfig {
+    if (this.config) return this.config;
+
     try {
-      const parsed = envSchema.parse(process.env);
-      return parsed;
+      this.config = envSchema.parse(process.env);
+      return this.config;
     } catch (error) {
       if (error instanceof z.ZodError) {
         const errorMessages = error.issues.map(
           (err: z.ZodIssue) => `${err.path.join('.')}: ${err.message}`
         );
-        throw new Error(
+        this.initError = new Error(
           `Environment validation failed:\n${errorMessages.join('\n')}`
         );
+        console.error(this.initError.message);
+      } else {
+        this.initError = error instanceof Error ? error : new Error(String(error));
       }
-      throw error;
+      throw this.initError;
     }
   }
 
   public get<K extends keyof EnvConfig>(key: K): EnvConfig[K] {
-    return this.config[key];
+    return this.ensureConfig()[key];
   }
 
   public getAll(): EnvConfig {
-    return { ...this.config };
+    return { ...this.ensureConfig() };
   }
 
   public getCurrentEnvironment(): string {
