@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { DataTable, PaginationInfo } from '@/components/dashboard/data-table';
 import { CustomInput } from '@/components/ui/custom-input';
 import { Modal } from '@/components/ui/modal';
-import { Eye, FileText, CheckCircle, XCircle, Send } from 'lucide-react';
-import { StatusBadge } from '@/components/dashboard/status-badge';
+import { LoanDetailDrawer } from '@/components/dashboard/loan-detail-drawer';
+import { api } from '@/src/lib/api';
 
 const LOAN_COLUMNS = [
   { key: 'loanNumber', label: 'Loan Number' },
@@ -22,7 +22,7 @@ export default function AdminLoansPage() {
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [selectedLoan, setSelectedLoan] = useState<any>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showDisbursementModal, setShowDisbursementModal] = useState(false);
   const [statusAction, setStatusAction] = useState<'approve' | 'reject' | null>(null);
@@ -38,7 +38,7 @@ export default function AdminLoansPage() {
     try {
       setLoading(true);
       const url = `/api/admin/loans?page=${page}&limit=10${statusFilter ? `&status=${statusFilter}` : ''}`;
-      const res = await fetch(url);
+      const res = await api.get(url);
       const data = await res.json();
       
       if (data.success) {
@@ -54,42 +54,85 @@ export default function AdminLoansPage() {
 
   const handleViewDetails = async (loan: any) => {
     try {
-      const res = await fetch(`/api/admin/loans/${loan.id}`);
+      setLoading(true);
+      const res = await api.get(`/api/admin/loans/${loan.id}`);
       const data = await res.json();
       
       if (data.success) {
         setSelectedLoan(data.data);
-        setShowDetailsModal(true);
+        setShowDrawer(true);
       }
     } catch (error) {
       console.error('Error fetching loan details:', error);
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleApprove = () => {
+    setShowDrawer(false); // Close drawer first
+    setStatusAction('approve');
+    setShowStatusModal(true);
+  };
+
+  const handleReject = () => {
+    setShowDrawer(false); // Close drawer first
+    setStatusAction('reject');
+    setShowStatusModal(true);
+  };
+
+  const handleDisburse = () => {
+    setShowDrawer(false); // Close drawer first
+    setShowDisbursementModal(true);
+  };
+
+  const handleRefresh = async () => {
+    if (selectedLoan) {
+      await handleViewDetails(selectedLoan);
+    }
+    await fetchLoans(pagination?.page || 1);
+  };
+
+  const [disburseLoanImmediately, setDisburseLoanImmediately] = useState(false);
 
   const handleStatusChange = async () => {
     if (!selectedLoan || !statusAction) return;
 
     try {
       setProcessing(true);
-      const res = await fetch(`/api/admin/loans/${selectedLoan.id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: statusAction === 'approve' ? 'APPROVED' : 'REJECTED',
-          reason: rejectionReason
-        })
+      
+      // Step 1: Update loan status
+      const res = await api.patch(`/api/admin/loans/${selectedLoan.id}/status`, {
+        status: statusAction === 'approve' ? 'APPROVED' : 'REJECTED',
+        reason: rejectionReason
       });
 
       const data = await res.json();
       
-      if (data.success) {
-        setShowStatusModal(false);
-        setShowDetailsModal(false);
-        setRejectionReason('');
-        fetchLoans(pagination?.page || 1);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to update loan status');
       }
+
+      // Step 2: If approved and disburse immediately is checked, trigger disbursement
+      if (statusAction === 'approve' && disburseLoanImmediately) {
+        const disburseRes = await api.post(`/api/admin/loans/${selectedLoan.id}/disburse`);
+        const disburseData = await disburseRes.json();
+        
+        if (!disburseData.success) {
+          console.error('Disbursement failed:', disburseData.error);
+          alert('Loan approved but disbursement failed. You can disburse it manually from the loan details.');
+        }
+      }
+
+      setShowStatusModal(false);
+      setRejectionReason('');
+      setStatusAction(null);
+      setDisburseLoanImmediately(false);
+      setSelectedLoan(null); // Clear selected loan
+      fetchLoans(pagination?.page || 1);
     } catch (error) {
       console.error('Error updating loan status:', error);
+      alert('Failed to update loan status. Please try again.');
     } finally {
       setProcessing(false);
     }
@@ -100,15 +143,12 @@ export default function AdminLoansPage() {
 
     try {
       setProcessing(true);
-      const res = await fetch(`/api/admin/loans/${selectedLoan.id}/disburse`, {
-        method: 'POST'
-      });
-
+      const res = await api.post(`/api/admin/loans/${selectedLoan.id}/disburse`);
       const data = await res.json();
       
       if (data.success) {
         setShowDisbursementModal(false);
-        setShowDetailsModal(false);
+        setSelectedLoan(null); // Clear selected loan
         fetchLoans(pagination?.page || 1);
       }
     } catch (error) {
@@ -162,177 +202,20 @@ export default function AdminLoansPage() {
         filterable={true}
       />
 
-      {/* Loan Details Modal */}
-      {showDetailsModal && selectedLoan && (
-        <Modal
-          isOpen={showDetailsModal}
-          onClose={() => setShowDetailsModal(false)}
-          title="Loan Details"
-        >
-          <div className="space-y-6 max-h-[70vh] overflow-y-auto">
-            {/* Applicant Information */}
-            <div>
-              <h3 className="font-semibold text-lg mb-3">Applicant Information</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-gray-500">Full Name</p>
-                  <p className="font-medium">{selectedLoan.userName}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Email</p>
-                  <p className="font-medium">{selectedLoan.userEmail}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Phone</p>
-                  <p className="font-medium">{selectedLoan.userPhone}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Residency Status</p>
-                  <p className="font-medium">{selectedLoan.residencyStatus}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Loan Information */}
-            <div>
-              <h3 className="font-semibold text-lg mb-3">Loan Information</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-gray-500">Loan Number</p>
-                  <p className="font-medium">{selectedLoan.loanNumber}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">School</p>
-                  <p className="font-medium">{selectedLoan.schoolName}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Loan Amount</p>
-                  <p className="font-medium">₦{Number(selectedLoan.loanAmount).toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Total Amount</p>
-                  <p className="font-medium">₦{Number(selectedLoan.totalAmount).toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Interest Rate</p>
-                  <p className="font-medium">{selectedLoan.interestRate}%</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Repayment Period</p>
-                  <p className="font-medium">{selectedLoan.repaymentMonths} months</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Outstanding Balance</p>
-                  <p className="font-medium">₦{Number(selectedLoan.outstandingBalance).toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Amount Repaid</p>
-                  <p className="font-medium">₦{Number(selectedLoan.amountRepaid).toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-gray-500">Status</p>
-                  <StatusBadge status={selectedLoan.status} />
-                </div>
-                <div>
-                  <p className="text-gray-500">Application Date</p>
-                  <p className="font-medium">{new Date(selectedLoan.applicationDate).toLocaleDateString()}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Documents */}
-            {selectedLoan.documents && selectedLoan.documents.length > 0 && (
-              <div>
-                <h3 className="font-semibold text-lg mb-3">Documents ({selectedLoan.documents.length})</h3>
-                <div className="space-y-2">
-                  {selectedLoan.documents.map((doc: any) => (
-                    <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <FileText className="w-5 h-5 text-gray-400" />
-                        <div>
-                          <p className="font-medium text-sm">{doc.documentType}</p>
-                          <p className="text-xs text-gray-500">{doc.fileName}</p>
-                        </div>
-                      </div>
-                      <a
-                        href={doc.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-700 text-sm flex items-center gap-1"
-                      >
-                        <Eye className="w-4 h-4" />
-                        View
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Installments */}
-            {selectedLoan.installments && selectedLoan.installments.length > 0 && (
-              <div>
-                <h3 className="font-semibold text-lg mb-3">Installments ({selectedLoan.installments.length})</h3>
-                <div className="max-h-48 overflow-y-auto space-y-2">
-                  {selectedLoan.installments.map((inst: any) => {
-                    const isPastDue = inst.status === 'PENDING' && new Date(inst.dueDate) < new Date();
-                    return (
-                      <div key={inst.id} className={`flex items-center justify-between p-3 rounded-lg text-sm ${isPastDue ? 'bg-red-50' : 'bg-gray-50'}`}>
-                        <div>
-                          <p className="font-medium">Installment #{inst.installmentNumber}</p>
-                          <p className="text-xs text-gray-500">Due: {new Date(inst.dueDate).toLocaleDateString()}</p>
-                          {isPastDue && <p className="text-xs text-red-600 font-medium">Overdue</p>}
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">₦{Number(inst.amount).toLocaleString()}</p>
-                          <StatusBadge status={inst.status} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex gap-3 pt-4 border-t sticky bottom-0 bg-white">
-              {selectedLoan.status === 'PENDING' && (
-                <>
-                  <button
-                    onClick={() => {
-                      setStatusAction('approve');
-                      setShowStatusModal(true);
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => {
-                      setStatusAction('reject');
-                      setShowStatusModal(true);
-                    }}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-                  >
-                    <XCircle className="w-4 h-4" />
-                    Reject
-                  </button>
-                </>
-              )}
-              {selectedLoan.status === 'APPROVED' && (
-                <button
-                  onClick={() => setShowDisbursementModal(true)}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  <Send className="w-4 h-4" />
-                  Disburse Loan
-                </button>
-              )}
-            </div>
-          </div>
-        </Modal>
-      )}
+      {/* Loan Detail Drawer */}
+      <LoanDetailDrawer
+        isOpen={showDrawer}
+        onClose={() => {
+          setShowDrawer(false);
+          setSelectedLoan(null);
+        }}
+        loan={selectedLoan}
+        onApprove={handleApprove}
+        onReject={handleReject}
+        onDisburse={handleDisburse}
+        onRefresh={handleRefresh}
+        isLoading={loading}
+      />
 
       {/* Status Change Modal */}
       {showStatusModal && (
@@ -341,6 +224,8 @@ export default function AdminLoansPage() {
           onClose={() => {
             setShowStatusModal(false);
             setRejectionReason('');
+            setStatusAction(null);
+            setDisburseLoanImmediately(false);
           }}
           title={statusAction === 'approve' ? 'Approve Loan' : 'Reject Loan'}
         >
@@ -350,6 +235,32 @@ export default function AdminLoansPage() {
                 ? 'Are you sure you want to approve this loan application?'
                 : 'Please provide a reason for rejecting this loan application.'}
             </p>
+
+            {statusAction === 'approve' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    id="disburse-immediately"
+                    checked={disburseLoanImmediately}
+                    onChange={(e) => setDisburseLoanImmediately(e.target.checked)}
+                    className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <div className="flex-1">
+                    <label 
+                      htmlFor="disburse-immediately" 
+                      className="font-medium text-blue-900 text-sm cursor-pointer"
+                    >
+                      Disburse funds immediately after approval
+                    </label>
+                    <p className="mt-1 text-blue-700 text-xs">
+                      This will automatically create a disbursement and transfer funds to the school. 
+                      The loan status will change to ACTIVE.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {statusAction === 'reject' && (
               <CustomInput
@@ -366,6 +277,8 @@ export default function AdminLoansPage() {
                 onClick={() => {
                   setShowStatusModal(false);
                   setRejectionReason('');
+                  setStatusAction(null);
+                  setDisburseLoanImmediately(false);
                 }}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                 disabled={processing}
@@ -381,7 +294,14 @@ export default function AdminLoansPage() {
                     : 'bg-red-600 hover:bg-red-700'
                 } disabled:opacity-50 disabled:cursor-not-allowed`}
               >
-                {processing ? 'Processing...' : 'Confirm'}
+                {processing ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="border-2 border-white border-t-transparent rounded-full w-4 h-4 animate-spin" />
+                    {statusAction === 'approve' && disburseLoanImmediately ? 'Approving & Disbursing...' : 'Processing...'}
+                  </span>
+                ) : (
+                  statusAction === 'approve' && disburseLoanImmediately ? 'Approve & Disburse' : 'Confirm'
+                )}
               </button>
             </div>
           </div>

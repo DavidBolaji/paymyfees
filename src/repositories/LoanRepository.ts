@@ -325,6 +325,11 @@ export class LoanRepository implements ILoanRepository {
       term: loan.term,
       residencyStatus: loan.residencyStatus,
       
+      // User information (if included in query)
+      userName: loan.user?.fullName,
+      userEmail: loan.user?.email,
+      userPhone: loan.user?.phone,
+      
       // International student specific fields
       countryOfStudy: loan.countryOfStudy,
       programCourseOfStudy: loan.programCourseOfStudy,
@@ -353,6 +358,14 @@ export class LoanRepository implements ILoanRepository {
       notes: loan.notes,
       createdAt: loan.createdAt,
       updatedAt: loan.updatedAt,
+      
+      // Include documents and installments if present
+      documents: loan.documents,
+      installments: loan.installments?.map((inst: any) => ({
+        ...inst,
+        amount: Number(inst.amount),
+        lateFee: Number(inst.lateFee || 0)
+      })),
     };
   }
 

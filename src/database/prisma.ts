@@ -29,14 +29,14 @@ declare global {
  * - Configures appropriate logging based on environment
  * - Applies Accelerate extension for connection pooling and caching
  * - Handles graceful shutdown
+ * - Optimized for high concurrency with connection limits
  */
 function createPrismaClient() {
   const client = new PrismaClient({
     log: env.isDevelopment() 
       ? [
-          { level: 'query', emit: 'event' },
-          { level: 'error', emit: 'stdout' },
           { level: 'warn', emit: 'stdout' },
+          { level: 'error', emit: 'stdout' },
         ]
       : [
           { level: 'error', emit: 'stdout' },
@@ -44,15 +44,8 @@ function createPrismaClient() {
     errorFormat: env.isDevelopment() ? 'pretty' : 'minimal',
   });
 
-  // Log queries in development for debugging
-  if (env.isDevelopment()) {
-    client.$on('query' as never, (e: any) => {
-      console.log('Query: ' + e.query);
-      console.log('Duration: ' + e.duration + 'ms');
-    });
-  }
-
   // Extend with Accelerate for connection pooling and caching
+  // Accelerate handles connection pooling automatically
   const extendedClient = client.$extends(withAccelerate());
 
   return extendedClient;

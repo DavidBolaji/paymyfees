@@ -289,6 +289,11 @@ export interface LoanDTO {
   term?: string;
   residencyStatus: ResidencyStatus;
   
+  // User information (populated from relations)
+  userName?: string;
+  userEmail?: string;
+  userPhone?: string;
+  
   // International student specific fields
   countryOfStudy?: string;
   programCourseOfStudy?: string;
@@ -317,6 +322,10 @@ export interface LoanDTO {
   notes?: string | null;
   createdAt: Date;
   updatedAt: Date;
+  
+  // Related data (populated from relations)
+  documents?: any[];
+  installments?: any[];
 }
 
 /**

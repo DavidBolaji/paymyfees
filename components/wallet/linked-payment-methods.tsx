@@ -1,80 +1,66 @@
 'use client';
 
 import { useState } from 'react';
-import { Edit2, Trash2, CreditCard } from 'lucide-react';
+import { CreditCard, Trash2, Loader2, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PaymentMethodsSkeleton } from './payment-methods-skeleton';
-import { PaymentCard } from '@/src/stores/walletStore';
+
+export interface PaymentMethodData {
+  id: string;
+  cardType: string;
+  last4: string;
+  expMonth: string;
+  expYear: string;
+  bank: string | null;
+  brand: string;
+  isDefault: boolean;
+}
 
 interface LinkedPaymentMethodsProps {
-  paymentMethods: PaymentCard[];
+  paymentMethods: PaymentMethodData[];
   isLoading: boolean;
-  onAddPaymentMethod: (paymentMethod: Omit<PaymentCard, 'id'>) => Promise<boolean>;
-  onRemovePaymentMethod: (id: string) => Promise<boolean>;
+  onAddCard: () => Promise<void>;
+  onRemoveCard: (id: string) => Promise<void>;
+  onCardClick: (card: PaymentMethodData) => void;
   className?: string;
 }
 
 export function LinkedPaymentMethods({
   paymentMethods,
   isLoading,
-  onAddPaymentMethod,
-  onRemovePaymentMethod,
+  onAddCard,
+  onRemoveCard,
+  onCardClick,
   className
 }: LinkedPaymentMethodsProps) {
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardHolder, setCardHolder] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [cvv, setCvv] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   if (isLoading) {
     return <PaymentMethodsSkeleton className={className} />;
   }
   
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     
-    if (!cardNumber || !cardHolder || !expiryDate || !cvv) {
+    if (!confirm('Are you sure you want to remove this card?')) {
       return;
     }
     
-    setIsSubmitting(true);
-    
+    setDeletingId(id);
     try {
-      const success = await onAddPaymentMethod({
-        cardNumber,
-        cardType: getCardType(cardNumber),
-        expiryDate,
-        isDefault: paymentMethods.length === 0, // Make default if it's the first card
-      });
-      
-      if (success) {
-        // Reset form
-        setCardNumber('');
-        setCardHolder('');
-        setExpiryDate('');
-        setCvv('');
-      }
+      await onRemoveCard(id);
     } finally {
-      setIsSubmitting(false);
+      setDeletingId(null);
     }
   };
-  
-  // Simple function to determine card type based on first digit
-  const getCardType = (number: string): string => {
-    const firstDigit = number.charAt(0);
-    
-    switch (firstDigit) {
-      case '4':
-        return 'Visa';
-      case '5':
-        return 'Mastercard';
-      case '3':
-        return 'Amex';
-      case '6':
-        return 'Discover';
-      default:
-        return 'Card';
+
+  const handleAddCardClick = async () => {
+    setIsSubmitting(true);
+    try {
+      await onAddCard();
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
@@ -84,34 +70,54 @@ export function LinkedPaymentMethods({
       
       {/* Existing payment methods */}
       {paymentMethods.length > 0 && (
-        <div className="mb-6 space-y-4">
+        <div className="mb-6 space-y-3">
           {paymentMethods.map((method) => (
-            <div key={method.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+            <div
+              key={method.id}
+              onClick={() => onCardClick(method)}
+              className="flex items-center justify-between p-4 border-2 border-gray-200 rounded-lg hover:border-[#00296B] hover:bg-blue-50 transition-all cursor-pointer group"
+            >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-gray-600" />
+                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                  <CreditCard className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium">{method.cardType}</span>
-                    <span className="text-sm text-gray-600">****{method.cardNumber.slice(-4)}</span>
+                    <span className="font-semibold text-gray-900">{method.brand}</span>
+                    <span className="text-sm text-gray-600">****{method.last4}</span>
                   </div>
-                  <div className="text-xs text-gray-500">Expiry {method.expiryDate}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Expiry {method.expMonth}/{method.expYear}
+                  </div>
+                  {method.isDefault && (
+                    <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
+                      Default
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2">
-                <button 
-                  className="p-1.5 text-gray-500 hover:text-gray-700 transition-colors"
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Edit functionality can be added later
+                  }}
+                  className="p-2 text-gray-400 hover:text-blue-500 transition-colors"
                   aria-label="Edit payment method"
                 >
-                  <Edit2 className="w-4 h-4" />
+                  <Edit2 className="w-5 h-5" />
                 </button>
-                <button 
-                  className="p-1.5 text-gray-500 hover:text-red-500 transition-colors"
+                <button
+                  onClick={(e) => handleDelete(method.id, e)}
+                  disabled={deletingId === method.id}
+                  className="p-2 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
                   aria-label="Remove payment method"
-                  onClick={() => onRemovePaymentMethod(method.id)}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  {deletingId === method.id ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-5 h-5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -119,86 +125,46 @@ export function LinkedPaymentMethods({
         </div>
       )}
       
-      {/* Add new payment method form */}
-      <form onSubmit={handleSubmit}>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Card Holder Name</label>
-            <input
-              type="text"
-              value={cardHolder}
-              onChange={(e) => setCardHolder(e.target.value)}
-              placeholder="Enter card name"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Card Number</label>
-            <input
-              type="text"
-              value={cardNumber}
-              onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, ''))}
-              placeholder="xxxx xxxx xxxx xxxx"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              maxLength={16}
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
-              <input
-                type="text"
-                value={expiryDate}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, '');
-                  if (value.length <= 4) {
-                    const month = value.slice(0, 2);
-                    const year = value.slice(2, 4);
-                    setExpiryDate(
-                      value.length > 2 ? `${month}/${year}` : month
-                    );
-                  }
-                }}
-                placeholder="MM/YY"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                maxLength={5}
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">CVV / CVC</label>
-              <input
-                type="text"
-                value={cvv}
-                onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
-                placeholder="MM/YY"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                maxLength={4}
-              />
-            </div>
-          </div>
-        </div>
-        
+      {/* Add Card Button - Always Visible */}
+      <div className="space-y-4">
         <button
-          type="submit"
-          disabled={isSubmitting || !cardNumber || !cardHolder || !expiryDate || !cvv}
-          className={cn(
-            "w-full mt-6 h-12 rounded-lg bg-[#00296B] text-white font-semibold flex items-center justify-center gap-2",
-            "disabled:bg-gray-300 disabled:cursor-not-allowed"
-          )}
+          onClick={handleAddCardClick}
+          disabled={isSubmitting}
+          className="w-full h-12 rounded-lg bg-[#00296B] text-white font-semibold hover:bg-[#003D82] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isSubmitting ? (
             <>
-              <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-              <span>Saving...</span>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Redirecting to Paystack...
             </>
           ) : (
-            <span>Save</span>
+            <>
+              <CreditCard className="w-5 h-5" />
+              Add New Card
+            </>
           )}
         </button>
-      </form>
+      </div>
+
+      {/* Info */}
+      <div className="mt-4 space-y-2">
+        <div className="p-3 bg-blue-50 rounded-lg">
+          <p className="text-xs text-gray-600">
+            You'll be redirected to Paystack to securely enter your card details. A verification amount of ₦50 will be charged and immediately added to your wallet. Your card will be saved for quick future payments.
+          </p>
+        </div>
+        
+        {typeof window !== 'undefined' && window.location.hostname === 'localhost' && (
+          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-xs font-semibold text-yellow-800 mb-1">⚠️ Test Mode - Use Test Cards Only</p>
+            <div className="text-xs text-yellow-700 space-y-1">
+              <p className="font-medium">Visa: 4084084084084081</p>
+              <p className="font-medium">Verve: 5060666666666666666</p>
+              <p>CVV: 408 | Expiry: any future date | PIN: 0000 | OTP: 123456</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

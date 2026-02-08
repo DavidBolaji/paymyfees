@@ -59,7 +59,7 @@ export function ChartCard({
 
   // Calculate max value for proper Y-axis scaling
   const maxValue = Math.max(...chartData.map(d => d.value), 0);
-  const yAxisMax = isEmpty ? 100000 : Math.ceil(maxValue * 1.1);
+  const yAxisMax = isEmpty ? 100000 : Math.max(Math.ceil(maxValue * 1.1), 100);
 
   return (
     <div className={cn("bg-white rounded-lg border border-gray-200 shadow-sm", className)}>
@@ -136,9 +136,8 @@ export function ChartCard({
                 tickLine={false}
                 tick={{ fontSize: 12, fill: '#6b7280' }}
                 tickFormatter={(value) => value.toLocaleString()}
-                domain={[0, yAxisMax]}
+                domain={[0, 'auto']}
                 allowDataOverflow={false}
-                ticks={isEmpty ? [0, 20000, 40000, 60000, 80000, 100000] : undefined}
               />
               <Line 
                 type="monotone" 

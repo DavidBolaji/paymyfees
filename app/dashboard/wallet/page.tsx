@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Send, Wallet, Download, PhoneCall } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Send, Wallet, Download, PhoneCall, CheckCircle2, X } from 'lucide-react';
 import { DataTable } from '@/components/dashboard/data-table';
 import { BackNavigation } from '@/components/dashboard/back-navigation';
 import { WALLET_TRANSACTION_COLUMNS } from '@/data/constants';
@@ -11,47 +12,204 @@ import useWalletStore from '@/src/stores/walletStore';
 import { WalletCardSkeleton } from '@/components/wallet/wallet-card-skeleton';
 import { WalletStatCards } from '@/components/wallet/wallet-stat-cards';
 import { RechartsFundingChart } from '@/components/wallet/recharts-funding-chart';
-import { LinkedPaymentMethods } from '@/components/wallet/linked-payment-methods';
+import { LinkedPaymentMethods, PaymentMethodData } from '@/components/wallet/linked-payment-methods';
+import { ChargeCardModal } from '@/components/wallet/charge-card-modal';
 import MakeRepaymentModal from '@/components/dashboard/make-repayment-modal';
+import { getPaymentMethods, initializeCardAddition, deletePaymentMethod, chargeSavedCard } from '@/src/utils/payment-method-api';
 // import useAuthStore from '@/src/authStore';
 
 export default function WalletPage() {
   // const { user } = useAuthStore();
+  const searchParams = useSearchParams();
   const [isFundModalOpen, setIsFundModalOpen] = useState(false);
   const [isMakePaymentModalOpen, setIsMakePaymentModalOpen] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodData[]>([]);
+  const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false);
+  const [selectedCard, setSelectedCard] = useState<PaymentMethodData | null>(null);
+  const [isChargeModalOpen, setIsChargeModalOpen] = useState(false);
 
   // Get wallet state and actions from store
   const {
     balance,
     transactions,
     chartData,
-    paymentMethods,
     stats,
     paginationInfo,
     isLoading,
     isTransactionsLoading,
     isChartLoading,
-    isPaymentMethodsLoading,
     fetchWalletBalance,
     fetchWalletTransactions,
     fetchChartData,
-    fetchPaymentMethods,
-    // fundWallet,
-    addPaymentMethod,
-    removePaymentMethod
   } = useWalletStore();
+
+  // Fetch payment methods
+  const loadPaymentMethods = async () => {
+    setIsLoadingPaymentMethods(true);
+    try {
+      const result = await getPaymentMethods();
+      if (result.success && result.data) {
+        setPaymentMethods(result.data);
+      }
+    } catch (error) {
+      console.error('Error loading payment methods:', error);
+    } finally {
+      setIsLoadingPaymentMethods(false);
+    }
+  };
 
   // Fetch data on component mount
   useEffect(() => {
     fetchWalletBalance();
     fetchWalletTransactions();
-    fetchChartData('6months'); // Fetch 6 months of chart data
-    fetchPaymentMethods();
-  }, [fetchWalletBalance, fetchWalletTransactions, fetchChartData, fetchPaymentMethods]);
+    fetchChartData('6months');
+    loadPaymentMethods();
+  }, [fetchWalletBalance, fetchWalletTransactions, fetchChartData]);
+
+  // Check for payment success from URL params
+  useEffect(() => {
+    const paymentSuccess = searchParams.get('payment_success');
+    const amount = searchParams.get('amount');
+    const cardAdded = searchParams.get('card_added');
+    
+    if (paymentSuccess === 'true') {
+      // Show success message
+      setSuccessMessage(
+        amount 
+          ? `Payment successful! ₦${parseFloat(amount).toLocaleString()} has been added to your wallet.`
+          : 'Payment successful! Your wallet has been credited.'
+      );
+      setShowSuccessMessage(true);
+      
+      // Refresh wallet data
+      fetchWalletBalance();
+      fetchWalletTransactions();
+      fetchChartData('6months');
+      
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 5000);
+      
+      // Clean up URL params
+      window.history.replaceState({}, '', '/dashboard/wallet');
+    }
+
+    if (cardAdded === 'true') {
+      // Reload payment methods after card addition
+      loadPaymentMethods();
+      
+      // Show success message
+      setSuccessMessage('Card added successfully! You can now use it for quick payments.');
+      setShowSuccessMessage(true);
+      
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+      }, 5000);
+      
+      // Clean up URL params
+      window.history.replaceState({}, '', '/dashboard/wallet');
+    }
+  }, [searchParams, fetchWalletBalance, fetchWalletTransactions, fetchChartData]);
 
   // Handle page change for transactions table
   const handlePageChange = (page: number) => {
     fetchWalletTransactions(page);
+  };
+
+  // Handle successful repayment
+  const handleRepaymentSuccess = (amount: number) => {
+    // Show success message
+    setSuccessMessage(`Repayment successful! ₦${amount.toLocaleString()} has been deducted from your wallet.`);
+    setShowSuccessMessage(true);
+    
+    // Refresh wallet data
+    fetchWalletBalance();
+    fetchWalletTransactions();
+    fetchChartData('6months');
+    
+    // Auto-hide success message after 5 seconds
+    setTimeout(() => {
+      setShowSuccessMessage(false);
+    }, 5000);
+  };
+
+  // Handle add card - redirect to Paystack
+  const handleAddCard = async () => {
+    try {
+      // Initialize card addition which will redirect to Paystack
+      const result = await initializeCardAddition(50); // 50 NGN verification amount
+      if (result.success && result.data) {
+        // Redirect to Paystack - they will collect card details
+        window.location.href = result.data.paymentUrl;
+      } else {
+        setSuccessMessage(result.error || 'Failed to initialize card addition');
+        setShowSuccessMessage(true);
+      }
+    } catch (error) {
+      console.error('Error adding card:', error);
+      setSuccessMessage('Failed to add card. Please try again.');
+      setShowSuccessMessage(true);
+    }
+  };
+
+  // Handle remove card
+  const handleRemoveCard = async (id: string) => {
+    try {
+      const result = await deletePaymentMethod(id);
+      if (result.success) {
+        // Reload payment methods
+        await loadPaymentMethods();
+        setSuccessMessage('Card removed successfully');
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 3000);
+      } else {
+        setSuccessMessage(result.error || 'Failed to remove card');
+        setShowSuccessMessage(true);
+      }
+    } catch (error) {
+      console.error('Error removing card:', error);
+      setSuccessMessage('Failed to remove card. Please try again.');
+      setShowSuccessMessage(true);
+    }
+  };
+
+  // Handle card click to charge
+  const handleCardClick = (card: PaymentMethodData) => {
+    setSelectedCard(card);
+    setIsChargeModalOpen(true);
+  };
+
+  // Handle charge card
+  const handleChargeCard = async (amount: number) => {
+    if (!selectedCard) return;
+
+    try {
+      const result = await chargeSavedCard(selectedCard.id, amount, 'Wallet funding');
+      if (result.success && result.data) {
+        // Show success message
+        setSuccessMessage(result.data.message);
+        setShowSuccessMessage(true);
+        
+        // Refresh wallet data
+        fetchWalletBalance();
+        fetchWalletTransactions();
+        fetchChartData('6months');
+        
+        // Auto-hide success message after 5 seconds
+        setTimeout(() => {
+          setShowSuccessMessage(false);
+        }, 5000);
+      } else {
+        throw new Error(result.error || 'Failed to charge card');
+      }
+    } catch (error) {
+      console.error('Error charging card:', error);
+      throw error;
+    }
   };
 
   // Determine if wallet is empty (no balance and no transactions)
@@ -67,6 +225,19 @@ export default function WalletPage() {
           Manage your wallet balance, top up funds, track transactions, and automate loan repayments.
         </p>
 
+        {/* Success Message */}
+        {showSuccessMessage && (
+          <div className="mb-6 p-4 bg-green-50 border-2 border-green-500 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+            <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-green-800 flex-1">{successMessage}</p>
+            <button
+              onClick={() => setShowSuccessMessage(false)}
+              className="text-green-600 hover:text-green-800 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        )}
 
         <>
           {/* Wallet Stats */}
@@ -146,9 +317,10 @@ export default function WalletPage() {
             <div className="lg:col-span-1">
               <LinkedPaymentMethods
                 paymentMethods={paymentMethods}
-                isLoading={isPaymentMethodsLoading}
-                onAddPaymentMethod={addPaymentMethod}
-                onRemovePaymentMethod={removePaymentMethod}
+                isLoading={isLoadingPaymentMethods}
+                onAddCard={handleAddCard}
+                onRemoveCard={handleRemoveCard}
+                onCardClick={handleCardClick}
               />
             </div>
           </div>
@@ -173,19 +345,35 @@ export default function WalletPage() {
 
       </div>
 
-      {/* Fund Wallet Modal */}
+      {/* Modals */}
       <FundWalletModal
         isOpen={isFundModalOpen}
         onClose={() => setIsFundModalOpen(false)}
       />
 
-      {/* Fund Wallet Modal */}
       <MakeRepaymentModal
         isOpen={isMakePaymentModalOpen}
         onClose={() => setIsMakePaymentModalOpen(false)}
-        onSuccess={() => {}}
+        onSuccess={handleRepaymentSuccess}
         walletBalance={balance?.balance || 0}
       />
+
+      {selectedCard && (
+        <ChargeCardModal
+          isOpen={isChargeModalOpen}
+          onClose={() => {
+            setIsChargeModalOpen(false);
+            setSelectedCard(null);
+          }}
+          card={{
+            id: selectedCard.id,
+            cardType: selectedCard.cardType,
+            last4: selectedCard.last4,
+            brand: selectedCard.brand,
+          }}
+          onCharge={handleChargeCard}
+        />
+      )}
     </div>
   );
 }

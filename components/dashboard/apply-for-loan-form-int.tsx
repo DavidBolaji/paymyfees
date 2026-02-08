@@ -183,12 +183,16 @@ export function ApplyForLoanFormInt() {
     setIsSubmitting(true);
 
     try {
-      // Simulate API call
-      console.log('Form submitted successfully:', formData);
-      console.log('Form submitted successfully:', formData);
-      const loanData = await applyForLoan(formData)
+      console.log('Form submitted:', formData);
+      const result = await applyForLoan(formData);
 
-      console.log(loanData)
+      if (!result.success) {
+        // Show error message from API
+        alert(result.error || 'Failed to submit application. Please try again.');
+        return;
+      }
+
+      console.log(result.data);
       // Handle successful submission
       alert('Loan application submitted successfully!');
 
@@ -218,9 +222,11 @@ export function ApplyForLoanFormInt() {
         }
       });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Submission error:', error);
-      alert('Failed to submit application. Please try again.');
+      // Display the actual error message
+      const errorMessage = error.message || 'Failed to submit application. Please try again.';
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

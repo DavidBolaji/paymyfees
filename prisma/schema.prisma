@@ -714,6 +714,26 @@ model NotificationSettings {
   @@map("notification_settings")
 }
 
+model SavedPaymentMethod {
+  id                  String   @id @default(uuid()) @db.Uuid
+  userId              String   @db.Uuid
+  authorizationCode   String   @db.VarChar(255)
+  cardType            String   @db.VarChar(50)
+  last4               String   @db.VarChar(4)
+  expMonth            String   @db.VarChar(2)
+  expYear             String   @db.VarChar(4)
+  bank                String?  @db.VarChar(100)
+  brand               String   @db.VarChar(50)
+  isDefault           Boolean  @default(false)
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([userId])
+  @@index([authorizationCode])
+  @@map("saved_payment_methods")
+}
+
 
 enum VerificationType {
   link

@@ -32,6 +32,8 @@ export default function LoginPage() {
 
       const data = await response.json();
 
+      console.log(data.data)
+
       if (data.success) {
         // Check if 2FA is required
         if (data.data.requires2FA || data.data.user.twoFactorEnabled) {

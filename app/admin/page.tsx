@@ -8,6 +8,7 @@ import { DataTable } from '@/components/dashboard/data-table';
 import useAuthStore from '@/src/authStore';
 import { api } from '@/src/lib/api';
 import { SchoolDetailDrawer } from '@/components/dashboard/school-detail-drawer';
+import { LoanDetailDrawer } from '@/components/dashboard/loan-detail-drawer';
 import { Modal } from '@/components/ui/modal';
 import { CustomInput } from '@/components/ui/custom-input';
 
@@ -60,11 +61,17 @@ export default function AdminDashboard() {
   const [showSchoolDrawer, setShowSchoolDrawer] = useState(false);
   const [loadingSchoolDetails, setLoadingSchoolDetails] = useState(false);
   
+  // Loan drawer state
+  const [selectedLoan, setSelectedLoan] = useState<any>(null);
+  const [showLoanDrawer, setShowLoanDrawer] = useState(false);
+  const [loadingLoanDetails, setLoadingLoanDetails] = useState(false);
+  
   // Approval/Rejection modals
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [modalType, setModalType] = useState<'loan' | 'school'>('school');
   
   // Log modal
   const [showLogModal, setShowLogModal] = useState(false);
@@ -150,6 +157,27 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleLoanClick = async (loan: any) => {
+    // Show drawer immediately with basic data
+    setSelectedLoan(loan);
+    setShowLoanDrawer(true);
+    
+    // Fetch full details in background
+    try {
+      setLoadingLoanDetails(true);
+      const res = await api.get(`/api/admin/loans/${loan.id}`);
+      const data = await res.json();
+      
+      if (data.success) {
+        setSelectedLoan(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching loan details:', error);
+    } finally {
+      setLoadingLoanDetails(false);
+    }
+  };
+
   const handleApprove = async (schoolId: string) => {
     if (!schoolId) return;
     
@@ -166,6 +194,30 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error('Error approving school:', error);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleApproveLoan = async (loanId: string) => {
+    if (!loanId) return;
+    
+    try {
+      setProcessing(true);
+      const res = await api.patch(`/api/admin/loans/${loanId}/status`, {
+        status: 'APPROVED',
+        notes: 'Loan approved by admin'
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setShowApprovalModal(false);
+        setShowLoanDrawer(false);
+        setSelectedLoan(null);
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error approving loan:', error);
     } finally {
       setProcessing(false);
     }
@@ -188,6 +240,51 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error('Error rejecting school:', error);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleRejectLoan = async (loanId: string, reason: string) => {
+    if (!loanId || !reason) return;
+    
+    try {
+      setProcessing(true);
+      const res = await api.patch(`/api/admin/loans/${loanId}/status`, {
+        status: 'REJECTED',
+        rejectionReason: reason
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setShowRejectionModal(false);
+        setRejectionReason('');
+        setShowLoanDrawer(false);
+        setSelectedLoan(null);
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error rejecting loan:', error);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleDisburseLoan = async (loanId: string) => {
+    if (!loanId) return;
+    
+    try {
+      setProcessing(true);
+      const res = await api.post(`/api/admin/loans/${loanId}/disburse`, {});
+      const data = await res.json();
+      
+      if (data.success) {
+        setShowLoanDrawer(false);
+        setSelectedLoan(null);
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error disbursing loan:', error);
     } finally {
       setProcessing(false);
     }
@@ -289,6 +386,7 @@ export default function AdminDashboard() {
             onPageChange={handleLoanPageChange}
             itemsPerPage={5}
             isLoading={loading}
+            onRowClick={handleLoanClick}
             searchable={true}
           />
         </div>
@@ -320,10 +418,12 @@ export default function AdminDashboard() {
         school={selectedSchool}
         onApprove={() => {
           setShowSchoolDrawer(false);
+          setModalType('school');
           setShowApprovalModal(true);
         }}
         onReject={() => {
           setShowSchoolDrawer(false);
+          setModalType('school');
           setShowRejectionModal(true);
         }}
         onAddLog={() => {
@@ -334,16 +434,49 @@ export default function AdminDashboard() {
         isLoading={loadingSchoolDetails}
       />
 
+      {/* Loan Detail Drawer */}
+      <LoanDetailDrawer
+        isOpen={showLoanDrawer}
+        onClose={() => {
+          setShowLoanDrawer(false);
+          setSelectedLoan(null);
+        }}
+        loan={selectedLoan}
+        onApprove={() => {
+          setShowLoanDrawer(false);
+          setModalType('loan');
+          setShowApprovalModal(true);
+        }}
+        onReject={() => {
+          setShowLoanDrawer(false);
+          setModalType('loan');
+          setShowRejectionModal(true);
+        }}
+        onDisburse={() => {
+          if (selectedLoan) {
+            handleDisburseLoan(selectedLoan.id);
+          }
+        }}
+        onRefresh={fetchData}
+        isLoading={loadingLoanDetails}
+      />
+
       {/* Approval Modal */}
-      {selectedSchool && (
+      {(selectedSchool || selectedLoan) && (
         <Modal
           isOpen={showApprovalModal}
           onClose={() => setShowApprovalModal(false)}
-          title="Approve School"
+          title={modalType === 'school' ? 'Approve School' : 'Approve Loan'}
         >
           <div className="space-y-4">
             <p className="text-gray-600">
-              Are you sure you want to approve <strong>{selectedSchool.schoolName}</strong>?
+              Are you sure you want to approve{' '}
+              <strong>
+                {modalType === 'school' 
+                  ? selectedSchool?.schoolName 
+                  : `${selectedLoan?.userName}'s loan application (${selectedLoan?.loanNumber})`
+                }
+              </strong>?
             </p>
 
             <div className="flex gap-3 pt-4">
@@ -355,7 +488,13 @@ export default function AdminDashboard() {
                 Cancel
               </button>
               <button
-                onClick={() => handleApprove(selectedSchool.id)}
+                onClick={() => {
+                  if (modalType === 'school' && selectedSchool) {
+                    handleApprove(selectedSchool.id);
+                  } else if (modalType === 'loan' && selectedLoan) {
+                    handleApproveLoan(selectedLoan.id);
+                  }
+                }}
                 disabled={processing}
                 className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -367,18 +506,24 @@ export default function AdminDashboard() {
       )}
 
       {/* Rejection Modal */}
-      {selectedSchool && (
+      {(selectedSchool || selectedLoan) && (
         <Modal
           isOpen={showRejectionModal}
           onClose={() => {
             setShowRejectionModal(false);
             setRejectionReason('');
           }}
-          title="Reject School"
+          title={modalType === 'school' ? 'Reject School' : 'Reject Loan'}
         >
           <div className="space-y-4">
             <p className="text-gray-600">
-              Please provide a reason for rejecting <strong>{selectedSchool.schoolName}</strong>.
+              Please provide a reason for rejecting{' '}
+              <strong>
+                {modalType === 'school' 
+                  ? selectedSchool?.schoolName 
+                  : `${selectedLoan?.userName}'s loan application`
+                }
+              </strong>.
             </p>
 
             <CustomInput
@@ -401,7 +546,13 @@ export default function AdminDashboard() {
                 Cancel
               </button>
               <button
-                onClick={() => handleReject(selectedSchool.id, rejectionReason)}
+                onClick={() => {
+                  if (modalType === 'school' && selectedSchool) {
+                    handleReject(selectedSchool.id, rejectionReason);
+                  } else if (modalType === 'loan' && selectedLoan) {
+                    handleRejectLoan(selectedLoan.id, rejectionReason);
+                  }
+                }}
                 disabled={processing || !rejectionReason}
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >

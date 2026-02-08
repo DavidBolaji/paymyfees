@@ -60,6 +60,27 @@ Creates wallet records for existing users.
 node scripts/run-wallet-for-users.js
 ```
 
+#### create-wallets-for-existing-users.ts
+Creates wallets for all users who don't have one yet. This is the recommended script to use.
+
+**Usage:**
+```bash
+npm run create:wallets
+# or
+node scripts/run-create-wallets-for-existing-users.js
+```
+
+**What it does:**
+- Finds all users without wallets
+- Creates a wallet for each user
+- Provides detailed progress and summary
+- Safe to run multiple times (idempotent)
+
+**When to use:**
+- After updating registration to create wallets for all users
+- When you discover users without wallets
+- After importing users from another system
+
 ## Adding New Scripts
 
 When creating new scripts:

@@ -207,17 +207,25 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
         residencyStatus: ResidencyStatus.LOCAL,
       };
 
-      const loanData = await applyForLoan(payload)
+      const result = await applyForLoan(payload);
 
-      console.log(loanData)
+      if (!result.success) {
+        // Show error message from API
+        alert(result.error || 'Failed to submit application. Please try again.');
+        return;
+      }
+
+      console.log(result.data);
       alert('Loan application submitted successfully!');
 
       // Reset form
       resetForm();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Submission error:', error);
-      alert('Failed to submit application. Please try again.');
+      // Display the actual error message
+      const errorMessage = error.message || 'Failed to submit application. Please try again.';
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
