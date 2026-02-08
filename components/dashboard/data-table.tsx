@@ -113,7 +113,7 @@ export function DataTable({
     
     // Handle currency formatting
     if (column.key.includes('amount') || column.key.includes('tuition') || column.key.includes('Amount')) {
-      return <span className="font-medium">₦{value?.toLocaleString()}</span>;
+      return <span className="font-medium">{value?.toLocaleString()}</span>;
     }
     
     return value;

@@ -13,4 +13,5 @@ export { EmptyPaymentPlan } from './empty-payment-plan';
 export { BackNavigation } from './back-navigation';
 export { InfoCard } from './info-card';
 export { SchoolDetailDrawer } from './school-detail-drawer';
+export { LoanDetailDrawer } from './loan-detail-drawer';
 export { LoanDisbursementDrawer, TransactionDrawer } from './detail-drawer';

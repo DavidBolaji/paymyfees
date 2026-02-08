@@ -24,8 +24,9 @@ export default function PaymentCallbackPage() {
   useEffect(() => {
     const verifyPayment = async () => {
       try {
-        // Get reference from URL params
+        // Get params from URL
         const reference = searchParams.get('reference');
+        const type = searchParams.get('type'); // 'wallet_funding' or 'card_addition'
         
         if (!reference) {
           setStatus('failed');
@@ -33,9 +34,44 @@ export default function PaymentCallbackPage() {
           return;
         }
 
-        // Get stored payment details
+        // Handle card addition flow
+        if (type === 'card_addition') {
+          // Verify card addition
+          const response = await api.get(`/api/payment-methods/verify-card/${reference}`);
+
+          const data = await response.json();
+
+          if (response.ok && data.success) {
+            setStatus('success');
+            setMessage('Card added successfully! You can now use it for quick payments.');
+            setTransactionDetails({
+              amount: 50, // Verification amount
+              reference: reference,
+            });
+
+            // Redirect to wallet page with card_added param after 3 seconds
+            setTimeout(() => {
+              router.push(`/dashboard/wallet?card_added=true`);
+            }, 3000);
+          } else {
+            // Check if it's a test mode issue
+            const errorMessage = data.error || 'Card verification failed. Please try again.';
+            
+            setStatus('failed');
+            setMessage(errorMessage);
+            
+            // If wallet was credited but card failed, redirect to wallet after 5 seconds
+            if (errorMessage.includes('wallet has been credited')) {
+              setTimeout(() => {
+                router.push(`/dashboard/wallet?payment_success=true&amount=50`);
+              }, 5000);
+            }
+          }
+          return;
+        }
+
+        // Handle wallet funding flow (existing code)
         const storedReference = sessionStorage.getItem('pending_payment_reference');
-        // const storedAmount = sessionStorage.getItem('pending_payment_amount');
 
         if (storedReference !== reference) {
           setStatus('failed');
@@ -65,9 +101,9 @@ export default function PaymentCallbackPage() {
           sessionStorage.removeItem('pending_payment_reference');
           sessionStorage.removeItem('pending_payment_amount');
 
-          // Redirect to wallet page after 3 seconds
+          // Redirect to wallet page with success params after 3 seconds
           setTimeout(() => {
-            router.push('/dashboard/wallet');
+            router.push(`/dashboard/wallet?payment_success=true&amount=${data.data.amount}`);
           }, 3000);
         } else {
           setStatus('failed');
@@ -149,7 +185,7 @@ export default function PaymentCallbackPage() {
           )}
           
           <button
-            onClick={() => router.push('/wallet')}
+            onClick={() => router.push('/dashboard/wallet')}
             className="w-full h-12 rounded-lg bg-[#00296B] text-white font-semibold hover:bg-[#003D82] transition-colors"
           >
             {status === 'verifying' ? 'Please wait...' : 'Go to Wallet'}
@@ -157,7 +193,7 @@ export default function PaymentCallbackPage() {
 
           {status === 'failed' && (
             <button
-              onClick={() => router.push('/wallet')}
+              onClick={() => router.push('/dashboard/wallet')}
               className="w-full h-12 rounded-lg border-2 border-[#00296B] bg-white text-[#00296B] font-semibold hover:bg-gray-50 transition-colors"
             >
               Try Again

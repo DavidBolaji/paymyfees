@@ -19,7 +19,7 @@ interface NextDueInstallment {
 interface MakeRepaymentModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSuccess?: () => void;
+    onSuccess?: (amount: number) => void;
     walletBalance: number;
 }
 
@@ -93,8 +93,8 @@ export default function MakeRepaymentModal({
             }
 
             if (data.success) {
-                // Show success message
-                onSuccess?.();
+                // Show success message and refresh data
+                onSuccess?.(nextDue.totalAmount);
                 onClose();
             } else {
                 throw new Error(data.message || 'Repayment failed');

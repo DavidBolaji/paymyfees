@@ -102,6 +102,26 @@ export function CustomInput({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Parse incoming phone value to extract country and number
+  useEffect(() => {
+    if (type === "phone" && value) {
+      // Find matching country by dial code
+      const matchedCountry = countries.find(country => 
+        value.startsWith(country.dialCode)
+      );
+      
+      if (matchedCountry) {
+        setSelectedCountry(matchedCountry);
+        // Extract the phone number without dial code
+        const numberWithoutDialCode = value.substring(matchedCountry.dialCode.length);
+        setPhoneNumber(numberWithoutDialCode);
+      } else {
+        // If no match, just set the whole value as phone number
+        setPhoneNumber(value);
+      }
+    }
+  }, [value, type]);
+
   // Update dropdown position when it opens or on scroll
   const updateDropdownPosition = () => {
     if (dropdownRef.current) {

@@ -10,20 +10,64 @@ import { StatCard } from './stat-card';
 import { InfoCard } from './info-card';
 import { DataTable } from './data-table';
 import { INSTALLMENT_COLUMNS } from '@/data';
+import { useRouter } from 'next/navigation';
 
 interface ViewPaymentPlanProps {
   paymentPlan: PaymentPlan | null;
 }
 
 export function ViewPaymentPlan({ paymentPlan }: ViewPaymentPlanProps) {
+  const router = useRouter();
   // If no payment plan exists, show empty state
   if (!paymentPlan) {
     return <EmptyPaymentPlan />;
   }
 
+  // Check if payment is overdue by comparing dates
+  const isPaymentOverdue = () => {
+    if (!paymentPlan.nextPaymentDate) return false;
+    
+    // Parse the date string (format: "February 1, 2026")
+    const dueDate = new Date(paymentPlan.nextPaymentDate);
+    const today = new Date();
+    
+    // Set time to midnight for accurate date comparison
+    dueDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    
+    // Payment is overdue if due date is before today
+    return dueDate < today;
+  };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
+  // Determine actual status (override backend if date shows overdue)
+  const actualStatus = isPaymentOverdue() ? 'overdue' : paymentPlan.currentStatus;
+  
+  // Calculate days overdue if payment is late
+  const calculateOverdueDays = () => {
+    if (!paymentPlan.nextPaymentDate) return 0;
+    
+    const dueDate = new Date(paymentPlan.nextPaymentDate);
+    const today = new Date();
+    
+    dueDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    
+    if (dueDate >= today) return 0;
+    
+    const diffTime = today.getTime() - dueDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays;
+  };
+
+  const overdueDays = actualStatus === 'overdue' ? (paymentPlan.overdueDays || calculateOverdueDays()) : 0;
+
+
+  const getStatusText = () => {
+    // Use actual status instead of paymentPlan.currentStatus
+    const displayStatus = actualStatus;
+    
+    switch (displayStatus) {
       case 'active':
         return 'Active';
       case 'overdue':
@@ -55,7 +99,7 @@ export function ViewPaymentPlan({ paymentPlan }: ViewPaymentPlanProps) {
 
   // Custom payment card for right side
   const PaymentCard = () => {
-    const isOverdue = paymentPlan.currentStatus === 'overdue';
+    const isOverdue = actualStatus === 'overdue';
 
     return (
       <div className={`rounded-[20px] p-6 border-2 ${isOverdue
@@ -87,7 +131,7 @@ export function ViewPaymentPlan({ paymentPlan }: ViewPaymentPlanProps) {
         <div className="mb-4 text-center">
           <p className={`text-[2.5rem] font-black leading-none ${isOverdue ? 'text-[#EF4444]' : 'text-[#00296B]'
             }`}>
-            ₦{(isOverdue ? paymentPlan.overdueAmount : paymentPlan.nextRepayment)?.toLocaleString()}
+            ₦{(isOverdue ? (paymentPlan.overdueAmount || paymentPlan.nextRepayment) : paymentPlan.nextRepayment)?.toLocaleString()}
           </p>
         </div>
 
@@ -103,13 +147,15 @@ export function ViewPaymentPlan({ paymentPlan }: ViewPaymentPlanProps) {
           </div>
           {isOverdue && (
             <p className="text-[#7C7C7C] text-sm">
-              {paymentPlan.overdueDays} days Late, Charges may apply
+              {overdueDays} days Late, Charges may apply
             </p>
           )}
         </div>
 
         {/* Pay Now Button */}
-        <Button className={`w-full h-12 rounded-xl font-semibold text-white flex items-center justify-center gap-2 ${isOverdue
+        <Button 
+        onClick={() => router.push('/dashboard/wallet')}
+        className={`w-full h-12 rounded-xl font-semibold text-white flex items-center justify-center gap-2 ${isOverdue
           ? 'bg-[#EF4444] hover:bg-[#DC2626]'
           : 'bg-[#00296B] hover:bg-[#002561]'
           }`}>
@@ -151,7 +197,7 @@ export function ViewPaymentPlan({ paymentPlan }: ViewPaymentPlanProps) {
         />
         <StatCard
           title="Current Status"
-          value={getStatusText(paymentPlan.currentStatus)}
+          value={getStatusText()}
           footer={`${paymentPlan.paymentsCompleted} of ${paymentPlan.totalPayments} payments completed`}
         />
       </div>

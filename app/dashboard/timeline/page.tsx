@@ -209,7 +209,7 @@ export default function TimelinePage() {
                         </button>
                     ) : (
                         <button 
-                            onClick={() => router.push('/wallet/fund')}
+                            onClick={() => router.push('/dashboard/wallet')}
                             className="flex flex-1 justify-center items-center gap-2 bg-[#00296B] hover:bg-[#002561] px-6 py-3 rounded-lg font-medium text-white"
                         >
                             <Check className="w-4 h-4" />
