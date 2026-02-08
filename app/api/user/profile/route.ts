@@ -27,7 +27,14 @@ export const GET = asyncHandler(async (req: Request) => {
   }
 
   // Delegate to controller
-  return await userController.getProfile(req, authResult.userId!);
+  const response = await userController.getProfile(req, authResult.userId!);
+  
+  // Add cache control headers to prevent stale data
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  response.headers.set('Pragma', 'no-cache');
+  response.headers.set('Expires', '0');
+  
+  return response;
 });
 
 /**

@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { BackNavigation } from "@/components/dashboard/back-navigation";
 import { CustomInput } from "@/components/ui/custom-input";
+import { AvatarUpload } from "@/components/ui/avatar-upload";
 import { api } from "@/src/lib/api";
-import { Camera, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Image from "next/image";
 
 interface UserProfile {
@@ -164,6 +165,16 @@ export default function ProfilePage() {
 
       if (data.success) {
         setProfile(data.data);
+        // Update local state with the returned data
+        const nameParts = data.data.fullName.split(" ");
+        setFirstName(nameParts[0] || "");
+        setLastName(nameParts.slice(1).join(" ") || "");
+        setContact(data.data.phone || "");
+        setLocation(data.data.country || "");
+        setLanguage(data.data.parentProfile?.language || "English");
+        
+        // Show success message
+        alert("Profile updated successfully!");
       } else {
         setError(data.message || "Failed to update profile");
       }
@@ -194,6 +205,15 @@ export default function ProfilePage() {
 
       if (data.success) {
         setProfile(data.data);
+        // Update local state with the returned data
+        setCountry(data.data.parentProfile?.country || "");
+        setRegion(data.data.parentProfile?.state || "");
+        setAddress(data.data.parentProfile?.address || "");
+        setCity(data.data.parentProfile?.city || "");
+        setPostalCode(data.data.parentProfile?.postalCode || "");
+        
+        // Show success message
+        alert("Address updated successfully!");
       } else {
         setError(data.message || "Failed to update address");
       }
@@ -334,6 +354,27 @@ export default function ProfilePage() {
     }
   };
 
+  const handleAvatarUpload = async (imageUrl: string) => {
+    try {
+      setError(null);
+
+      const response = await api.put("/api/user/profile", {
+        profileImage: imageUrl,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setProfile(data.data);
+      } else {
+        setError(data.message || "Failed to update profile image");
+      }
+    } catch (err) {
+      console.error("Error updating profile image:", err);
+      setError("Failed to update profile image");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-6">
@@ -407,24 +448,11 @@ export default function ProfilePage() {
       {/* Profile Header Card */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
         <div className="flex items-center gap-4">
-          <div className="relative">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#00296B] to-[#003D82] flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
-              {profile.profileImage ? (
-                <Image
-                  src={profile.profileImage}
-                  alt={profile.fullName}
-                  width={80}
-                  height={80}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                profile.fullName.charAt(0).toUpperCase()
-              )}
-            </div>
-            <button className="absolute bottom-0 right-0 w-7 h-7 bg-[#00296B] rounded-full flex items-center justify-center text-white hover:bg-[#002561] transition-colors">
-              <Camera className="w-4 h-4" />
-            </button>
-          </div>
+          <AvatarUpload
+            currentImage={profile.profileImage}
+            userName={profile.fullName}
+            onUploadComplete={handleAvatarUpload}
+          />
           <div>
             <h2 className="text-xl font-semibold text-gray-900">
               {profile.fullName}

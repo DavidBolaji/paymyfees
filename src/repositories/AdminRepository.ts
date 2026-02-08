@@ -27,59 +27,86 @@ export interface IAdminRepository {
 
 export class AdminRepository implements IAdminRepository {
   /**
-   * Get admin analytics
+   * Get admin analytics (Optimized for Prisma Accelerate)
+   * Reduces 16 queries to 4 queries using groupBy and aggregations
+   * Uses Prisma Accelerate caching with 60-second TTL
    */
   async getAnalytics(): Promise<any> {
-    const [
-      totalLoans,
-      pendingLoans,
-      approvedLoans,
-      activeLoans,
-      completedLoans,
-      defaultedLoans,
-      totalUsers,
-      totalSchools,
-      verifiedSchools,
-      pendingSchools,
-      totalTickets,
-      openTickets,
-      loanAmountSum,
-      disbursedAmountSum,
-      repaidAmountSum,
-      outstandingAmountSum
-    ] = await Promise.all([
-      prisma.loan.count(),
-      prisma.loan.count({ where: { status: LoanStatus.PENDING } }),
-      prisma.loan.count({ where: { status: LoanStatus.APPROVED } }),
-      prisma.loan.count({ where: { status: LoanStatus.ACTIVE } }),
-      prisma.loan.count({ where: { status: LoanStatus.COMPLETED } }),
-      prisma.loan.count({ where: { status: LoanStatus.DEFAULTED } }),
-      prisma.user.count({ where: { role: { in: [UserRole.PARENT, UserRole.STUDENT] } } }),
-      prisma.schoolProfile.count(),
-      prisma.schoolProfile.count({ where: { isVerified: true } }),
-      prisma.schoolProfile.count({ where: { isVerified: false } }),
-      prisma.supportTicket.count(),
-      prisma.supportTicket.count({ where: { status: SupportTicketStatus.OPEN } }),
-      prisma.loan.aggregate({ _sum: { loanAmount: true } }),
-      prisma.loan.aggregate({ _sum: { amountDisbursed: true } }),
-      prisma.loan.aggregate({ _sum: { amountRepaid: true } }),
-      prisma.loan.aggregate({ _sum: { outstandingBalance: true } })
-    ]);
+    // Batch 1: Loan statistics with groupBy (1 query instead of 6)
+    // Cache for 60 seconds to reduce load
+    const loanStats = await prisma.loan.groupBy({
+      by: ['status'],
+      _count: { id: true },
+      _sum: {
+        loanAmount: true,
+        amountDisbursed: true,
+        amountRepaid: true,
+        outstandingBalance: true
+      },
+      cacheStrategy: { ttl: 60, swr: 120 } // Cache for 60s, stale-while-revalidate for 120s
+    });
+
+    // Batch 2: School statistics with groupBy (1 query instead of 3)
+    const schoolStats = await prisma.schoolProfile.groupBy({
+      by: ['isVerified'],
+      _count: { id: true },
+      cacheStrategy: { ttl: 60, swr: 120 }
+    });
+
+    // Batch 3: Support ticket statistics with groupBy (1 query instead of 2)
+    const ticketStats = await prisma.supportTicket.groupBy({
+      by: ['status'],
+      _count: { id: true },
+      cacheStrategy: { ttl: 60, swr: 120 }
+    });
+
+    // Batch 4: User count (1 query)
+    const totalUsers = await prisma.user.count({ 
+      where: { role: { in: [UserRole.PARENT, UserRole.STUDENT] } },
+      cacheStrategy: { ttl: 60, swr: 120 }
+    });
+
+    // Process loan statistics
+    const loansByStatus = loanStats.reduce((acc, stat) => {
+      acc[stat.status] = {
+        count: stat._count.id,
+        loanAmount: Number(stat._sum.loanAmount || 0),
+        disbursed: Number(stat._sum.amountDisbursed || 0),
+        repaid: Number(stat._sum.amountRepaid || 0),
+        outstanding: Number(stat._sum.outstandingBalance || 0)
+      };
+      return acc;
+    }, {} as Record<string, any>);
+
+    const totalLoans = loanStats.reduce((sum, stat) => sum + stat._count.id, 0);
+    const totalLoanAmount = loanStats.reduce((sum, stat) => sum + Number(stat._sum.loanAmount || 0), 0);
+    const totalDisbursed = loanStats.reduce((sum, stat) => sum + Number(stat._sum.amountDisbursed || 0), 0);
+    const totalRepaid = loanStats.reduce((sum, stat) => sum + Number(stat._sum.amountRepaid || 0), 0);
+    const totalOutstanding = loanStats.reduce((sum, stat) => sum + Number(stat._sum.outstandingBalance || 0), 0);
+
+    // Process school statistics
+    const totalSchools = schoolStats.reduce((sum, stat) => sum + stat._count.id, 0);
+    const verifiedSchools = schoolStats.find(s => s.isVerified)?._count.id || 0;
+    const pendingSchools = schoolStats.find(s => !s.isVerified)?._count.id || 0;
+
+    // Process ticket statistics
+    const totalTickets = ticketStats.reduce((sum, stat) => sum + stat._count.id, 0);
+    const openTickets = ticketStats.find(t => t.status === SupportTicketStatus.OPEN)?._count.id || 0;
 
     return {
       loans: {
         total: totalLoans,
-        pending: pendingLoans,
-        approved: approvedLoans,
-        active: activeLoans,
-        completed: completedLoans,
-        defaulted: defaultedLoans
+        pending: loansByStatus[LoanStatus.PENDING]?.count || 0,
+        approved: loansByStatus[LoanStatus.APPROVED]?.count || 0,
+        active: loansByStatus[LoanStatus.ACTIVE]?.count || 0,
+        completed: loansByStatus[LoanStatus.COMPLETED]?.count || 0,
+        defaulted: loansByStatus[LoanStatus.DEFAULTED]?.count || 0
       },
       financial: {
-        totalLoanAmount: Number(loanAmountSum._sum.loanAmount || 0),
-        totalDisbursed: Number(disbursedAmountSum._sum.amountDisbursed || 0),
-        totalRepaid: Number(repaidAmountSum._sum.amountRepaid || 0),
-        totalOutstanding: Number(outstandingAmountSum._sum.outstandingBalance || 0)
+        totalLoanAmount,
+        totalDisbursed,
+        totalRepaid,
+        totalOutstanding
       },
       users: {
         total: totalUsers

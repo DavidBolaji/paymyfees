@@ -130,10 +130,10 @@ export class MailService implements IMailService {
         html,
       });
       
-      const error = result?.error;
-
-      if (error) {
-        console.error(`Failed to send verification email to ${to} using ${mode} mode: ${error}`);
+      // Check if result exists and has an error
+      if (!result || result.error) {
+        const errorMsg = result?.error || 'Unknown error occurred';
+        console.error(`Failed to send verification email to ${to} using ${mode} mode:`, errorMsg);
         return false;
       }
 
@@ -182,11 +182,10 @@ export class MailService implements IMailService {
         html,
       });
 
-      // Check for errors safely
-      const error = result?.error;
-
-      if (error) {
-        console.error(`Failed to send welcome email to ${to}:`, error);
+      // Check if result exists and has an error
+      if (!result || result.error) {
+        const errorMsg = result?.error || 'Unknown error occurred';
+        console.error(`Failed to send welcome email to ${to}:`, errorMsg);
         return false;
       }
 
@@ -255,14 +254,14 @@ export class MailService implements IMailService {
         html,
       });
       
-      const error = result?.error;
-
-      if (error) {
-        console.error(`Failed to send verification email to ${to} : ${error}`);
+      // Check if result exists and has an error
+      if (!result || result.error) {
+        const errorMsg = result?.error || 'Unknown error occurred';
+        console.error(`Failed to send verification email to ${to}:`, errorMsg);
         return false;
       }
 
-      console.log(`Verification email sent successfully to ${to} `);
+      console.log(`Verification email sent successfully to ${to}`);
       return true;
     } catch (error) {
       console.error(`Error sending verification email to ${to} : ${error}`);

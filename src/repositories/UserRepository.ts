@@ -14,7 +14,7 @@ import { UserDTO } from '@/src/types';
  */
 export interface IUserRepository {
   getUserById(id: string): Promise<UserDTO | null>;
-  updateUser(id: string, data: Partial<User>): Promise<UserDTO>;
+  updateUser(id: string, data: any): Promise<UserDTO>;
   findById(id: string): Promise<User | null>;
   findByEmail(email: string): Promise<User | null>;
   findByPhone(phone: string): Promise<User | null>;
@@ -32,14 +32,40 @@ export class UserRepository implements IUserRepository {
   async getUserById(id: string): Promise<UserDTO | null> {
     const user = await prisma.user.findUnique({
       where: { id },
+      include: {
+        parentProfile: true,
+        schoolProfile: true,
+        wallet: true,
+        notificationSettings: true,
+      },
+      // Bypass Prisma Accelerate cache for fresh data
+      cacheStrategy: { ttl: 0 },
     });
     return user ? this.toDTO(user) : null;
   }
 
-  async updateUser(id: string, data: Partial<User>): Promise<UserDTO> {
+  async updateUser(id: string, data: any): Promise<UserDTO> {
+    // Separate parentProfile from other user fields
+    const { parentProfile, ...userData } = data;
+    
+    const updateData: any = { ...userData };
+    
+    // Handle parentProfile nested updates with proper upsert syntax
+    if (parentProfile) {
+      console.log({ msg: 'Processing parentProfile update', parentProfile });
+      updateData.parentProfile = {
+        upsert: {
+          create: parentProfile,
+          update: parentProfile,
+        },
+      };
+    }
+
+    console.log({ msg: 'Final update data', updateData: JSON.stringify(updateData, null, 2) });
+
     const user = await prisma.user.update({
       where: { id },
-      data,
+      data: updateData,
     });
     return this.toDTO(user);
   }
@@ -165,22 +191,30 @@ export class UserRepository implements IUserRepository {
   /**
    * Convert User entity to DTO (excludes password and sensitive fields)
    */
-  private toDTO(user: User): UserDTO {
+  private toDTO(user: any): UserDTO {
     return {
       id: user.id,
       email: user.email,
+      phone: user.phone,
       role: user.role,
       fullName: user.fullName,
       profileImage: user.profileImage,
       emailVerified: user.emailVerified,
-      residencyStatus: user.residencyStatus,
       phoneVerified: user.phoneVerified,
+      residencyStatus: user.residencyStatus,
       isActive: user.isActive,
+      isFirstTime: user.isFirstTime,
       lastLogin: user.lastLogin,
+      country: user.country,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       twoFactorEnabled: user.twoFactorEnabled,
       twoFactorSecret: user.twoFactorSecret,
+      // Include relations if they exist
+      parentProfile: user.parentProfile || null,
+      schoolProfile: user.schoolProfile || null,
+      wallet: user.wallet || null,
+      notificationSettings: user.notificationSettings || null,
     };
   }
 }

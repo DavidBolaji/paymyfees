@@ -90,16 +90,16 @@ export class AuthService implements IAuthService {
         },
       });
 
+      // Create wallet for all users
+      await tx.wallet.create({
+        data: {
+          userId: newUser.id,
+        },
+      });
+
       // Create role-specific profile
       if (input.role === UserRole.PARENT) {
         await tx.parentProfile.create({
-          data: {
-            userId: newUser.id,
-          },
-        });
-
-        // Create wallet for parent
-        await tx.wallet.create({
           data: {
             userId: newUser.id,
           },
@@ -495,8 +495,12 @@ export class AuthService implements IAuthService {
     try {
       console.log('2FA verification attempt');
 
-      if (!tempToken || !code) {
-        throw new UnauthorizedError('Temporary token and 2FA code are required');
+      if (!tempToken || typeof tempToken !== 'string') {
+        throw new UnauthorizedError('Valid temporary token is required');
+      }
+
+      if (!code || typeof code !== 'string' || code.length !== 6) {
+        throw new UnauthorizedError('Valid 6-digit 2FA code is required');
       }
 
       // Verify the temporary token using JWT_SECRET (same key used to generate it)
@@ -515,8 +519,13 @@ export class AuthService implements IAuthService {
         throw new UnauthorizedError('User not found');
       }
 
-      if (!user.twoFactorEnabled || !user.twoFactorSecret) {
+      if (!user.twoFactorEnabled) {
         throw new UnauthorizedError('2FA is not enabled for this account');
+      }
+
+      if (!user.twoFactorSecret || typeof user.twoFactorSecret !== 'string') {
+        console.error('2FA secret is missing or invalid for user:', user.id);
+        throw new UnauthorizedError('2FA configuration error. Please contact support.');
       }
 
       // Verify the 2FA code using speakeasy

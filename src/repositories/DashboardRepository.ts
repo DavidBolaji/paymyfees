@@ -122,24 +122,50 @@ export class DashboardRepository implements IDashboardRepository {
     console.log({ msg: 'Fetching chart data from database', userId, year: targetYear });
     
     try {
-      // Get transactions for the specified year
+      // Get loans disbursed in the specified year
       const startDate = new Date(targetYear, 0, 1); // January 1st of the year
       const endDate = new Date(targetYear, 11, 31, 23, 59, 59); // December 31st of the year
       
-      const transactions = await prisma.transaction.findMany({
+      // Fetch disbursements (which represent actual loan amounts given out)
+      const disbursements = await prisma.disbursement.findMany({
         where: {
-          userId,
-          createdAt: {
+          loan: {
+            userId,
+          },
+          disbursedAt: {
             gte: startDate,
             lte: endDate,
           },
+          status: {
+            in: ['COMPLETED', 'PENDING'], // Include completed and pending disbursements
+          },
+        },
+        select: {
+          amount: true,
+          disbursedAt: true,
+          loan: {
+            select: {
+              loanAmount: true,
+            },
+          },
         },
         orderBy: {
-          createdAt: 'asc',
+          disbursedAt: 'asc',
         },
       });
       
-      return transactions;
+      console.log({ 
+        msg: 'Chart data fetched', 
+        userId, 
+        year: targetYear, 
+        disbursementCount: disbursements.length 
+      });
+      
+      // Transform to match expected format (with createdAt and amount)
+      return disbursements.map(d => ({
+        createdAt: d.disbursedAt,
+        amount: Number(d.amount),
+      }));
     } catch (error) {
       console.error({ 
         msg: 'Error fetching chart data', 

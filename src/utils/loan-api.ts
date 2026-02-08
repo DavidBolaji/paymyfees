@@ -143,43 +143,48 @@ export const fetchLoanDetails = async (loanId: string): Promise<DetailedLoanData
  * Fetch timeline data for a loan
  */
 export const fetchTimelineData = async (loanId?: string) => {
-  try {
-    // Build URL with optional loanId query parameter
-    const url = loanId
-      ? `/api/loans/timeline?loanId=${loanId}`
-      : '/api/loans/timeline';
-    
-    const response = await api.get(url);
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.message || 'Failed to fetch timeline data');
-    }
-    
-    return result.data;
-  } catch (err) {
-    console.error('Error fetching timeline:', err);
-    console.log(err instanceof Error ? err.message : 'An error occurred');
-  } 
+  // Build URL with optional loanId query parameter
+  const url = loanId
+    ? `/api/loans/timeline?loanId=${loanId}`
+    : '/api/loans/timeline';
+  
+  const response = await api.get(url);
+  const result = await response.json();
+  
+  if (!result.success) {
+    throw new Error(result.message || 'Failed to fetch timeline data');
+  }
+  
+  return result.data;
 };
 
 /**
  * Apply for a loan
+ * Returns { success: boolean, data?: any, error?: string }
  */
-export const applyForLoan = async (payload?: any) => {
+export const applyForLoan = async (payload?: any): Promise<{ success: boolean; data?: any; error?: string }> => {
   try {
     const response = await api.post('/api/loans/apply', payload);
     const result = await response.json();
     
     if (!result.success) {
-      throw new Error(result.message || 'Failed to apply for loan');
+      return {
+        success: false,
+        error: result.message || 'Failed to apply for loan'
+      };
     }
     
-    return result.data;
+    return {
+      success: true,
+      data: result.data
+    };
   } catch (err) {
     console.error('Error applying for loan:', err);
-    console.log(err instanceof Error ? err.message : 'An error occurred');
-  } 
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'An unexpected error occurred'
+    };
+  }
 };
 
 

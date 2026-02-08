@@ -49,10 +49,101 @@ export default function ViewPaymentPlanPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="mx-auto mb-4 border-4 border-blue-600 border-t-transparent rounded-full w-12 h-12 animate-spin"></div>
-          <p className="text-gray-600 text-lg">Loading payment plan...</p>
+      <div className="p-6">
+        <BackNavigation href="/dashboard" label="Back to Dashboard" />
+        
+        <div className="space-y-6">
+          {/* Header Skeleton */}
+          <div>
+            <div className="h-8 bg-gray-200 rounded w-64 mb-2 animate-pulse"></div>
+            <div className="h-4 bg-gray-200 rounded w-96 animate-pulse"></div>
+          </div>
+
+          {/* Stats Cards Skeleton - 3 columns */}
+          <div className="gap-4 grid grid-cols-1 md:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-200 p-6">
+                <div className="h-4 bg-gray-200 rounded w-24 mb-4 animate-pulse"></div>
+                <div className="h-8 bg-gray-200 rounded w-32 mb-2 animate-pulse"></div>
+                <div className="h-3 bg-gray-200 rounded w-full animate-pulse"></div>
+              </div>
+            ))}
+          </div>
+
+          {/* 2 Column Grid Section Skeleton - 8/4 split */}
+          <div className="gap-6 grid grid-cols-1 lg:grid-cols-12">
+            {/* Left Side - 8 columns */}
+            <div className="lg:col-span-8">
+              <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                <div className="h-6 bg-gray-200 rounded w-48 mb-6 animate-pulse"></div>
+                
+                {/* Progress bar skeleton */}
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+                  </div>
+                  <div className="bg-gray-200 rounded-full w-full h-3 animate-pulse"></div>
+                </div>
+
+                {/* Info items skeleton */}
+                <div className="space-y-3 mt-6">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="flex justify-between items-center py-2">
+                      <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                      <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Side - 4 columns */}
+            <div className="lg:col-span-4">
+              <div className="bg-gray-50 rounded-[20px] p-6 border-2 border-gray-200">
+                {/* Header skeleton */}
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 bg-gray-200 rounded-full animate-pulse"></div>
+                  <div className="h-5 bg-gray-200 rounded w-32 animate-pulse"></div>
+                </div>
+
+                {/* Amount skeleton */}
+                <div className="mb-4 text-center">
+                  <div className="h-12 bg-gray-200 rounded w-48 mx-auto animate-pulse"></div>
+                </div>
+
+                {/* Date skeleton */}
+                <div className="mb-6 text-center">
+                  <div className="h-4 bg-gray-200 rounded w-40 mx-auto mb-2 animate-pulse"></div>
+                  <div className="h-3 bg-gray-200 rounded w-32 mx-auto animate-pulse"></div>
+                </div>
+
+                {/* Button skeleton */}
+                <div className="h-12 bg-gray-200 rounded-xl w-full animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Table Section Skeleton */}
+          <div className="grid grid-cols-1 lg:grid-cols-12">
+            <div className="md:col-span-7">
+              <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                <div className="h-6 bg-gray-200 rounded w-48 mb-4 animate-pulse"></div>
+                
+                {/* Table rows skeleton */}
+                <div className="space-y-3">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="flex justify-between items-center py-3 border-b border-gray-100">
+                      <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+                      <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+                      <div className="h-4 bg-gray-200 rounded w-28 animate-pulse"></div>
+                      <div className="h-6 bg-gray-200 rounded-full w-16 animate-pulse"></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );

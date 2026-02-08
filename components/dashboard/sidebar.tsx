@@ -13,7 +13,6 @@ import {
   Moon, 
   LogOut,
   ChevronRight,
-  Users,
   Building2,
   FileText,
   MessageSquare
@@ -84,7 +83,7 @@ const adminNavigationGroups: NavGroup[] = [
     items: [
       { icon: FileText, label: 'Loans', href: '/admin/loans' },
       { icon: Building2, label: 'Schools', href: '/admin/schools' },
-      { icon: Users, label: 'Users', href: '/admin/users' }
+      // { icon: Users, label: 'Users', href: '/admin/users' }
     ]
   },
   {
@@ -93,11 +92,11 @@ const adminNavigationGroups: NavGroup[] = [
       { icon: MessageSquare, label: 'Support Tickets', href: '/admin/support' }
     ]
   },
-  {
-    items: [
-      { icon: UserCircleIcon, label: 'Profile', href: '/admin/profile' }
-    ]
-  },
+  // {
+  //   items: [
+  //     { icon: UserCircleIcon, label: 'Profile', href: '/admin/profile' }
+  //   ]
+  // },
 ];
 
 export function Sidebar({ className, isAdmin = false }: SidebarProps) {

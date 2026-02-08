@@ -195,12 +195,14 @@ export class DashboardService implements IDashboardService {
     const targetYear = year || new Date().getFullYear();
     
     // Get data from repository
-    const transactions = await this.dashboardRepository.getChartData(userId, targetYear);
+    const disbursements = await this.dashboardRepository.getChartData(userId, targetYear);
     
-    // Process transactions into monthly data
+    console.log({ msg: 'Processing chart data', disbursementCount: disbursements.length });
+    
+    // Process disbursements into monthly data
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan', 'Feb', 'Mar', 'April', 'May', 'June',
+      'July', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
     
     // Initialize monthly data with zeros
@@ -209,19 +211,26 @@ export class DashboardService implements IDashboardService {
       monthlyData[month] = 0;
     });
     
-    // Aggregate transaction amounts by month
-    transactions.forEach((transaction: any) => {
-      const date = new Date(transaction.createdAt);
-      const month = months[date.getMonth()];
+    // Aggregate disbursement amounts by month
+    disbursements.forEach((disbursement: any) => {
+      const date = new Date(disbursement.createdAt);
+      const monthIndex = date.getMonth();
+      const month = months[monthIndex];
       if (month) {
-        monthlyData[month] += transaction.amount || 0;
+        const amount = Number(disbursement.amount) || 0;
+        monthlyData[month] += amount;
+        console.log({ msg: 'Adding to month', month, amount, total: monthlyData[month] });
       }
     });
     
     // Convert to chart data points
-    return months.map(month => ({
+    const chartData = months.map(month => ({
       month,
       value: monthlyData[month] || 0,
     }));
+    
+    console.log({ msg: 'Chart data processed', chartData });
+    
+    return chartData;
   }
 }

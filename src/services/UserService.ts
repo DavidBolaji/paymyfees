@@ -45,9 +45,15 @@ export class UserService implements IUserService {
   async updateUserProfile(userId: string, data: any): Promise<any> {
     console.log({ msg: 'Updating user profile', userId });
 
-    // Validate required fields
+    // Get current user to preserve email if not provided
+    const currentUser = await this.userRepository.getUserById(userId);
+    if (!currentUser) {
+      throw new NotFoundError('User not found');
+    }
+
+    // Use current email if not provided in update
     if (!data.email) {
-      throw new ValidationError('Email is required');
+      data.email = currentUser.email;
     }
 
     // Normalize email to lowercase if provided
