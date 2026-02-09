@@ -195,7 +195,7 @@ export class UserRepository implements IUserRepository {
     return {
       id: user.id,
       email: user.email,
-      phone: user.phone,
+      phone: user.phone || null,
       role: user.role,
       fullName: user.fullName,
       profileImage: user.profileImage,
