@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '@/src/database/prisma';
-import { SavedPaymentMethod } from '@prisma/client';
+
 import { NotFoundError } from '@/src/types/errors';
 
 /**
@@ -62,7 +62,7 @@ export class PaymentMethodRepository implements IPaymentMethodRepository {
   /**
    * Convert Prisma entity to DTO
    */
-  private toDTO(entity: SavedPaymentMethod): PaymentMethodDTO {
+  private toDTO(entity: any): PaymentMethodDTO {
     return {
       id: entity.id,
       userId: entity.userId,
@@ -141,7 +141,7 @@ export class PaymentMethodRepository implements IPaymentMethodRepository {
       ],
     });
 
-    return paymentMethods.map((pm) => this.toDTO(pm));
+    return paymentMethods.map((pm:any) => this.toDTO(pm));
   }
 
   /**

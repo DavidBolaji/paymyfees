@@ -3,11 +3,11 @@
  * Comprehensive type system with strict typing and no use of 'any'
  */
 
-import { 
-  UserRole, 
-  LoanStatus, 
-  VerificationStatus, 
-  TransactionType, 
+import {
+  UserRole,
+  LoanStatus,
+  VerificationStatus,
+  TransactionType,
   TransactionStatus,
   PaymentMethod,
   PaymentStatus,
@@ -57,20 +57,27 @@ export interface PaginationParams {
 export interface UserDTO {
   id: string;
   email: string;
-  // phone: string;
+  phone: string | null;
   role: UserRole;
+  country: string;
   fullName: string;
   profileImage: string | null;
   emailVerified: boolean;
   phoneVerified: boolean;
   residencyStatus: ResidencyStatus;
   isActive: boolean;
+  isFirstTime: boolean;
   twoFactorEnabled?: boolean;
   twoFactorSecret?: string | null;
   lastLogin: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  parentProfile?: any | null;
+  schoolProfile?: any | null;
+  wallet?: any | null;
+  notificationSettings?: any | null;
 }
+
 
 export interface CreateUserInput {
   email: string;
@@ -249,14 +256,14 @@ export interface InternationalLoanInput extends BaseLoanInput {
   countryOfStudy: string;
   programCourseOfStudy: string;
   academicSession: string;
-  
+
   // Employment & Income Details
   employmentStatus?: string;
   companyName?: string;
   jobTitleRole?: string;
   monthlyNetIncome?: number;
   paymentFrequency?: string;
-  
+
   // Loan Disbursement Details
   accountHolderName: string;
   bankName: string;
@@ -288,12 +295,12 @@ export interface LoanDTO {
   academicSession: string;
   term?: string;
   residencyStatus: ResidencyStatus;
-  
+
   // User information (populated from relations)
   userName?: string;
   userEmail?: string;
   userPhone?: string;
-  
+
   // International student specific fields
   countryOfStudy?: string;
   programCourseOfStudy?: string;
@@ -306,7 +313,7 @@ export interface LoanDTO {
   bankName?: string;
   accountNumber?: string;
   countryOfBankAccount?: string;
-  
+
   status: LoanStatus;
   amountDisbursed: number;
   amountRepaid: number;
@@ -322,7 +329,7 @@ export interface LoanDTO {
   notes?: string | null;
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Related data (populated from relations)
   documents?: any[];
   installments?: any[];

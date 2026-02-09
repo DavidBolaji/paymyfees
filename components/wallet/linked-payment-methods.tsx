@@ -150,7 +150,7 @@ export function LinkedPaymentMethods({
       <div className="mt-4 space-y-2">
         <div className="p-3 bg-blue-50 rounded-lg">
           <p className="text-xs text-gray-600">
-            You'll be redirected to Paystack to securely enter your card details. A verification amount of ₦50 will be charged and immediately added to your wallet. Your card will be saved for quick future payments.
+            You&apos;ll be redirected to Paystack to securely enter your card details. A verification amount of ₦50 will be charged and immediately added to your wallet. Your card will be saved for quick future payments.
           </p>
         </div>
         
