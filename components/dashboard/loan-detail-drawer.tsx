@@ -2,7 +2,7 @@
 
 import { DetailDrawer, DrawerSection, DrawerAction } from './detail-drawer';
 import { StatusBadge } from './status-badge';
-import { Eye, CheckCircle, XCircle, DollarSign, FileText } from 'lucide-react';
+import { Eye, CheckCircle, XCircle, DollarSign } from 'lucide-react';
 
 interface LoanDetailDrawerProps {
   isOpen: boolean;

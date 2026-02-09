@@ -218,6 +218,7 @@ export class DashboardService implements IDashboardService {
       const month = months[monthIndex];
       if (month) {
         const amount = Number(disbursement.amount) || 0;
+        //@ts-ignore
         monthlyData[month] += amount;
         console.log({ msg: 'Adding to month', month, amount, total: monthlyData[month] });
       }

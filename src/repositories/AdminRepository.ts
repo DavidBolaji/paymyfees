@@ -67,7 +67,7 @@ export class AdminRepository implements IAdminRepository {
     });
 
     // Process loan statistics
-    const loansByStatus = loanStats.reduce((acc, stat) => {
+    const loansByStatus = loanStats.reduce((acc: any, stat: any) => {
       acc[stat.status] = {
         count: stat._count.id,
         loanAmount: Number(stat._sum.loanAmount || 0),
@@ -78,20 +78,20 @@ export class AdminRepository implements IAdminRepository {
       return acc;
     }, {} as Record<string, any>);
 
-    const totalLoans = loanStats.reduce((sum, stat) => sum + stat._count.id, 0);
-    const totalLoanAmount = loanStats.reduce((sum, stat) => sum + Number(stat._sum.loanAmount || 0), 0);
-    const totalDisbursed = loanStats.reduce((sum, stat) => sum + Number(stat._sum.amountDisbursed || 0), 0);
-    const totalRepaid = loanStats.reduce((sum, stat) => sum + Number(stat._sum.amountRepaid || 0), 0);
-    const totalOutstanding = loanStats.reduce((sum, stat) => sum + Number(stat._sum.outstandingBalance || 0), 0);
+    const totalLoans = loanStats.reduce((sum: any, stat: any) => sum + stat._count.id, 0);
+    const totalLoanAmount = loanStats.reduce((sum: any, stat: any) => sum + Number(stat._sum.loanAmount || 0), 0);
+    const totalDisbursed = loanStats.reduce((sum: any, stat: any) => sum + Number(stat._sum.amountDisbursed || 0), 0);
+    const totalRepaid = loanStats.reduce((sum: any, stat: any) => sum + Number(stat._sum.amountRepaid || 0), 0);
+    const totalOutstanding = loanStats.reduce((sum: any, stat: any) => sum + Number(stat._sum.outstandingBalance || 0), 0);
 
     // Process school statistics
-    const totalSchools = schoolStats.reduce((sum, stat) => sum + stat._count.id, 0);
-    const verifiedSchools = schoolStats.find(s => s.isVerified)?._count.id || 0;
-    const pendingSchools = schoolStats.find(s => !s.isVerified)?._count.id || 0;
+    const totalSchools = schoolStats.reduce((sum: any, stat: any) => sum + stat._count.id, 0);
+    const verifiedSchools = schoolStats.find((s: any) => s.isVerified)?._count.id || 0;
+    const pendingSchools = schoolStats.find((s: any) => !s.isVerified)?._count.id || 0;
 
     // Process ticket statistics
-    const totalTickets = ticketStats.reduce((sum, stat) => sum + stat._count.id, 0);
-    const openTickets = ticketStats.find(t => t.status === SupportTicketStatus.OPEN)?._count.id || 0;
+    const totalTickets = ticketStats.reduce((sum: any, stat: any) => sum + stat._count.id, 0);
+    const openTickets = ticketStats.find((t: any) => t.status === SupportTicketStatus.OPEN)?._count.id || 0;
 
     return {
       loans: {

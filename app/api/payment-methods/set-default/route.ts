@@ -3,7 +3,7 @@
  * POST /api/payment-methods/set-default - Set a payment method as default
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { PaymentMethodController } from '@/src/controllers/PaymentMethodController';
 import { requireAuth } from '@/src/middleware/auth';
 import { errorHandler } from '@/src/middleware/errorHandler';

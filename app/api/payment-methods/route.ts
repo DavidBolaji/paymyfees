@@ -3,7 +3,7 @@
  * GET /api/payment-methods - Get all payment methods
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { PaymentMethodController } from '@/src/controllers/PaymentMethodController';
 import { requireAuth } from '@/src/middleware/auth';
 import { errorHandler } from '@/src/middleware/errorHandler';

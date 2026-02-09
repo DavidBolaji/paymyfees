@@ -4,7 +4,7 @@
  * DELETE /api/payment-methods/:id - Delete a payment method
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { PaymentMethodController } from '@/src/controllers/PaymentMethodController';
 import { requireAuth } from '@/src/middleware/auth';
 import { errorHandler } from '@/src/middleware/errorHandler';
@@ -17,11 +17,12 @@ const controller = new PaymentMethodController();
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth(req);
-    return await controller.getPaymentMethodById(req, params.id, user);
+    const { id } = await params;
+    return await controller.getPaymentMethodById(req, id, user);
   } catch (error) {
     return errorHandler(error);
   }
@@ -33,11 +34,12 @@ export async function GET(
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth(req);
-    return await controller.deletePaymentMethod(req, params.id, user);
+    const { id } = await params;
+    return await controller.deletePaymentMethod(req, id, user);
   } catch (error) {
     return errorHandler(error);
   }

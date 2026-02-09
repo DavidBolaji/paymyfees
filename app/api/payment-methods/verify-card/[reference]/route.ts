@@ -21,10 +21,11 @@ const walletService = new WalletService();
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { reference: string } }
+  context: { params: Promise<{ reference: string }> }
 ) {
   try {
     const user = await requireAuth(req);
+    const params = await context.params;
     const reference = params.reference;
 
     console.log({ msg: 'Verifying card addition', reference, userId: user.id });
@@ -78,7 +79,6 @@ export async function GET(
         message: 'Card tokenization failed',
         metadata: {
           timestamp: new Date().toISOString(),
-          isTestMode,
         },
       };
       return NextResponse.json(response, { status: 400 });
