@@ -1,6 +1,5 @@
 'use client';
 
-import { ArrowUpRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface StatCardProps {
