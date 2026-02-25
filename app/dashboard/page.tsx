@@ -2,20 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Edit3,
-  Calendar,
-  Send,
-  Building,
-  Wallet as WalletIcon
-} from 'lucide-react';
+
 
 import { StatCard } from '@/components/dashboard/stat-card';
 import { StatCardSkeleton } from '@/components/dashboard/stat-card-skeleton';
 import { DataTable } from '@/components/dashboard/data-table';
 import { ProgressTracker } from '@/components/dashboard/progress-tracker';
 import { ProgressTrackerSkeleton } from '@/components/dashboard/progress-tracker-skeleton';
-import { InstantActions } from '@/components/dashboard/instant-actions';
 import { ChartCard } from '@/components/dashboard/chart-card';
 import { ChartCardSkeleton } from '@/components/dashboard/chart-card-skeleton';
 import { QuickActionsCard } from '@/components/dashboard/quick-actions-card';
@@ -23,7 +16,6 @@ import { QuickActionsCard } from '@/components/dashboard/quick-actions-card';
 import {
   LOAN_HISTORY_COLUMNS,
   TRANSACTION_COLUMNS,
-  INSTANT_ACTIONS
 } from '@/data';
 import useAuthStore from '@/src/authStore';
 import { LoanDisbursementDrawer, TransactionDrawer } from '@/components/dashboard/detail-drawer';
