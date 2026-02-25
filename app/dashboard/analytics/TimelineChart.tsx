@@ -28,10 +28,10 @@ export function TimelineChart({
   };
 
   return (
-    <div className={cn("bg-white rounded-2xl border border-gray-200 p-6", className)}>
+    <div className={cn("bg-white rounded-2xl border border-gray-200 p-4 sm:p-6", className)}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-semibold text-[#191919]">Timeline Charts</h3>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <h3 className="text-base sm:text-xl font-semibold text-[#191919]">Timeline Charts</h3>
         
         {/* Period Selector */}
         <div className="relative">
@@ -56,15 +56,15 @@ export function TimelineChart({
 
       {/* Chart */}
       <div className="flex flex-col items-center">
-        <div className="w-full max-w-[320px] h-[320px] relative">
+        <div className="w-full max-w-[280px] sm:max-w-[320px] h-[240px] sm:h-[320px] relative">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={data}
                 cx="50%"
                 cy="50%"
-                innerRadius={90}
-                outerRadius={140}
+                innerRadius="55%"
+                outerRadius="85%"
                 startAngle={90}
                 endAngle={-270}
                 paddingAngle={0}

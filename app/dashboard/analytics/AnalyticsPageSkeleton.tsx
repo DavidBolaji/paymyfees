@@ -68,9 +68,9 @@ export function AnalyticsPageSkeleton({ className }: AnalyticsPageSkeletonProps)
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-10 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-10 gap-5">
         {/* Funding vs Repayment Chart Skeleton */}
-        <div className="col-span-7">
+        <div className="md:col-span-7">
           <div className="bg-white rounded-2xl border border-gray-200 p-6">
             {/* Chart Header */}
             <div className="flex items-center justify-between mb-6">
@@ -109,7 +109,7 @@ export function AnalyticsPageSkeleton({ className }: AnalyticsPageSkeletonProps)
         </div>
 
         {/* Timeline Chart Skeleton */}
-        <div className="col-span-3">
+        <div className="md:col-span-3">
           <TimelineChartSkeleton />
         </div>
       </div>

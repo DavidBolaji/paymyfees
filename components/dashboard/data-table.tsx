@@ -34,11 +34,10 @@ interface DataTableProps {
   viewAllHref?: string;
   className?: string;
   onRowClick?: (item: TableData) => void;
-  // Server-side pagination props
   paginationInfo?: PaginationInfo;
   onPageChange?: (page: number) => void;
   isLoading?: boolean;
-  itemsPerPage?: number; // Control number of rows displayed
+  itemsPerPage?: number;
 }
 
 export function DataTable({
@@ -53,15 +52,13 @@ export function DataTable({
   paginationInfo,
   onPageChange,
   isLoading = false,
-  itemsPerPage = 10 // Default to 10 rows
+  itemsPerPage = 10
 }: DataTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredData, setFilteredData] = useState<TableData[]>(data);
 
-  // Use server pagination if provided, otherwise use client-side pagination
   const isServerPaginated = !!paginationInfo && !!onPageChange;
   
-  // Handle search input changes
   useEffect(() => {
     if (searchTerm.trim() === '') {
       setFilteredData(data);
@@ -70,7 +67,6 @@ export function DataTable({
     
     const searchTermLower = searchTerm.toLowerCase();
     const filtered = data.filter(item => {
-      // Search through all fields in the item
       return Object.values(item).some(value => {
         if (value === null || value === undefined) return false;
         return String(value).toLowerCase().includes(searchTermLower);
@@ -80,18 +76,15 @@ export function DataTable({
     setFilteredData(filtered);
   }, [searchTerm, data]);
   
-  // For server pagination
   const currentPage = paginationInfo?.page || 1;
   const totalPages = paginationInfo?.totalPages || 1;
   const total = paginationInfo?.total || 0;
-  const limit = itemsPerPage || paginationInfo?.limit || 5; // Use itemsPerPage as fallback
+  const limit = itemsPerPage || paginationInfo?.limit || 5;
   const isEmpty = data.length === 0;
 
-  // Calculate display info
   const startIndex = (currentPage - 1) * limit;
   const endIndex = Math.min(startIndex + data.length, total);
 
-  // Create empty rows for display when no data or fewer than itemsPerPage items
   const emptyRowsCount = isServerPaginated ? limit : itemsPerPage;
   const fillerRowsCount = filteredData.length > 0 && filteredData.length < emptyRowsCount ? emptyRowsCount - filteredData.length : 0;
   const emptyRows = Array(emptyRowsCount).fill(null);
@@ -106,12 +99,10 @@ export function DataTable({
   const renderCellContent = (item: TableData, column: Column) => {
     const value = item[column.key];
     
-    // Handle status badges
     if (column.key === 'status' && typeof value === 'string') {
       return <StatusBadge status={value as any} />;
     }
     
-    // Handle currency formatting
     if (column.key.includes('amount') || column.key.includes('tuition') || column.key.includes('Amount')) {
       return <span className="font-medium">{value?.toLocaleString()}</span>;
     }
@@ -119,12 +110,10 @@ export function DataTable({
     return value;
   };
 
-  // Generate pagination buttons dynamically
   const renderPaginationButtons = () => {
     const buttons = [];
     
     if (totalPages <= 5) {
-      // Show all pages if total is 5 or less
       for (let i = 1; i <= totalPages; i++) {
         buttons.push(
           <button
@@ -132,7 +121,7 @@ export function DataTable({
             onClick={() => handlePageChange(i)}
             disabled={isEmpty && i !== 1}
             className={cn(
-              "w-10 h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-sm font-medium transition-colors",
+              "w-8 h-8 sm:w-10 sm:h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-xs sm:text-sm font-medium transition-colors",
               currentPage === i
                 ? "bg-gray-900 text-white border-gray-900"
                 : "text-gray-600 hover:bg-gray-50",
@@ -144,13 +133,12 @@ export function DataTable({
         );
       }
     } else {
-      // Show: 1 2 3 ... totalPages
       buttons.push(
         <button
           key={1}
           onClick={() => handlePageChange(1)}
           className={cn(
-            "w-10 h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-sm font-medium transition-colors",
+            "w-8 h-8 sm:w-10 sm:h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-xs sm:text-sm font-medium transition-colors",
             currentPage === 1
               ? "bg-gray-900 text-white border-gray-900"
               : "text-gray-600 hover:bg-gray-50"
@@ -167,7 +155,7 @@ export function DataTable({
             onClick={() => handlePageChange(2)}
             disabled={isEmpty}
             className={cn(
-              "w-10 h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-sm font-medium transition-colors",
+              "w-8 h-8 sm:w-10 sm:h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-xs sm:text-sm font-medium transition-colors",
               currentPage === 2
                 ? "bg-gray-900 text-white border-gray-900"
                 : "text-gray-600 hover:bg-gray-50",
@@ -186,7 +174,7 @@ export function DataTable({
             onClick={() => handlePageChange(3)}
             disabled={isEmpty}
             className={cn(
-              "w-10 h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-sm font-medium transition-colors",
+              "w-8 h-8 sm:w-10 sm:h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-xs sm:text-sm font-medium transition-colors",
               currentPage === 3
                 ? "bg-gray-900 text-white border-gray-900"
                 : "text-gray-600 hover:bg-gray-50",
@@ -200,7 +188,7 @@ export function DataTable({
 
       if (totalPages > 4) {
         buttons.push(
-          <span key="ellipsis" className="px-2 text-gray-400 border-t border-b border-gray-300 h-10 flex items-center">
+          <span key="ellipsis" className="px-1 sm:px-2 text-gray-400 border-t border-b border-gray-300 h-8 sm:h-10 flex items-center text-xs sm:text-sm">
             ...
           </span>
         );
@@ -213,7 +201,7 @@ export function DataTable({
             onClick={() => handlePageChange(totalPages)}
             disabled={isEmpty}
             className={cn(
-              "w-10 h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-sm font-medium transition-colors",
+              "w-8 h-8 sm:w-10 sm:h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-xs sm:text-sm font-medium transition-colors",
               currentPage === totalPages
                 ? "bg-gray-900 text-white border-gray-900"
                 : "text-gray-600 hover:bg-gray-50",
@@ -232,30 +220,30 @@ export function DataTable({
   return (
     <div className={cn("bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col", className)}>
       {/* Header */}
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+      <div className="p-4 sm:p-6 border-b border-gray-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900">{title}</h2>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {/* Search */}
             {searchable && (
-              <div className="relative">
+              <div className="relative flex-1 sm:flex-none">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
                   placeholder="Search"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-64 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="pl-10 pr-4 py-2 w-full sm:w-48 md:w-64 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
             )}
             
             {/* Filter */}
             {filterable && (
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+              <button className="flex items-center gap-2 px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors text-sm whitespace-nowrap">
                 <Filter className="w-4 h-4" />
-                Filter
+                <span className="hidden sm:inline">Filter</span>
               </button>
             )}
             
@@ -263,7 +251,7 @@ export function DataTable({
             {viewAllHref && (
               <Link 
                 href={viewAllHref}
-                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                className="text-blue-600 hover:text-blue-700 text-sm font-medium whitespace-nowrap"
               >
                 View All
               </Link>
@@ -272,16 +260,16 @@ export function DataTable({
         </div>
       </div>
 
-      {/* Table - Fixed height for 5 rows */}
+      {/* Table */}
       <div className="overflow-x-auto flex-grow" style={{ minHeight: '330px' }}>
-        <table className="w-full">
+        <table className="w-full min-w-[600px]">
           <thead className="bg-gray-50">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
                   className={cn(
-                    "px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+                    "px-4 sm:px-6 py-3 sm:py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap",
                     column.width && `w-${column.width}`
                   )}
                 >
@@ -292,22 +280,20 @@ export function DataTable({
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {isLoading ? (
-              // Show loading state
               emptyRows.map((_, index) => (
                 <tr key={`loading-${index}`} className="animate-pulse">
                   {columns.map((column) => (
-                    <td key={column.key} className="px-6 py-4 whitespace-nowrap">
+                    <td key={column.key} className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                       <div className="h-4 bg-gray-200 rounded w-3/4"></div>
                     </td>
                   ))}
                 </tr>
               ))
             ) : isEmpty || filteredData.length === 0 ? (
-              // Show empty rows when no data
               emptyRows.map((_, index) => (
                 <tr key={`empty-${index}`} className="hover:bg-gray-50 transition-colors">
                   {columns.map((column) => (
-                    <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                    <td key={column.key} className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-400">
                       {["tuitionAmount", "amount"].includes(column.key) ? "₦-": "-"}
                     </td>
                   ))}
@@ -315,7 +301,6 @@ export function DataTable({
               ))
             ) : (
               <>
-                {/* Show actual data */}
                 {filteredData.map((item, index) => (
                   <tr
                     key={index}
@@ -326,18 +311,17 @@ export function DataTable({
                     )}
                   >
                     {columns.map((column) => (
-                      <td key={column.key} className="px-6 py-4 whitespace-nowrap font-medium text-sm text-gray-700 text-[0.9375rem]">
+                      <td key={column.key} className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap font-medium text-sm text-gray-700">
                         {renderCellContent(item, column)}
                       </td>
                     ))}
                   </tr>
                 ))}
                 
-                {/* Add filler rows if we have fewer than itemsPerPage items */}
                 {fillerRows.map((_, index) => (
                   <tr key={`filler-${index}`} className="hover:bg-gray-50 transition-colors">
                     {columns.map((column) => (
-                      <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                      <td key={column.key} className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-400">
                         {["tuitionAmount", "amount"].includes(column.key) ? "₦-": "-"}
                       </td>
                     ))}
@@ -351,8 +335,8 @@ export function DataTable({
 
       {/* Pagination Footer */}
       {isServerPaginated && (
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between mt-auto">
-          <div className="text-sm text-gray-500">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 mt-auto">
+          <div className="text-xs sm:text-sm text-gray-500 order-2 sm:order-1">
             {isEmpty ? (
               "Showing 0 of 0 Records"
             ) : (
@@ -360,13 +344,11 @@ export function DataTable({
             )}
           </div>
           
-          <div className="flex items-center">
+          <div className="flex items-center order-1 sm:order-2">
             <button
               onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1 || isEmpty || isLoading}
-              className={cn(
-                "w-10 h-10 border border-gray-300 rounded-l-md flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              )}
+              className="w-8 h-8 sm:w-10 sm:h-10 border border-gray-300 rounded-l-md flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -376,9 +358,7 @@ export function DataTable({
             <button
               onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages || isEmpty || isLoading}
-              className={cn(
-                "w-10 h-10 border border-gray-300 rounded-r-md flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              )}
+              className="w-8 h-8 sm:w-10 sm:h-10 border border-gray-300 rounded-r-md flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

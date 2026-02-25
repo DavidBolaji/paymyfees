@@ -27,12 +27,12 @@ export default function TransactionsPage() {
 
   return (
     <>
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <div className="">
           <BackNavigation href="/dashboard" label="Back to Dashboard" />
 
           <div className="mb-6">
-            <h1 className="mb-2 font-semibold text-[#191919] text-[1.6875rem]">
+            <h1 className="mb-2 font-semibold text-[#191919] text-xl md:text-[1.6875rem]">
               Transaction History
             </h1>
             <p className="text-[#5F5F5F] text-base">

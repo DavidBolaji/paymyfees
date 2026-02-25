@@ -51,11 +51,11 @@ export default function AnalyticsPage() {
   }, [fetchChartData]);
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <div className="">
         <BackNavigation href="/dashboard" label="Back to Dashboard" />
 
-        <h1 className="text-2xl font-semibold text-[#191919] mb-2">Analytics</h1>
+        <h1 className="text-xl md:text-2xl font-semibold text-[#191919] mb-2">Analytics</h1>
         <p className="text-sm text-gray-600 mb-6">
           Gain insights into your tuition funding, repayment activity, and engagement across your PayMyFees dashboard.
         </p>
@@ -85,15 +85,15 @@ export default function AnalyticsPage() {
               }}
             />
 
-            <div className="grid grid-cols-10 mt-5 gap-5">
-              <div className=" col-span-7">
+            <div className="grid grid-cols-1 md:grid-cols-10 mt-5 gap-5">
+              <div className="md:col-span-7">
                 {/* Funding vs Repayment Chart */}
                 <RechartsFundingChart
                   data={chartData}
                   isLoading={isChartLoading}
                 />
               </div>
-              <div className=" col-span-3">
+              <div className="md:col-span-3">
                 {/* Timeline Chart */}
                 {isChartLoading ? (
                   <TimelineChartSkeleton />

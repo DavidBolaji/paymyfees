@@ -107,12 +107,12 @@ export default function SchoolVerificationPage() {
   return (
     <>
 
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <div className="">
-          <h2 className="mb-[0.56rem] font-semibold text-[#191919] text-[1.6875rem]">
+          <h2 className="mb-[0.56rem] font-semibold text-[#191919] text-xl md:text-[1.6875rem]">
             School Verification
           </h2>
-          <p className="mb-[1.375rem] font-semibold text-[#5F5F5F] text-lg">
+          <p className="mb-[1.375rem] font-semibold text-[#5F5F5F] text-base md:text-lg">
             Verify your school information to maintain eligibility and ensure smooth access to
             student financing.
           </p>
@@ -157,11 +157,11 @@ export default function SchoolVerificationPage() {
 
           {/* Current School Information */}
           <div className="px-5 py-6 bg-white rounded-lg mb-8">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
               <h3>Current School Information</h3>
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="flex justify-center items-center gap-2 bg-[#00296B] hover:bg-[#002561] px-4 py-2.5 rounded-lg font-medium text-white transition-colors">
+                className="flex justify-center items-center gap-2 bg-[#00296B] hover:bg-[#002561] px-4 py-2.5 rounded-lg font-medium text-white transition-colors text-sm">
                 Edit Details
               </button>
             </div>
@@ -183,23 +183,23 @@ export default function SchoolVerificationPage() {
               </div>
             )}
 
-            <div className="bg-[#E6EAF0] grid grid-cols-4 py-4 rounded-lg h-24 mb-4">
-              <div className="text-center border border-r-[#CFCFCF]">
+            <div className="bg-[#E6EAF0] grid grid-cols-2 md:grid-cols-4 py-4 rounded-lg min-h-[6rem] mb-4">
+              <div className="text-center border-r border-r-[#CFCFCF] border-b md:border-b-0 py-2 md:py-0">
                 <div>School Name</div>
                 <div>{currentSchool?.schoolName ?? '-'}</div>
               </div>
 
-              <div className="text-center border border-r-[#CFCFCF]">
+              <div className="text-center md:border-r md:border-r-[#CFCFCF] border-b md:border-b-0 py-2 md:py-0">
                 <div>Program</div>
                 <div>-</div>
               </div>
 
-              <div className="text-center border border-r-[#CFCFCF]">
+              <div className="text-center border-r border-r-[#CFCFCF] py-2 md:py-0">
                 <div>Level</div>
                 <div>{currentSchool?.academicLevel ?? '-'}</div>
               </div>
 
-              <div className="text-center">
+              <div className="text-center py-2 md:py-0">
                 <div>Status</div>
                 <div>
                   {profile?.academicLevel ? (
@@ -216,8 +216,8 @@ export default function SchoolVerificationPage() {
           </div>
 
           {/* Verification Logs and Support Messages */}
-          <div className="flex gap-4">
-            <div className="flex-[0.7]">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="w-full md:flex-[0.7]">
               <DataTable
                 title="Verification Logs"
                 columns={VERIFICATION_LOGS_COLUMNS}
@@ -237,7 +237,7 @@ export default function SchoolVerificationPage() {
                 }}
               />
             </div>
-            <div className="flex-[0.3]">
+            <div className="w-full md:flex-[0.3]">
               <SupportMessageCard
                 messages={supportMessages}
                 unreadCount={unreadSupportCount}
@@ -270,12 +270,12 @@ export default function SchoolVerificationPage() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-4 pt-6">
+          <div className="flex flex-col sm:flex-row gap-4 pt-6">
             <button
-              type="submit"
+              type="button"
               onClick={handleVerification}
               className={cn(
-                "flex flex-1 justify-center items-center gap-2 rounded-lg h-12 font-medium transition-colors",
+                "flex w-full sm:w-auto sm:flex-1 justify-center items-center gap-2 rounded-lg h-12 px-6 font-medium transition-colors text-sm sm:text-base",
                 scores.academicScore > 1
                   ? "bg-[#00296B] text-white hover:bg-[#002561]"
                   : "bg-gray-300 text-gray-500 cursor-not-allowed"
@@ -288,7 +288,7 @@ export default function SchoolVerificationPage() {
                 </>
               ) : (
                 <>
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
                   View Verification Status
@@ -299,9 +299,9 @@ export default function SchoolVerificationPage() {
             <button
               type="button"
               onClick={() => setIsContactModalOpen(true)}
-              className="flex flex-1 justify-center items-center gap-2 border-2 bg-white border-gray-300 hover:border-gray-400 rounded-lg h-12 font-medium text-gray-600 transition-colors"
+              className="flex w-full sm:w-auto sm:flex-1 justify-center items-center gap-2 border-2 bg-white border-gray-300 hover:border-gray-400 rounded-lg h-12 px-6 font-medium text-gray-600 transition-colors text-sm sm:text-base"
             >
-              <Megaphone className="w-4 h-4" />
+              <Megaphone className="w-4 h-4 shrink-0" />
               Contact support
             </button>
           </div>

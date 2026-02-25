@@ -377,12 +377,91 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6 max-w-7xl mx-auto animate-pulse">
         <BackNavigation href="/dashboard" label="Back to Dashboard" />
-        <div className="flex justify-center items-center min-h-[60vh]">
-          <div className="text-center">
-            <Loader2 className="mx-auto mb-4 w-12 h-12 animate-spin text-[#00296B]" />
-            <p className="text-gray-600 text-lg">Loading profile...</p>
+
+        <div className="mb-6">
+          <div className="h-7 w-24 bg-gray-200 rounded mb-2" />
+          <div className="h-4 w-72 bg-gray-200 rounded" />
+        </div>
+
+        {/* Profile Header Skeleton */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 mb-6">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-gray-200" />
+            <div>
+              <div className="h-5 w-40 bg-gray-200 rounded mb-2" />
+              <div className="h-4 w-56 bg-gray-200 rounded" />
+            </div>
+          </div>
+        </div>
+
+        {/* Grid Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Personal Info Skeleton */}
+          <div className="lg:col-span-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
+              <div className="h-5 w-44 bg-gray-200 rounded mb-6" />
+              <div className="space-y-4">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i}>
+                    <div className="h-3 w-20 bg-gray-200 rounded mb-2" />
+                    <div className="h-12 w-full bg-gray-200 rounded-lg" />
+                  </div>
+                ))}
+                <div className="h-12 w-full bg-gray-200 rounded-lg" />
+              </div>
+            </div>
+          </div>
+
+          {/* Address Info Skeleton */}
+          <div className="lg:col-span-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
+              <div className="h-5 w-44 bg-gray-200 rounded mb-6" />
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i}>
+                    <div className="h-3 w-20 bg-gray-200 rounded mb-2" />
+                    <div className="h-12 w-full bg-gray-200 rounded-lg" />
+                  </div>
+                ))}
+                <div className="h-12 w-full bg-gray-200 rounded-lg" />
+              </div>
+            </div>
+          </div>
+
+          {/* Notification Settings Skeleton */}
+          <div className="lg:col-span-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
+              <div className="h-5 w-40 bg-gray-200 rounded mb-6" />
+              <div className="space-y-4">
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <div className="h-4 w-44 bg-gray-200 rounded" />
+                    <div className="h-7 w-14 bg-gray-200 rounded-lg" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Security Settings Skeleton */}
+          <div className="lg:col-span-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
+              <div className="h-5 w-36 bg-gray-200 rounded mb-6" />
+              <div className="space-y-4">
+                <div className="flex items-center justify-between py-3">
+                  <div>
+                    <div className="h-4 w-48 bg-gray-200 rounded mb-2" />
+                    <div className="h-3 w-56 bg-gray-200 rounded" />
+                  </div>
+                  <div className="h-7 w-14 bg-gray-200 rounded-lg" />
+                </div>
+                <div className="h-14 w-full bg-gray-200 rounded-lg" />
+                <div className="h-12 w-full bg-gray-200 rounded-lg" />
+                <div className="h-12 w-full bg-gray-200 rounded-lg" />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -429,11 +508,11 @@ export default function ProfilePage() {
   if (!profile) return null;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto">
       <BackNavigation href="/dashboard" label="Back to Dashboard" />
 
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-[#191919] mb-2">Profile</h1>
+        <h1 className="text-xl md:text-2xl font-semibold text-[#191919] mb-2">Profile</h1>
         <p className="text-sm text-gray-600">
           Manage your personal information and account settings
         </p>
@@ -446,7 +525,7 @@ export default function ProfilePage() {
       )}
 
       {/* Profile Header Card */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
+      <div className="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 mb-6">
         <div className="flex items-center gap-4">
           <AvatarUpload
             currentImage={profile.profileImage}

@@ -49,14 +49,14 @@ export default function ViewPaymentPlanPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <BackNavigation href="/dashboard" label="Back to Dashboard" />
         
         <div className="space-y-6">
           {/* Header Skeleton */}
           <div>
             <div className="h-8 bg-gray-200 rounded w-64 mb-2 animate-pulse"></div>
-            <div className="h-4 bg-gray-200 rounded w-96 animate-pulse"></div>
+            <div className="h-4 bg-gray-200 rounded w-full sm:w-96 animate-pulse"></div>
           </div>
 
           {/* Stats Cards Skeleton - 3 columns */}
@@ -151,7 +151,7 @@ export default function ViewPaymentPlanPage() {
 
   if (error) {
     return (
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <BackNavigation href="/dashboard" label="Back to Dashboard" />
         <div className="flex justify-center items-center min-h-[50vh]">
           <div className="text-center max-w-md">
@@ -175,7 +175,7 @@ export default function ViewPaymentPlanPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       {/* Back Navigation */}
       <BackNavigation href="/dashboard" label="Back to Dashboard" />
       
