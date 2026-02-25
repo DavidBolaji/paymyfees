@@ -18,6 +18,7 @@ import { ProgressTrackerSkeleton } from '@/components/dashboard/progress-tracker
 import { InstantActions } from '@/components/dashboard/instant-actions';
 import { ChartCard } from '@/components/dashboard/chart-card';
 import { ChartCardSkeleton } from '@/components/dashboard/chart-card-skeleton';
+import { QuickActionsCard } from '@/components/dashboard/quick-actions-card';
 
 import {
   LOAN_HISTORY_COLUMNS,
@@ -84,11 +85,14 @@ export default function DashboardPage() {
 
   return (
     <>
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         <div className="">
-          <h2 className='mb-[0.56rem] font-semibold text-[#191919] text-[1.6875rem]'>Dashboard</h2>
-          <p className='mb-[1.375rem] font-semibold text-[#5F5F5F] text-[1.6875rem]'>Welcome Back, {userName}</p>
+          <h2 className='mb-[0.56rem] font-semibold text-[#191919] text-xl md:text-[1.6875rem]'>Dashboard</h2>
+          <p className='mb-[1.375rem] font-semibold text-[#5F5F5F] text-lg md:text-[1.6875rem]'>Welcome Back, {userName}</p>
           
+          {/* Quick Actions Card */}
+          <QuickActionsCard />
+
           {/* Stats Grid */}
           <div className="gap-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 mb-8">
             {isLoading ? (
@@ -206,7 +210,7 @@ export default function DashboardPage() {
           {/* Bottom Section */}
           <div className="gap-6 grid grid-cols-1 lg:grid-cols-3">
             {/* Recent Transactions */}
-            <div className="space-y-6 lg:col-span-2">
+            <div className="space-y-6 lg:col-span-3">
               <DataTable
                 title="Recent Transactions"
                 columns={TRANSACTION_COLUMNS}
@@ -227,34 +231,7 @@ export default function DashboardPage() {
                 searchable={true}
               />
             </div>
-
-            {/* Instant Actions */}
-            <div>
-              <InstantActions
-                title="Instant Actions"
-                subtitle="Handle key tasks in seconds."
-                actions={INSTANT_ACTIONS.map(action => ({
-                  ...action,
-                  icon: action.id === 'apply-loan' ? Edit3 :
-                    action.id === 'view-payment-plan' ? Calendar :
-                      action.id === 'make-payment' ? Send :
-                        action.id === 'update-school' ? Building :
-                          WalletIcon,
-                  onClick: () => {
-                    if (action.id === 'apply-loan') {
-                      router.push('/dashboard/apply-loan');
-                    } else if (action.id === 'view-payment-plan') {
-                      router.push('/dashboard/view-payment-plan');
-                    } else if (action.id === 'fund-wallet') {
-                      router.push('/dashboard/wallet');
-                    } else {
-                      console.log(action.title);
-                    }
-                  }
-                }))}
-                onViewAll={() => console.log('View all actions')}
-              />
-            </div>
+          
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 mt-8">

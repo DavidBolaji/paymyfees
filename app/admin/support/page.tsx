@@ -127,10 +127,10 @@ export default function AdminSupportPage() {
   }));
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <div className="mb-6">
-        <h2 className='mb-2 font-semibold text-[#191919] text-[1.6875rem]'>Support Tickets</h2>
-        <p className='text-[#5F5F5F] text-base'>Manage and respond to customer support requests</p>
+        <h2 className='mb-2 font-semibold text-[#191919] text-xl md:text-[1.6875rem]'>Support Tickets</h2>
+        <p className='text-[#5F5F5F] text-sm md:text-base'>Manage and respond to customer support requests</p>
       </div>
 
       <div className="mb-6 max-w-xs">

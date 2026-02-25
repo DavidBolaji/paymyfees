@@ -57,7 +57,7 @@ export default function TimelinePage() {
 
     if (loading) {
         return (
-            <div className="bg-[#F8F9FA] p-6 min-h-screen flex items-center justify-center">
+            <div className="bg-[#F8F9FA] p-4 md:p-6 min-h-screen flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="w-8 h-8 animate-spin text-[#00296B]" />
                     <p className="text-[#7C7C7C]">Loading timeline data...</p>
@@ -68,7 +68,7 @@ export default function TimelinePage() {
 
     if (error) {
         return (
-            <div className="bg-[#F8F9FA] p-6 min-h-screen">
+            <div className="bg-[#F8F9FA] p-4 md:p-6 min-h-screen">
                 <BackNavigation href="/dashboard" label="Back to Dashboard" />
                 <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
                     <div className="text-red-500 text-center">
@@ -89,7 +89,7 @@ export default function TimelinePage() {
     // If no timeline data, this shouldn't happen as service returns empty state
     if (!timelineData) {
         return (
-            <div className="bg-[#F8F9FA] p-6 min-h-screen">
+            <div className="bg-[#F8F9FA] p-4 md:p-6 min-h-screen">
                 <BackNavigation href="/dashboard" label="Back to Dashboard" />
                 <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
                     <p className="text-[#7C7C7C]">No timeline data available</p>
@@ -140,12 +140,12 @@ export default function TimelinePage() {
     }));
 
     return (
-        <div className="bg-[#F8F9FA] p-6 min-h-screen">
+        <div className="bg-[#F8F9FA] p-4 md:p-6 min-h-screen">
             <div className="">
                 <BackNavigation href="/dashboard" label="Back to Dashboard" />
                 
                 {/* Header */}
-                <h1 className="mb-8 font-semibold text-[#5F5F5F] text-[1.5rem]">
+                <h1 className="mb-8 font-semibold text-[#5F5F5F] text-xl md:text-[1.5rem]">
                     Full Timeline Progress Tracker
                 </h1>
 
@@ -191,7 +191,7 @@ export default function TimelinePage() {
                 </div>
 
                 {/* Bottom Buttons */}
-                <div className="flex gap-4 mt-8">
+                <div className="flex flex-col sm:flex-row gap-4 mt-8">
                     <button 
                         onClick={() => router.push('/dashboard')}
                         className="flex flex-1 justify-center items-center gap-2 bg-white hover:bg-gray-50 px-6 py-3 border border-[#D1D1D1] rounded-lg font-medium text-[#7C7C7C]"

@@ -118,37 +118,37 @@ export default function FullLoanInformationPage() {
 
   if (loading) {
     return (
-      <div className="bg-[#F6F6F6] p-6 min-h-full">
+      <div className="bg-[#F6F6F6] p-4 md:p-6 min-h-full">
         <div className="">
           {/* Back Navigation */}
           <BackNavigation href="/dashboard" label="Back to Dashboard" />
 
           {/* Page Title */}
-          <h1 className="mt-2.5 mb-8 font-semibold text-[#191919] text-[22px] leading-[1.2]">
+          <h1 className="mt-2.5 mb-8 font-semibold text-[#191919] text-lg md:text-[22px] leading-[1.2]">
             Full Loan Information
           </h1>
 
           {/* Loading Skeletons */}
-          <div className="items-stretch gap-3 grid grid-cols-2 md:grid-cols-4">
-            <div className="col-span-2">
+          <div className="items-stretch gap-3 grid grid-cols-1 md:grid-cols-4">
+            <div className="col-span-1 md:col-span-2">
               <InfoCardSkeleton itemCount={7} />
             </div>
-            <div className="col-span-2">
+            <div className="col-span-1 md:col-span-2">
               <InfoCardSkeleton itemCount={6} hasTopContent />
             </div>
           </div>
 
-          <div className="items-stretch gap-3 grid grid-cols-2 md:grid-cols-4 my-6">
-            <div className="col-span-2">
+          <div className="items-stretch gap-3 grid grid-cols-1 md:grid-cols-4 my-6">
+            <div className="col-span-1 md:col-span-2">
               <InfoCardSkeleton itemCount={5} />
             </div>
-            <div className="col-span-2">
+            <div className="col-span-1 md:col-span-2">
               <DocumentsCardSkeleton documentCount={3} />
             </div>
           </div>
 
           {/* Action Buttons Skeleton */}
-          <div className="flex gap-8 max-w-4xl">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-8 max-w-4xl">
             <div className="flex-1 h-[46px] bg-gray-200 rounded animate-pulse" />
             <div className="flex-1 h-[46px] bg-gray-200 rounded animate-pulse" />
             <div className="flex-1 h-[46px] bg-gray-200 rounded animate-pulse" />
@@ -160,7 +160,7 @@ export default function FullLoanInformationPage() {
 
   if (error || !loanDetails) {
     return (
-      <div className="bg-[#F6F6F6] p-6 min-h-full">
+      <div className="bg-[#F6F6F6] p-4 md:p-6 min-h-full">
         <BackNavigation href="/dashboard" label="Back to Dashboard" />
         <div className="flex justify-center items-center h-[400px]">
           <div className="text-center">
@@ -180,20 +180,20 @@ export default function FullLoanInformationPage() {
   const nextRepayment = getNextRepayment();
 
   return (
-    <div className="bg-[#F6F6F6] p-6 min-h-full">
+    <div className="bg-[#F6F6F6] p-4 md:p-6 min-h-full">
       <div className="">
         {/* Back Navigation */}
         <BackNavigation href="/dashboard" label="Back to Dashboard" />
 
         {/* Page Title */}
-        <h1 className="mt-2.5 mb-8 font-semibold text-[#191919] text-[22px] leading-[1.2]">
+        <h1 className="mt-2.5 mb-8 font-semibold text-[#191919] text-lg md:text-[22px] leading-[1.2]">
           Full Loan Information
         </h1>
 
         {/* Main Content Grid */}
         <div className="">
           {/* Top row */}
-          <div className="items-stretch gap-3 grid grid-cols-2 md:grid-cols-4">
+          <div className="items-stretch gap-3 grid grid-cols-1 md:grid-cols-4">
             {/* Loan Summary Card */}
             <div className="col-span-2 h-full">
               <InfoCard
@@ -246,7 +246,7 @@ export default function FullLoanInformationPage() {
           </div>
 
           {/* Bottom row */}
-          <div className="items-stretch gap-3 grid grid-cols-2 md:grid-cols-4 my-6">
+          <div className="items-stretch gap-3 grid grid-cols-1 md:grid-cols-4 my-6">
             {/* Disbursement Details Card */}
             <div className="col-span-2 h-full">
               <InfoCard
@@ -324,7 +324,7 @@ export default function FullLoanInformationPage() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-8 ">
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
           <Button
             variant="navy-outline"
             className="flex-1 gap-2 h-[46px]"
