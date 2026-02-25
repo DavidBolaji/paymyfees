@@ -47,32 +47,27 @@ export function ChartCard({
     onSearch?.(query);
   };
 
-  // Check if data is empty or all values are zero
   const isEmpty = data.length === 0 || data.every(d => d.value === 0);
 
-  // Create default empty data if no data provided
   const defaultMonths = ['Jan', 'Feb', 'Mar', 'April', 'May', 'June', 'July', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const emptyData = defaultMonths.map(month => ({ month, value: 0 }));
   
-  // Use provided data or empty data
   const chartData = data.length > 0 ? data : emptyData;
-
-
 
   return (
     <div className={cn("bg-white rounded-lg border border-gray-200 shadow-sm", className)}>
       {/* Header */}
-      <div className="p-6 pb-4">
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex-1">
-            <h2 className="text-xl font-semibold text-gray-900 mb-1">{title}</h2>
-            <p className="text-sm text-gray-500">{subtitle}</p>
+      <div className="p-4 sm:p-6 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4 sm:mb-6">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base sm:text-xl font-semibold text-gray-900 mb-1">{title}</h2>
+            <p className="text-xs sm:text-sm text-gray-500">{subtitle}</p>
           </div>
           
           {/* Controls */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Search Input */}
-            <div className="relative">
+            <div className="relative flex-1 sm:flex-none">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-4 w-4 text-gray-400" />
               </div>
@@ -81,7 +76,7 @@ export function ChartCard({
                 value={searchQuery}
                 onChange={handleSearchChange}
                 placeholder={searchPlaceholder}
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="block w-full sm:w-auto pl-10 pr-3 py-2 border border-gray-300 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             
@@ -89,7 +84,7 @@ export function ChartCard({
             <div className="relative">
               <button
                 onClick={() => setIsYearDropdownOpen(!isYearDropdownOpen)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#002561] text-white rounded-lg text-sm font-medium hover:bg-[#00296B] transition-colors min-w-[80px] justify-center"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-[#002561] text-white rounded-lg text-sm font-medium hover:bg-[#00296B] transition-colors min-w-[72px] sm:min-w-[80px] justify-center"
               >
                 {selectedYear}
                 <ChevronDown className="w-4 h-4" />
@@ -117,25 +112,27 @@ export function ChartCard({
       </div>
 
       {/* Chart */}
-      <div className="px-6 pb-6">
-        <div className="h-80">
+      <div className="px-2 sm:px-6 pb-4 sm:pb-6">
+        <div className="h-56 sm:h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <LineChart data={chartData} margin={{ top: 20, right: 10, left: 0, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
               <XAxis 
                 dataKey="month" 
                 axisLine={{ stroke: '#d1d5db' }}
                 tickLine={false}
-                tick={{ fontSize: 12, fill: '#6b7280' }}
+                tick={{ fontSize: 10, fill: '#6b7280' }}
                 dy={10}
+                interval="preserveStartEnd"
               />
               <YAxis 
                 axisLine={{ stroke: '#d1d5db' }}
                 tickLine={false}
-                tick={{ fontSize: 12, fill: '#6b7280' }}
+                tick={{ fontSize: 10, fill: '#6b7280' }}
                 tickFormatter={(value) => value.toLocaleString()}
                 domain={[0, 'auto']}
                 allowDataOverflow={false}
+                width={45}
               />
               <Line 
                 type="monotone" 

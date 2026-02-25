@@ -37,7 +37,7 @@ export function StatCard({
       }}
     >
       {/* Arrow Icon */}
-      <div className="absolute top-4 right-4">
+      {/* <div className="absolute top-4 right-4">
         <div className={cn(
           "w-10 h-10 rounded-full flex items-center justify-center",
           isActive ? "bg-white/20" : "bg-white"
@@ -47,7 +47,7 @@ export function StatCard({
             isActive ? "text-white" : "text-gray-600"
           )} />
         </div>
-      </div>
+      </div> */}
 
       {/* Content */}
       <div className="pr-14">

@@ -101,10 +101,10 @@ export function RechartsFundingChart({ data, isLoading, className }: FundingChar
   const formatCurrency = (value: number) => `₦${value.toLocaleString()}`;
   
   return (
-    <div className={cn("rounded-xl border border-gray-200 p-6 bg-white", className)}>
+    <div className={cn("rounded-xl border border-gray-200 p-4 sm:p-6 bg-white", className)}>
       {/* Header with filters */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-semibold text-gray-900">Funding vs Repayment Chart</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <h2 className="text-base sm:text-lg font-semibold text-gray-900">Funding vs Repayment Chart</h2>
         <div className="flex gap-2">
           {/* Period selector */}
           <div className="relative" ref={dropdownRef}>
@@ -160,49 +160,50 @@ export function RechartsFundingChart({ data, isLoading, className }: FundingChar
       </div>
       
       {/* Summary boxes */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="border border-gray-200 rounded-lg p-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
+        <div className="border border-gray-200 rounded-lg p-3 sm:p-4">
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-              <CreditCard className="w-5 h-5 text-blue-600" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+              <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
             </div>
-            <span className="text-sm text-gray-600">Funding</span>
+            <span className="text-xs sm:text-sm text-gray-600">Funding</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900">₦{totalFundings.toLocaleString()}</div>
+          <div className="text-lg sm:text-2xl font-bold text-gray-900 truncate">₦{totalFundings.toLocaleString()}</div>
         </div>
         
-        <div className="border border-gray-200 rounded-lg p-4">
+        <div className="border border-gray-200 rounded-lg p-3 sm:p-4">
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
-              <Send className="w-5 h-5 text-amber-500" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+              <Send className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
             </div>
-            <span className="text-sm text-gray-600">Repayment</span>
+            <span className="text-xs sm:text-sm text-gray-600">Repayment</span>
           </div>
-          <div className="text-2xl font-bold text-gray-900">₦{totalRepayments.toLocaleString()}</div>
+          <div className="text-lg sm:text-2xl font-bold text-gray-900 truncate">₦{totalRepayments.toLocaleString()}</div>
         </div>
       </div>
       
       {/* Recharts Chart */}
-      <div className="h-[340px]">
+      <div className="h-[240px] sm:h-[340px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={displayData}
-            margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
+            margin={{ top: 10, right: 5, left: 0, bottom: 20 }}
           >
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis
               dataKey="month"
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 12, fill: '#6B7280' }}
+              tick={{ fontSize: 11, fill: '#6B7280' }}
               dy={10}
+              interval="preserveStartEnd"
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fontSize: 12, fill: '#6B7280' }}
+              tick={{ fontSize: 11, fill: '#6B7280' }}
               tickFormatter={formatCurrency}
-              width={80}
+              width={60}
             />
             <Tooltip content={<CustomTooltip />} />
             {totalFundings > 0 ? (

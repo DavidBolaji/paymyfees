@@ -243,11 +243,11 @@ export default function AdminSchoolsPage() {
   }));
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="p-4 md:p-6">
+      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h2 className='mb-2 font-semibold text-[#191919] text-[1.6875rem]'>School Management</h2>
-          <p className='text-[#5F5F5F] text-base'>Manage and verify school registrations</p>
+          <h2 className='mb-2 font-semibold text-[#191919] text-xl md:text-[1.6875rem]'>School Management</h2>
+          <p className='text-[#5F5F5F] text-sm md:text-base'>Manage and verify school registrations</p>
         </div>
         <button
           onClick={() => setShowAddSchoolModal(true)}

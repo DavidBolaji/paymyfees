@@ -216,11 +216,11 @@ export default function WalletPage() {
   // const isWalletEmpty = !isLoading && balance?.balance === 0 && transactions.length === 0;
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <div className="">
         <BackNavigation href="/dashboard" label="Back to Dashboard" />
 
-        <h1 className="text-2xl font-semibold text-[#191919] mb-2">Wallet</h1>
+        <h1 className="text-xl md:text-2xl font-semibold text-[#191919] mb-2">Wallet</h1>
         <p className="text-sm text-gray-600 mb-6">
           Manage your wallet balance, top up funds, track transactions, and automate loan repayments.
         </p>
@@ -264,7 +264,7 @@ export default function WalletPage() {
             <div className="w-full col-span-1">
               <div className="h-full rounded-[16px] border-2 border-[#00296B] p-8 bg-[#C5D3E8] flex flex-col">
                 <h2 className="text-lg font-semibold text-[#191919] mb-6">Quick Actions</h2>
-                <div className="flex-1 flex items-center justify-center gap-12">
+                <div className="flex-1 flex items-center justify-center gap-8 md:gap-12">
                   {/* Make Repayment */}
                   <div className="flex flex-col items-center gap-3">
                     <button 
