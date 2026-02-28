@@ -49,7 +49,7 @@ export default function ViewPaymentPlanPage() {
 
   if (loading) {
     return (
-      <div className="p-4 md:p-6">
+      <div className="pt-6 md:pt-0">
         <BackNavigation href="/dashboard" label="Back to Dashboard" />
         
         <div className="space-y-6">
@@ -175,8 +175,9 @@ export default function ViewPaymentPlanPage() {
   }
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="">
       {/* Back Navigation */}
+      <div className='md:pt-0 pt-6' />
       <BackNavigation href="/dashboard" label="Back to Dashboard" />
       
       {/* Payment Plan Component */}

@@ -118,7 +118,6 @@ export class AnalyticsRepository implements IAnalyticsRepository {
         status: TransactionStatus.COMPLETED,
         description: {
           contains: 'wallet funding',
-          mode: 'insensitive',
         },
       },
       _sum: {

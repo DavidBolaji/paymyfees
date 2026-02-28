@@ -16,7 +16,6 @@ import {
   Building2,
   FileText,
   MessageSquare,
-  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Logo from "@/assets/images/logo/logo.png";
@@ -45,6 +44,7 @@ interface NavGroup {
 
 const studentNavigationGroups: NavGroup[] = [
   {
+     title: 'Overview',
     items: [
       { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' }
     ]
@@ -146,33 +146,25 @@ export function Sidebar({ className, isAdmin = false, isOpen = false, onClose }:
 
       {/* Sidebar */}
       <div className={cn(
-        "flex flex-col bg-white border-gray-200 border-r w-64 h-screen",
+        "flex flex-col bg-white border-gray-200 border-r w-3/5 md:w-64 h-screen",
         // Mobile: fixed overlay sidebar with slide animation
         "fixed z-50 transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:z-auto",
         isOpen ? "translate-x-0" : "-translate-x-full",
         className
       )}>
-        {/* Logo + Close button */}
-        <div className="p-6 flex items-center justify-between">
+        {/* Logo */}
+        <div className="p-6 items-center hidden md:flex">
           <Image src={Logo} width={140} height={38} alt="Logo" />
-          {/* Mobile close button */}
-          <button
-            onClick={onClose}
-            className="md:hidden p-1 rounded-lg hover:bg-gray-100 transition-colors"
-            aria-label="Close sidebar"
-          >
-            <X className="w-5 h-5 text-gray-600" />
-          </button>
         </div>
 
         {/* Navigation */}
-        <div className="flex-1 space-y-6 px-4 py-6 overflow-y-auto">
+        <div className="flex-1 space-y-6 px-4 py-6 overflow-y-auto mt-2.5 pt-20 md:pt-5">
           {navigationGroups.map((group, groupIndex) => (
             <div key={groupIndex} className="space-y-2">
               {group.title && (
-                <h3 className="px-2 font-medium text-xs uppercase tracking-wider" style={{ color: 'rgba(125, 125, 125, 1)' }}>
+                <h5 className="font-medium text-sm uppercase tracking-wider" style={{ color: 'rgba(125, 125, 125, 1)' }}>
                   {group.title}
-                </h3>
+                </h5>
               )}
               <div className="space-y-1">
                 {group.items.map((item, itemIndex) => {
@@ -191,7 +183,7 @@ export function Sidebar({ className, isAdmin = false, isOpen = false, onClose }:
                       <Link
                         href={item.href || '#'}
                         className={cn(
-                          "relative flex items-center gap-3 px-3 py-2.5 rounded-lg w-full font-medium text-sm transition-all duration-200",
+                          "relative flex items-center gap-3 px-3 py-2.5 w-full font-medium text-sm transition-all duration-200",
                           isActive
                             ? "text-white"
                             : "text-gray-600 hover:text-white"
@@ -217,7 +209,7 @@ export function Sidebar({ className, isAdmin = false, isOpen = false, onClose }:
                         }}
                       >
                         <item.icon className="w-5 h-5" />
-                        <span className="flex-1 text-left">{item.label}</span>
+                        <span className="flex-1 text-left font-medium text-base">{item.label}</span>
                         {isActive && <ChevronRight className="w-4 h-4" />}
                       </Link>
                       

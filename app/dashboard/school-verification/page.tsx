@@ -107,18 +107,18 @@ export default function SchoolVerificationPage() {
   return (
     <>
 
-      <div className="p-4 md:p-6">
-        <div className="">
-          <h2 className="mb-[0.56rem] font-semibold text-[#191919] text-xl md:text-[1.6875rem]">
+      <div className="">
+        <div className="pt-6 md:pt-0">
+          <h2 className="mb-2 md:mb-4 font-semibold text-[#191919] text-xl md:text-[1.6875rem]">
             School Verification
           </h2>
-          <p className="mb-[1.375rem] font-semibold text-[#5F5F5F] text-base md:text-lg">
+          <p className="mb-5 md:mb-[1.375rem] font-medium text-[#5F5F5F] text-base md:text-lg">
             Verify your school information to maintain eligibility and ensure smooth access to
             student financing.
           </p>
 
           {/* Stats Grid */}
-          <div className="gap-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 mb-8">
+          <div className="gap-x-4 gap-y-2.5 sm:gap-x-4 sm:gap-y-3 md:gap-x-6 md:gap-y-4 grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 mb-8">
             <StatCard
               title="Academic Verification Score"
               value={scores.academicScore === 0 ? '-' : `${scores.academicScore}/100`}
@@ -157,7 +157,7 @@ export default function SchoolVerificationPage() {
 
           {/* Current School Information */}
           <div className="px-5 py-6 bg-white rounded-lg mb-8">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+            <div className="flex flex-row items-center justify-between gap-3 mb-6">
               <h3>Current School Information</h3>
               <button
                 onClick={() => setIsModalOpen(true)}
@@ -216,7 +216,7 @@ export default function SchoolVerificationPage() {
           </div>
 
           {/* Verification Logs and Support Messages */}
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col gap-4 w-full">
             <div className="w-full md:flex-[0.7]">
               <DataTable
                 title="Verification Logs"

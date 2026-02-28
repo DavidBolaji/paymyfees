@@ -7,8 +7,8 @@ import { BackNavigation } from "@/components/dashboard/back-navigation";
 
 export default function ApplyForLoanPage() {
   return (
-    <div className="p-4 md:p-6">
-      <div className="">
+    <div className="">
+      <div className="pt-6 md:pt-0">
          <BackNavigation href="/dashboard" label="Back to Dashboard" />
         <div className="mb-6">
           <h1 className="mb-2 font-semibold text-[#191919] text-xl md:text-[1.6875rem]">

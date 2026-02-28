@@ -73,10 +73,12 @@ export class DashboardService implements IDashboardService {
       
       // Calculate the number of installments paid and total installments
       const totalInstallments = loan?.repaymentMonths || 0;
-      const paidInstallments = Math.floor((loan?.amountRepaid || 0) / (loan?.monthlyPayment || 1));
+      
+      // Count actual paid installments from database
+      const paidInstallmentsCount = await this.getPaidInstallmentsCount(loan.id);
       
       activePlan = {
-        current: paidInstallments,
+        current: paidInstallmentsCount,
         total: totalInstallments,
         planType: 'Monthly',
       };
@@ -100,6 +102,22 @@ export class DashboardService implements IDashboardService {
         description: 'Current wallet balance',
       },
     };
+  }
+  
+  /**
+   * Get count of paid installments for a loan
+   */
+  private async getPaidInstallmentsCount(loanId: string): Promise<number> {
+    const { prisma } = await import('@/src/lib/prisma');
+    
+    const paidCount = await prisma.installment.count({
+      where: {
+        loanId,
+        status: 'PAID',
+      },
+    });
+    
+    return paidCount;
   }
   
   /**

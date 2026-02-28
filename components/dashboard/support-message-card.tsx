@@ -11,7 +11,7 @@ export default function SupportMessageCard({
   onMarkAsRead: (messageId: string) => Promise<boolean>
 }) {
   return (
-    <div className="w-full max-w-sm  bg-white rounded-2xl border border-gray-200 shadow-sm">
+    <div className="w-full bg-white rounded-2xl border border-gray-200 shadow-sm">
       {/* Header */}
       <div className="flex p-6 items-center gap-3 mb-4 border-b pb-3">
         <div className="w-12 h-12 bg-blue-900 rounded-full flex items-center justify-center flex-shrink-0">

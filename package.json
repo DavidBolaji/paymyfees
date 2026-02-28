@@ -17,7 +17,9 @@
     "type-check": "tsc --noEmit",
     "clear-cache": "node scripts/clear-cache.js",
     "dev:clean": "node scripts/clear-cache.js && next dev",
-    "verify-routes": "node scripts/verify-routes.js"
+    "verify-routes": "node scripts/verify-routes.js",
+    "debug:john-doe": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/debug-john-doe.ts",
+    "fix:john-doe": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/fix-john-doe-loan.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

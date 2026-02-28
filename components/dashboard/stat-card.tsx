@@ -25,11 +25,11 @@ export function StatCard({
   return (
     <div 
       className={cn(
-        "py-6 px-4 shadow-sm relative overflow-hidden h-[148px]",
+        "py-4 px-[15px] sm:py-5 sm:px-5 md:py-4 md:px-4 shadow-sm rounded-[20px] relative overflow-hidden h-[102px] sm:h-[120px] md:h-[128px] flex flex-col gap-[9px] sm:gap-2.5 md:gap-2.5",
         className
       )}
       style={{
-        borderRadius: '1.25rem', // 20px
+        // 20px
         background: isActive 
           ? 'linear-gradient(117.13deg, #002561 15.52%, #06409D 47.53%, #033876 75.66%, #000000 119.76%)'
           : '#E6EAF0'
@@ -49,10 +49,10 @@ export function StatCard({
       </div> */}
 
       {/* Content */}
-      <div className="pr-14">
+      <div className="flex-1 flex flex-col">
         {/* Title */}
         <h3 className={cn(
-          "text-sm font-medium mb-4 text-nowrap",
+          "text-[11px] sm:text-[12px] md:text-sm font-semibold leading-[120%] text-nowrap mb-[9px] sm:mb-2 md:mb-2",
           isActive ? "text-white" : "text-gray-700"
         )}>
           {title}
@@ -60,30 +60,30 @@ export function StatCard({
 
         {/* Value */}
         <div className={cn(
-          "text-3xl font-bold mb-[1.125rem]",
+          "text-[22px] sm:text-2xl md:text-3xl font-semibold leading-[120%]",
           isActive ? "text-white" : "text-gray-900"
         )}>
           {value} 
           {subtitle && (
             <span className={cn(
-              "text-xs ml-2",
+              "text-[10px] sm:text-xs ml-1 sm:ml-2",
               isActive ? "text-white/80" : "text-gray-600"
             )}>
               {subtitle}
             </span>
           )}
         </div>
+      </div>
         
         {/* Footer */}
         {footer && (
           <p className={cn(
-            "text-[0.6875rem] absolute font-semibold left-4 right-6 text-nowrap",
+            "text-[9px] sm:text-[10px] md:text-[0.6875rem] font-semibold leading-[120%] text-nowrap",
             isActive ? "text-white/80" : "text-gray-600"
           )}>
             {footer}
           </p>
         )}
-      </div>
     </div>
   );
 }

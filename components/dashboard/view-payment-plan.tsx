@@ -183,7 +183,7 @@ export function ViewPaymentPlan({ paymentPlan }: ViewPaymentPlanProps) {
 
 
       {/* Stats Cards - 3 columns */}
-      <div className="gap-4 grid grid-cols-1 md:grid-cols-3">
+      <div className="gap-x-4 gap-y-2.5 sm:gap-x-4 sm:gap-y-3 md:gap-x-6 md:gap-y-4 grid grid-cols-2 md:grid-cols-3">
         <StatCard
           title="Plan Type"
           value={paymentPlan.planType}

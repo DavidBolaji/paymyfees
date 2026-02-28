@@ -140,7 +140,7 @@ export default function TimelinePage() {
     }));
 
     return (
-        <div className="bg-[#F8F9FA] p-4 md:p-6 min-h-screen">
+        <div className="bg-[#F8F9FA] min-h-screen">
             <div className="">
                 <BackNavigation href="/dashboard" label="Back to Dashboard" />
                 

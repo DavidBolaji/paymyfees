@@ -18,7 +18,7 @@ export function AnalyticsPageSkeleton({ className }: AnalyticsPageSkeletonProps)
       </div>
 
       {/* Stats Cards Skeleton */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2.5 sm:gap-x-4 sm:gap-y-3 md:gap-x-6 md:gap-y-4 mb-8">
         <WalletStatCardSkeleton />
         <WalletStatCardSkeleton />
         <WalletStatCardSkeleton />

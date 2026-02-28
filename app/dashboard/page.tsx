@@ -77,16 +77,16 @@ export default function DashboardPage() {
 
   return (
     <>
-      <div className="p-4 md:p-6">
-        <div className="">
-          <h2 className='mb-[0.56rem] font-semibold text-[#191919] text-xl md:text-[1.6875rem]'>Dashboard</h2>
-          <p className='mb-[1.375rem] font-semibold text-[#5F5F5F] text-lg md:text-[1.6875rem]'>Welcome Back, {userName}</p>
+      <div className="">
+        <div className="pt-6 md:pt-0">
+          <h2 className='mb-2 md:mb-4 font-semibold text-[#191919] text-xl md:text-[1.6875rem]'>Dashboard</h2>
+          <p className='mb-5 md:mb-[1.375rem] font-semibold text-[#5F5F5F] text-lg md:text-[1.6875rem]'>Welcome Back, {userName}</p>
           
           {/* Quick Actions Card */}
           <QuickActionsCard />
 
           {/* Stats Grid */}
-          <div className="gap-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 mb-8">
+          <div className="gap-x-4 gap-y-2.5 sm:gap-x-4 sm:gap-y-3 md:gap-x-6 md:gap-y-4 grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 mb-8">
             {isLoading ? (
               <>
                 <StatCardSkeleton variant="primary" />

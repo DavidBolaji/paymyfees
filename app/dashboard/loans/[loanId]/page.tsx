@@ -180,8 +180,8 @@ export default function FullLoanInformationPage() {
   const nextRepayment = getNextRepayment();
 
   return (
-    <div className="bg-[#F6F6F6] p-4 md:p-6 min-h-full">
-      <div className="">
+    <div className="bg-[#F6F6F6] min-h-full">
+      <div className="pt-6 md:pt-0">
         {/* Back Navigation */}
         <BackNavigation href="/dashboard" label="Back to Dashboard" />
 

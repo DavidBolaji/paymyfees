@@ -24,7 +24,7 @@ export default function DashboardLayout({
           <div className="flex-1 flex flex-col overflow-hidden w-full">
             <Header onMenuToggle={() => setSidebarOpen(true)} />
             
-            <main className="flex-1 overflow-y-auto">
+            <main className="flex-1 overflow-y-auto px-4 md:pl-[2.8125rem] md:pr-[2.3125rem] md:py-[2.3125rem]">
               {children}
             </main>
           </div>

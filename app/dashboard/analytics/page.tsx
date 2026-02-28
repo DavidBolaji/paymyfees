@@ -51,8 +51,8 @@ export default function AnalyticsPage() {
   }, [fetchChartData]);
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="">
+    <div className="">
+      <div className="pt-6 md:pt-0">
         <BackNavigation href="/dashboard" label="Back to Dashboard" />
 
         <h1 className="text-xl md:text-2xl font-semibold text-[#191919] mb-2">Analytics</h1>

@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import { Eye, EyeOff } from 'lucide-react';
+import React, { useState } from 'react';
 
 interface WalletCardProps {
   balance: number;
@@ -8,6 +9,12 @@ interface WalletCardProps {
 }
 
 const WalletCard: React.FC<WalletCardProps> = ({ balance, currency = 'NGN' }) => {
+  const [isBalanceVisible, setIsBalanceVisible] = useState(false);
+
+  const toggleBalanceVisibility = () => {
+    setIsBalanceVisible(!isBalanceVisible);
+  };
+
   return (
     <div
       className="w-full h-[269px] rounded-[20px] px-[29px] py-[41px] relative text-white font-sans shadow-xl overflow-hidden"
@@ -18,26 +25,25 @@ const WalletCard: React.FC<WalletCardProps> = ({ balance, currency = 'NGN' }) =>
       {/* Content */}
       <div className="relative z-10 flex flex-col gap-[21px] h-full">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-2">
           <div className='flex items-center gap-1'>
-            <span className="text-[11px] font-normal text-white/90">Available Balance</span>
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 12 12"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="opacity-90"
+            <span className="text-sm font-semibold text-white/90">Available Balance</span>
+            <button
+              onClick={toggleBalanceVisibility}
+              className="p-0 hover:opacity-80 transition-opacity cursor-pointer"
             >
-              <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1" fill="none" />
-              <path d="M6 4V4.5M6 6V8.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
-            </svg>
+              {isBalanceVisible ? (
+                <Eye className="w-5 h-5 text-white/70" />
+              ) : (
+                <EyeOff className="w-5 h-5 text-white/70" />
+              )}
+            </button>
           </div>
-          <button className="bg-white/10 backdrop-blur-sm rounded-md px-2.5 py-1 text-[11px] font-medium flex items-center gap-1 hover:bg-white/15 transition-colors border border-white/20">
+          <button className="bg-[#97979766] backdrop-blur-sm rounded-[12px] px-2.5 py-1 text-xl font-medium flex items-center gap-1  transition-colors border border-white/20 w-[89px] h-[44px]">
             {currency}
             <svg
-              width="10"
-              height="10"
+              width="20"
+              height="20"
               viewBox="0 0 10 10"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
@@ -48,8 +54,8 @@ const WalletCard: React.FC<WalletCardProps> = ({ balance, currency = 'NGN' }) =>
         </div>
 
         {/* Balance */}
-        <div className="text-[40px] font-bold tracking-tight leading-none">
-          ₦{balance.toLocaleString()}
+        <div className="text-[48px] font-bold tracking-tight leading-none">
+          {isBalanceVisible ? `₦${balance.toLocaleString()}` : '••••••'}
         </div>
 
         {/* Footer info */}
@@ -65,7 +71,7 @@ const WalletCard: React.FC<WalletCardProps> = ({ balance, currency = 'NGN' }) =>
             <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1" fill="none" />
             <path d="M6 4V4.5M6 6V8.5" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
           </svg>
-          <span>Your available balance can be used for automatic repayments.</span>
+          <span className='text-[11px]'>Your available balance can be used for automatic repayments.</span>
         </div>
       </div>
     </div>

@@ -14,7 +14,7 @@ interface AnalyticsStatCardsProps {
 export function AnalyticsStatCards({ stats, isLoading, className }: AnalyticsStatCardsProps) {
   if (isLoading) {
     return (
-      <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4", className)}>
+      <div className={cn("grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2.5 sm:gap-x-4 sm:gap-y-3 md:gap-x-6 md:gap-y-4", className)}>
         <WalletStatCardSkeleton />
         <WalletStatCardSkeleton />
         <WalletStatCardSkeleton />
@@ -26,7 +26,7 @@ export function AnalyticsStatCards({ stats, isLoading, className }: AnalyticsSta
   if (!stats) {
     // Empty state when no stats are available
     return (
-      <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4", className)}>
+      <div className={cn("grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2.5 sm:gap-x-4 sm:gap-y-3 md:gap-x-6 md:gap-y-4", className)}>
         <StatCard
           title="Total wallet funding"
           value="-"
@@ -56,7 +56,7 @@ export function AnalyticsStatCards({ stats, isLoading, className }: AnalyticsSta
   }
 
   return (
-    <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4", className)}>
+    <div className={cn("grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-2.5 sm:gap-x-4 sm:gap-y-3 md:gap-x-6 md:gap-y-4", className)}>
       <StatCard
         title="Total Wallet Funding"
         value={`₦${stats.totalWalletFunding.toLocaleString()}`}
