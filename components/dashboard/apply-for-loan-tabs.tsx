@@ -53,7 +53,7 @@ export function ApplyForLoanTabs() {
           <ApplicationStatus />
         </div>
         
-        <div className={activeTab === 'history' ? 'py-8 text-center' : 'hidden'}>
+        <div className={activeTab === 'history' ? 'py-8' : 'hidden'}>
           <LoanHistory />
         </div>
       </div>

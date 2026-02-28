@@ -95,11 +95,11 @@ export class DashboardService implements IDashboardService {
       activePlan,
       balance: {
         amount: totalOutstandingBalance,
-        description: 'Total outstanding balance',
+        description: 'Balance',
       },
       wallet: {
         amount: data.wallet?.balance || 0,
-        description: 'Current wallet balance',
+        description: 'Available',
       },
     };
   }

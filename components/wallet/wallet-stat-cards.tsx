@@ -37,7 +37,7 @@ export function WalletStatCards({ stats, isLoading, className }: WalletStatCards
         <StatCard
           title="Auto-Debit Status"
           value="-"
-          footer="Deducted automatically from your wallet."
+          footer="Automatic deductions from wallet."
         />
         
         <StatCard
@@ -61,14 +61,14 @@ export function WalletStatCards({ stats, isLoading, className }: WalletStatCards
         title="Wallet Balance"
         value={`₦${stats.walletBalance.toLocaleString() || ''}`}
         subtitle="Available"
-        footer="Your current spendable wallet balance."
+        footer="Your current wallet balance."
         variant="primary"
       />
       
       <StatCard
         title="Auto-Debit Status"
         value={stats.autoDebitStatus}
-        footer="Deducted automatically from your wallet."
+        footer="Automatic deductions from wallet."
       />
       
       <StatCard
@@ -77,7 +77,7 @@ export function WalletStatCards({ stats, isLoading, className }: WalletStatCards
           ? `₦${stats.upcomingRepayment?.amount.toLocaleString()}`
           : "-"
         }
-        subtitle={stats?.upcomingRepayment ? `Due ${stats?.upcomingRepayment?.dueDate}` : ""}
+        subtitle={stats?.upcomingRepayment ? `${stats?.upcomingRepayment?.dueDate}` : ""}
         footer="See your upcoming repayments."
       />
       
@@ -88,7 +88,7 @@ export function WalletStatCards({ stats, isLoading, className }: WalletStatCards
           : "-"
         }
         subtitle={stats?.fundingHistory ? `This ${stats?.fundingHistory?.period}` : ""}
-        footer="Your funding activity and payment patterns."
+        footer="Funding activity and patterns."
       />
     </div>
   );

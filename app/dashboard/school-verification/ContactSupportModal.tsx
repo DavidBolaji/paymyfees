@@ -1,10 +1,11 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { X, CheckCircle2 } from 'lucide-react';
+import { X } from 'lucide-react';
 import { MinimalFileUpload, MinimalFileUploadRef, MinimalUploadedFile } from '@/components/ui/minimal-file-upload';
 import { CloudinaryUploadResult } from '@/src/utils/cloudinary-api';
 import { api } from '@/src/lib/api';
+import { CheckSquareIcon } from '@/assets/icons/CheckSquareIcon';
 
 interface ContactSupportModalProps {
     isOpen: boolean;
@@ -127,7 +128,7 @@ export default function ContactSupportModal({
 
     return (
         <div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
             onClick={handleOverlayClick}
         >
             <div
@@ -237,8 +238,8 @@ export default function ContactSupportModal({
                             onClick={handleSubmit}
                             className="h-12 rounded-lg bg-[#00296B] text-white font-semibold hover:bg-[#003D82] transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <CheckCircle2 className="w-5 h-5" />
-                            {isSaving ? 'Submitting...' : 'Submit Request'}
+                            <CheckSquareIcon className="w-5 h-5" />
+                            {isSaving ? 'Submitting...' : 'Submit'}
                         </button>
                     </div>
                 </div>
