@@ -1,17 +1,14 @@
 generator client {
   provider = "prisma-client-js"
-  // output          = "app/generated/prisma-client"
-  // binaryTargets   = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id                 String              @id @default(uuid()) @db.Uuid
+  id                 String              @id @default(uuid()) @db.Char(36)
   email              String              @unique @db.VarChar(255)
   phone              String?             @unique @db.VarChar(20)
   password           String              @db.VarChar(255)
@@ -24,9 +21,9 @@ model User {
   isFirstTime        Boolean             @default(true)
   twoFactorEnabled   Boolean             @default(false)
   twoFactorSecret    String?             @db.VarChar(255)
-  lastLogin          DateTime?           @db.Timestamptz(3)
-  createdAt          DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime            @updatedAt @db.Timestamptz(3)
+  lastLogin          DateTime?           @db.DateTime(3)
+  createdAt          DateTime            @default(now()) @db.DateTime(3)
+  updatedAt          DateTime            @updatedAt @db.DateTime(3)
   country            String              @db.VarChar(255)
   residencyStatus    ResidencyStatus     @default(LOCAL)
   auditLogs          AuditLog[]
@@ -50,8 +47,8 @@ model User {
 }
 
 model ParentProfile {
-  id                 String     @id @default(uuid()) @db.Uuid
-  userId             String     @unique @db.Uuid
+  id                 String     @id @default(uuid()) @db.Char(36)
+  userId             String     @unique @db.Char(36)
   dateOfBirth        DateTime?  @db.Date
   address            String?    @db.VarChar(500)
   city               String?    @db.VarChar(100)
@@ -74,8 +71,8 @@ model ParentProfile {
   totalBorrowed      Decimal    @default(0) @db.Decimal(15, 2)
   totalRepaid        Decimal    @default(0) @db.Decimal(15, 2)
   outstandingBalance Decimal    @default(0) @db.Decimal(15, 2)
-  createdAt          DateTime   @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime   @updatedAt @db.Timestamptz(3)
+  createdAt          DateTime   @default(now()) @db.DateTime(3)
+  updatedAt          DateTime   @updatedAt @db.DateTime(3)
   documents          Document[]
   user               User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   // children           Student[]
@@ -87,8 +84,8 @@ model ParentProfile {
 }
 
 model SchoolProfile {
-  id                    String  @id @default(uuid()) @db.Uuid
-  userId                String  @db.Uuid
+  id                    String  @id @default(uuid()) @db.Char(36)
+  userId                String  @db.Char(36)
   isPrimary             Boolean @default(false)
   schoolName            String  @db.VarChar(255)
   schoolAddress         String  @db.VarChar(500)
@@ -111,11 +108,11 @@ model SchoolProfile {
   notes                  String?
 
   isVerified           Boolean              @default(false)
-  verifiedAt           DateTime?            @db.Timestamptz(3)
+  verifiedAt           DateTime?            @db.DateTime(3)
   totalStudents        Int                  @default(0)
   totalDisbursements   Decimal              @default(0) @db.Decimal(15, 2)
-  createdAt            DateTime             @default(now()) @db.Timestamptz(3)
-  updatedAt            DateTime             @updatedAt @db.Timestamptz(3)
+  createdAt            DateTime             @default(now()) @db.DateTime(3)
+  updatedAt            DateTime             @updatedAt @db.DateTime(3)
   disbursements        Disbursement[]
   documents            Document[]
   loans                Loan[]
@@ -132,15 +129,15 @@ model SchoolProfile {
 }
 
 // model Student {
-//   id              String          @id @default(uuid()) @db.Uuid
-//   parentId        String?          @db.Uuid
-//   schoolId        String?         @db.Uuid
+//   id              String          @id @default(uuid()) @db.Char(36)
+//   parentId        String?          @db.Char(36)
+//   schoolId        String?         @db.Char(36)
 //   fullName        String          @db.VarChar(255)
 //   dateOfBirth     DateTime?       @db.Date
 //   studentClass    String?          @db.VarChar(50)
 //   studentId       String?         @db.VarChar(50)
-//   createdAt       DateTime        @default(now()) @db.Timestamptz(3)
-//   updatedAt       DateTime        @updatedAt @db.Timestamptz(3)
+//   createdAt       DateTime        @default(now()) @db.DateTime(3)
+//   updatedAt       DateTime        @updatedAt @db.DateTime(3)
 //   loans           Loan[]
 //   parent          ParentProfile?   @relation(fields: [parentId], references: [id], onDelete: Cascade)
 //   school          SchoolProfile?  @relation(fields: [schoolId], references: [id])
@@ -151,11 +148,11 @@ model SchoolProfile {
 // }
 
 model Loan {
-  id                 String              @id @default(uuid()) @db.Uuid
+  id                 String              @id @default(uuid()) @db.Char(36)
   loanNumber         String              @unique @db.VarChar(50)
-  userId             String              @db.Uuid
-  // studentId          String              @db.Uuid
-  schoolId           String              @db.Uuid
+  userId             String              @db.Char(36)
+  // studentId          String              @db.Char(36)
+  schoolId           String              @db.Char(36)
   loanAmount         Decimal             @db.Decimal(15, 2)
   interestRate       Decimal             @db.Decimal(5, 2)
   totalInterest      Decimal             @db.Decimal(15, 2)
@@ -184,17 +181,17 @@ model Loan {
   amountDisbursed    Decimal             @default(0) @db.Decimal(15, 2)
   amountRepaid       Decimal             @default(0) @db.Decimal(15, 2)
   outstandingBalance Decimal             @db.Decimal(15, 2)
-  applicationDate    DateTime            @default(now()) @db.Timestamptz(3)
-  approvalDate       DateTime?           @db.Timestamptz(3)
-  disbursementDate   DateTime?           @db.Timestamptz(3)
-  firstPaymentDate   DateTime?           @db.Timestamptz(3)
-  lastPaymentDate    DateTime?           @db.Timestamptz(3)
-  completionDate     DateTime?           @db.Timestamptz(3)
-  approvedBy         String?             @db.Uuid
+  applicationDate    DateTime            @default(now()) @db.DateTime(3)
+  approvalDate       DateTime?           @db.DateTime(3)
+  disbursementDate   DateTime?           @db.DateTime(3)
+  firstPaymentDate   DateTime?           @db.DateTime(3)
+  lastPaymentDate    DateTime?           @db.DateTime(3)
+  completionDate     DateTime?           @db.DateTime(3)
+  approvedBy         String?             @db.Char(36)
   rejectionReason    String?
   notes              String?
-  createdAt          DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime            @updatedAt @db.Timestamptz(3)
+  createdAt          DateTime            @default(now()) @db.DateTime(3)
+  updatedAt          DateTime            @updatedAt @db.DateTime(3)
   disbursement       Disbursement?
   documents          Document[]
   installments       Installment[]
@@ -215,17 +212,17 @@ model Loan {
   @@map("loans")
 }
 model Installment {
-  id                String        @id @default(uuid()) @db.Uuid
-  loanId            String        @db.Uuid
+  id                String        @id @default(uuid()) @db.Char(36)
+  loanId            String        @db.Char(36)
   installmentNumber Int
   amount            Decimal       @db.Decimal(15, 2)
-  dueDate           DateTime      @db.Timestamptz(3)
-  paidDate          DateTime?     @db.Timestamptz(3)
+  dueDate           DateTime      @db.DateTime(3)
+  paidDate          DateTime?     @db.DateTime(3)
   status            PaymentStatus @default(PENDING)
   daysOverdue       Int           @default(0)
   lateFee           Decimal       @default(0) @db.Decimal(15, 2)
-  createdAt         DateTime      @default(now()) @db.Timestamptz(3)
-  updatedAt         DateTime      @updatedAt @db.Timestamptz(3)
+  createdAt         DateTime      @default(now()) @db.DateTime(3)
+  updatedAt         DateTime      @updatedAt @db.DateTime(3)
   loan              Loan          @relation(fields: [loanId], references: [id], onDelete: Cascade)
   payments          Payment[]
 
@@ -237,20 +234,20 @@ model Installment {
 }
 
 model Payment {
-  id               String            @id @default(uuid()) @db.Uuid
+  id               String            @id @default(uuid()) @db.Char(36)
   paymentReference String            @unique @db.VarChar(100)
-  loanId           String            @db.Uuid
-  installmentId    String?           @db.Uuid
-  userId           String            @db.Uuid
+  loanId           String            @db.Char(36)
+  installmentId    String?           @db.Char(36)
+  userId           String            @db.Char(36)
   amount           Decimal           @db.Decimal(15, 2)
   paymentMethod    PaymentMethod
   status           TransactionStatus @default(PENDING)
   gatewayReference String?           @db.VarChar(255)
   gatewayResponse  String?
-  paymentDate      DateTime          @default(now()) @db.Timestamptz(3)
-  confirmedAt      DateTime?         @db.Timestamptz(3)
-  createdAt        DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt        DateTime          @updatedAt @db.Timestamptz(3)
+  paymentDate      DateTime          @default(now()) @db.DateTime(3)
+  confirmedAt      DateTime?         @db.DateTime(3)
+  createdAt        DateTime          @default(now()) @db.DateTime(3)
+  updatedAt        DateTime          @updatedAt @db.DateTime(3)
   installment      Installment?      @relation(fields: [installmentId], references: [id])
   loan             Loan              @relation(fields: [loanId], references: [id], onDelete: Cascade)
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -265,10 +262,10 @@ model Payment {
 }
 
 model Disbursement {
-  id                    String            @id @default(uuid()) @db.Uuid
+  id                    String            @id @default(uuid()) @db.Char(36)
   disbursementReference String            @unique @db.VarChar(100)
-  loanId                String            @unique @db.Uuid
-  schoolId              String            @db.Uuid
+  loanId                String            @unique @db.Char(36)
+  schoolId              String            @db.Char(36)
   amount                Decimal           @db.Decimal(15, 2)
   status                TransactionStatus @default(PENDING)
   bankName              String            @db.VarChar(100)
@@ -276,10 +273,10 @@ model Disbursement {
   accountName           String            @db.VarChar(255)
   transferReference     String?           @db.VarChar(255)
   transferResponse      String?
-  disbursedAt           DateTime?         @db.Timestamptz(3)
-  confirmedAt           DateTime?         @db.Timestamptz(3)
-  createdAt             DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime          @updatedAt @db.Timestamptz(3)
+  disbursedAt           DateTime?         @db.DateTime(3)
+  confirmedAt           DateTime?         @db.DateTime(3)
+  createdAt             DateTime          @default(now()) @db.DateTime(3)
+  updatedAt             DateTime          @updatedAt @db.DateTime(3)
   loan                  Loan              @relation(fields: [loanId], references: [id], onDelete: Cascade)
   school                SchoolProfile     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
@@ -290,13 +287,13 @@ model Disbursement {
 }
 
 model LoanStatusHistory {
-  id             String      @id @default(uuid()) @db.Uuid
-  loanId         String      @db.Uuid
+  id             String      @id @default(uuid()) @db.Char(36)
+  loanId         String      @db.Char(36)
   previousStatus LoanStatus?
   newStatus      LoanStatus
-  changedBy      String?     @db.Uuid
+  changedBy      String?     @db.Char(36)
   reason         String?
-  createdAt      DateTime    @default(now()) @db.Timestamptz(3)
+  createdAt      DateTime    @default(now()) @db.DateTime(3)
   loan           Loan        @relation(fields: [loanId], references: [id], onDelete: Cascade)
 
   @@index([loanId])
@@ -306,16 +303,16 @@ model LoanStatusHistory {
 
 // School Profile Verification - For verifying school entities created by parents/students
 model SchoolProfileVerification {
-  id          String                           @id @default(uuid()) @db.Uuid
-  schoolId    String                           @db.Uuid
-  userId      String                           @db.Uuid // The user who created the school
+  id          String                           @id @default(uuid()) @db.Char(36)
+  schoolId    String                           @db.Char(36)
+  userId      String                           @db.Char(36) // The user who created the school
   status      VerificationStatus               @default(PENDING)
-  submittedAt DateTime                         @default(now()) @db.Timestamptz(3)
-  reviewedAt  DateTime?                        @db.Timestamptz(3)
-  reviewedBy  String?                          @db.Uuid // Admin who reviewed
+  submittedAt DateTime                         @default(now()) @db.DateTime(3)
+  reviewedAt  DateTime?                        @db.DateTime(3)
+  reviewedBy  String?                          @db.Char(36) // Admin who reviewed
   notes       String? // Admin notes
-  createdAt   DateTime                         @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime                         @updatedAt @db.Timestamptz(3)
+  createdAt   DateTime                         @default(now()) @db.DateTime(3)
+  updatedAt   DateTime                         @updatedAt @db.DateTime(3)
   school      SchoolProfile                    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   logs        SchoolProfileVerificationLog[]
 
@@ -327,14 +324,14 @@ model SchoolProfileVerification {
 
 // Logs for school profile verification activities
 model SchoolProfileVerificationLog {
-  id             String                      @id @default(uuid()) @db.Uuid
-  verificationId String                      @db.Uuid
-  schoolId       String                      @db.Uuid
+  id             String                      @id @default(uuid()) @db.Char(36)
+  verificationId String                      @db.Char(36)
+  schoolId       String                      @db.Char(36)
   activity       String                      @db.VarChar(255)
   details        String?
   status         VerificationStatus
-  performedBy    String?                     @db.Uuid // Admin who performed the action
-  createdAt      DateTime                    @default(now()) @db.Timestamptz(3)
+  performedBy    String?                     @db.Char(36) // Admin who performed the action
+  createdAt      DateTime                    @default(now()) @db.DateTime(3)
   verification   SchoolProfileVerification   @relation(fields: [verificationId], references: [id], onDelete: Cascade)
 
   @@index([verificationId])
@@ -346,14 +343,14 @@ model SchoolProfileVerificationLog {
 // Student Enrollment Verification - For verifying student enrollment for loan applications
 // Add this new model to track verification activity logs
 model VerificationLog {
-  id             String             @id @default(uuid()) @db.Uuid
-  verificationId String             @db.Uuid
-  schoolId       String             @db.Uuid
+  id             String             @id @default(uuid()) @db.Char(36)
+  verificationId String             @db.Char(36)
+  schoolId       String             @db.Char(36)
   activity       String             @db.VarChar(255)
   details        String?
   status         VerificationStatus
-  performedBy    String?            @db.Uuid
-  createdAt      DateTime           @default(now()) @db.Timestamptz(3)
+  performedBy    String?            @db.Char(36)
+  createdAt      DateTime           @default(now()) @db.DateTime(3)
   verification   SchoolVerification @relation(fields: [verificationId], references: [id], onDelete: Cascade)
 
   @@index([verificationId])
@@ -363,9 +360,9 @@ model VerificationLog {
 }
 
 model SchoolVerification {
-  id                  String             @id @default(uuid()) @db.Uuid
-  loanId              String             @unique @db.Uuid
-  schoolId            String             @db.Uuid
+  id                  String             @id @default(uuid()) @db.Char(36)
+  loanId              String             @unique @db.Char(36)
+  schoolId            String             @db.Char(36)
   studentName         String             @db.VarChar(255)
   studentClass        String             @db.VarChar(50)
   invoiceAmount       Decimal            @db.Decimal(15, 2)
@@ -373,12 +370,12 @@ model SchoolVerification {
   enrollmentConfirmed Boolean            @default(false)
   invoiceConfirmed    Boolean            @default(false)
   actualInvoiceAmount Decimal?           @db.Decimal(15, 2)
-  requestedAt         DateTime           @default(now()) @db.Timestamptz(3)
-  respondedAt         DateTime?          @db.Timestamptz(3)
-  verifiedBy          String?            @db.Uuid
+  requestedAt         DateTime           @default(now()) @db.DateTime(3)
+  respondedAt         DateTime?          @db.DateTime(3)
+  verifiedBy          String?            @db.Char(36)
   notes               String?
-  createdAt           DateTime           @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime           @updatedAt @db.Timestamptz(3)
+  createdAt           DateTime           @default(now()) @db.DateTime(3)
+  updatedAt           DateTime           @updatedAt @db.DateTime(3)
   loan                Loan               @relation(fields: [loanId], references: [id], onDelete: Cascade)
   school              SchoolProfile      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   logs                VerificationLog[] // Add this relation
@@ -390,21 +387,21 @@ model SchoolVerification {
 }
 
 model Document {
-  id           String         @id @default(uuid()) @db.Uuid
-  userId       String?        @db.Uuid
-  parentId     String?        @db.Uuid
-  schoolId     String?        @db.Uuid
-  loanId       String?        @db.Uuid
+  id           String         @id @default(uuid()) @db.Char(36)
+  userId       String?        @db.Char(36)
+  parentId     String?        @db.Char(36)
+  schoolId     String?        @db.Char(36)
+  loanId       String?        @db.Char(36)
   documentType DocumentType
   fileName     String         @db.VarChar(255)
   fileUrl      String         @db.VarChar(500)
   fileSize     Int
   mimeType     String         @db.VarChar(100)
   isVerified   Boolean        @default(false)
-  verifiedAt   DateTime?      @db.Timestamptz(3)
-  verifiedBy   String?        @db.Uuid
-  createdAt    DateTime       @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime       @updatedAt @db.Timestamptz(3)
+  verifiedAt   DateTime?      @db.DateTime(3)
+  verifiedBy   String?        @db.Char(36)
+  createdAt    DateTime       @default(now()) @db.DateTime(3)
+  updatedAt    DateTime       @updatedAt @db.DateTime(3)
   loan         Loan?          @relation(fields: [loanId], references: [id], onDelete: Cascade)
   parent       ParentProfile? @relation(fields: [parentId], references: [id], onDelete: Cascade)
   school       SchoolProfile? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -419,16 +416,16 @@ model Document {
 }
 
 model Wallet {
-  id               String        @id @default(uuid()) @db.Uuid
-  userId           String        @unique @db.Uuid
+  id               String        @id @default(uuid()) @db.Char(36)
+  userId           String        @unique @db.Char(36)
   balance          Decimal       @default(0) @db.Decimal(15, 2)
   currency         String        @default("NGN") @db.VarChar(3)
   dailyLimit       Decimal?      @db.Decimal(15, 2)
   monthlyLimit     Decimal?      @db.Decimal(15, 2)
   autoDebitEnabled Boolean       @default(false)
   isActive         Boolean       @default(true)
-  createdAt        DateTime      @default(now()) @db.Timestamptz(3)
-  updatedAt        DateTime      @updatedAt @db.Timestamptz(3)
+  createdAt        DateTime      @default(now()) @db.DateTime(3)
+  updatedAt        DateTime      @updatedAt @db.DateTime(3)
   transactions     Transaction[]
   user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -437,11 +434,11 @@ model Wallet {
 }
 
 model Transaction {
-  id                   String            @id @default(uuid()) @db.Uuid
+  id                   String            @id @default(uuid()) @db.Char(36)
   transactionReference String            @unique @db.VarChar(100)
-  userId               String            @db.Uuid
-  walletId             String?           @db.Uuid
-  paymentId            String?           @unique @db.Uuid
+  userId               String            @db.Char(36)
+  walletId             String?           @db.Char(36)
+  paymentId            String?           @unique @db.Char(36)
   type                 TransactionType
   amount               Decimal           @db.Decimal(15, 2)
   balanceBefore        Decimal           @db.Decimal(15, 2)
@@ -453,9 +450,9 @@ model Transaction {
   gatewayReference     String?           @db.VarChar(255)
   gatewayResponse      String?
   metadata             Json?
-  transactionDate      DateTime          @default(now()) @db.Timestamptz(3)
-  createdAt            DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt            DateTime          @updatedAt @db.Timestamptz(3)
+  transactionDate      DateTime          @default(now()) @db.DateTime(3)
+  createdAt            DateTime          @default(now()) @db.DateTime(3)
+  updatedAt            DateTime          @updatedAt @db.DateTime(3)
   payment              Payment?          @relation(fields: [paymentId], references: [id])
   user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   wallet               Wallet?           @relation(fields: [walletId], references: [id])
@@ -470,17 +467,17 @@ model Transaction {
 }
 
 model Notification {
-  id        String           @id @default(uuid()) @db.Uuid
-  userId    String           @db.Uuid
+  id        String           @id @default(uuid()) @db.Char(36)
+  userId    String           @db.Char(36)
   type      NotificationType
   title     String           @db.VarChar(255)
   message   String
   isRead    Boolean          @default(false)
-  readAt    DateTime?        @db.Timestamptz(3)
+  readAt    DateTime?        @db.DateTime(3)
   actionUrl String?          @db.VarChar(500)
   metadata  Json?
-  createdAt DateTime         @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime         @updatedAt @db.Timestamptz(3)
+  createdAt DateTime         @default(now()) @db.DateTime(3)
+  updatedAt DateTime         @updatedAt @db.DateTime(3)
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -490,18 +487,18 @@ model Notification {
 }
 
 model EmailLog {
-  id             String    @id @default(uuid()) @db.Uuid
+  id             String    @id @default(uuid()) @db.Char(36)
   recipientEmail String    @db.VarChar(255)
   recipientName  String?   @db.VarChar(255)
   subject        String    @db.VarChar(500)
   body           String
   status         String    @default("pending") @db.VarChar(50)
-  sentAt         DateTime? @db.Timestamptz(3)
-  failedAt       DateTime? @db.Timestamptz(3)
+  sentAt         DateTime? @db.DateTime(3)
+  failedAt       DateTime? @db.DateTime(3)
   errorMessage   String?
   emailType      String    @db.VarChar(100)
   metadata       Json?
-  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.DateTime(3)
 
   @@index([recipientEmail])
   @@index([status])
@@ -510,18 +507,18 @@ model EmailLog {
 }
 
 model SmsLog {
-  id               String    @id @default(uuid()) @db.Uuid
+  id               String    @id @default(uuid()) @db.Char(36)
   recipientPhone   String    @db.VarChar(20)
   message          String
   status           String    @default("pending") @db.VarChar(50)
-  sentAt           DateTime? @db.Timestamptz(3)
-  failedAt         DateTime? @db.Timestamptz(3)
+  sentAt           DateTime? @db.DateTime(3)
+  failedAt         DateTime? @db.DateTime(3)
   errorMessage     String?
   gatewayReference String?   @db.VarChar(255)
   gatewayResponse  String?
   smsType          String    @db.VarChar(100)
   metadata         Json?
-  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @db.DateTime(3)
 
   @@index([recipientPhone])
   @@index([status])
@@ -530,19 +527,19 @@ model SmsLog {
 }
 
 model SupportTicket {
-  id           String                @id @default(uuid()) @db.Uuid
+  id           String                @id @default(uuid()) @db.Char(36)
   ticketNumber String                @unique @db.VarChar(50)
-  userId       String                @db.Uuid
+  userId       String                @db.Char(36)
   subject      String                @db.VarChar(500)
   category     String                @db.VarChar(100)
   priority     SupportTicketPriority @default(MEDIUM)
   status       SupportTicketStatus   @default(OPEN)
   description  String
-  assignedTo   String?               @db.Uuid
-  resolvedAt   DateTime?             @db.Timestamptz(3)
-  closedAt     DateTime?             @db.Timestamptz(3)
-  createdAt    DateTime              @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime              @updatedAt @db.Timestamptz(3)
+  assignedTo   String?               @db.Char(36)
+  resolvedAt   DateTime?             @db.DateTime(3)
+  closedAt     DateTime?             @db.DateTime(3)
+  createdAt    DateTime              @default(now()) @db.DateTime(3)
+  updatedAt    DateTime              @updatedAt @db.DateTime(3)
   attachments  SupportAttachment[]
   messages     SupportMessage[]
   user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -554,13 +551,13 @@ model SupportTicket {
 }
 
 model SupportMessage {
-  id         String        @id @default(uuid()) @db.Uuid
-  ticketId   String        @db.Uuid
-  senderId   String        @db.Uuid
+  id         String        @id @default(uuid()) @db.Char(36)
+  ticketId   String        @db.Char(36)
+  senderId   String        @db.Char(36)
   senderRole UserRole
   message    String
   isInternal Boolean       @default(false)
-  createdAt  DateTime      @default(now()) @db.Timestamptz(3)
+  createdAt  DateTime      @default(now()) @db.DateTime(3)
   ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@index([ticketId])
@@ -568,13 +565,13 @@ model SupportMessage {
 }
 
 model SupportAttachment {
-  id        String        @id @default(uuid()) @db.Uuid
-  ticketId  String        @db.Uuid
+  id        String        @id @default(uuid()) @db.Char(36)
+  ticketId  String        @db.Char(36)
   fileName  String        @db.VarChar(255)
   fileUrl   String        @db.VarChar(500)
   fileSize  Int
   mimeType  String        @db.VarChar(100)
-  createdAt DateTime      @default(now()) @db.Timestamptz(3)
+  createdAt DateTime      @default(now()) @db.DateTime(3)
   ticket    SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@index([ticketId])
@@ -582,14 +579,14 @@ model SupportAttachment {
 }
 
 model Faq {
-  id        String   @id @default(uuid()) @db.Uuid
+  id        String   @id @default(uuid()) @db.Char(36)
   question  String   @db.VarChar(500)
   answer    String
   category  String   @db.VarChar(100)
   order     Int      @default(0)
   isActive  Boolean  @default(true)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.DateTime(3)
+  updatedAt DateTime @updatedAt @db.DateTime(3)
 
   @@index([category])
   @@index([isActive])
@@ -597,7 +594,7 @@ model Faq {
 }
 
 model Waitlist {
-  id           String    @id @default(uuid()) @db.Uuid
+  id           String    @id @default(uuid()) @db.Char(36)
   role         String    @db.VarChar(50)
   fullName     String    @db.VarChar(255)
   email        String    @unique @db.VarChar(255)
@@ -605,10 +602,10 @@ model Waitlist {
   institution  String    @db.VarChar(255)
   loanAmount   String    @db.VarChar(50)
   status       String    @default("pending") @db.VarChar(50)
-  invitedAt    DateTime? @db.Timestamptz(3)
-  registeredAt DateTime? @db.Timestamptz(3)
-  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
+  invitedAt    DateTime? @db.DateTime(3)
+  registeredAt DateTime? @db.DateTime(3)
+  createdAt    DateTime  @default(now()) @db.DateTime(3)
+  updatedAt    DateTime  @updatedAt @db.DateTime(3)
 
   @@index([email])
   @@index([status])
@@ -616,16 +613,16 @@ model Waitlist {
 }
 
 model AuditLog {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String?  @db.Uuid
+  id        String   @id @default(uuid()) @db.Char(36)
+  userId    String?  @db.Char(36)
   action    String   @db.VarChar(100)
   entity    String   @db.VarChar(100)
-  entityId  String?  @db.Uuid
+  entityId  String?  @db.Char(36)
   oldValues Json?
   newValues Json?
   ipAddress String?  @db.VarChar(45)
   userAgent String?  @db.VarChar(500)
-  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.DateTime(3)
   user      User?    @relation(fields: [userId], references: [id])
 
   @@index([userId])
@@ -636,24 +633,24 @@ model AuditLog {
 }
 
 model SystemSetting {
-  id          String   @id @default(uuid()) @db.Uuid
+  id          String   @id @default(uuid()) @db.Char(36)
   key         String   @unique @db.VarChar(100)
   value       String
   description String?  @db.VarChar(500)
-  createdAt   DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  createdAt   DateTime @default(now()) @db.DateTime(3)
+  updatedAt   DateTime @updatedAt @db.DateTime(3)
 
   @@index([key])
   @@map("system_settings")
 }
 
 model PaymentReminder {
-  id            String    @id @default(uuid()) @db.Uuid
-  installmentId String    @db.Uuid
+  id            String    @id @default(uuid()) @db.Char(36)
+  installmentId String    @db.Char(36)
   reminderType  String    @db.VarChar(50)
-  sentAt        DateTime? @db.Timestamptz(3)
+  sentAt        DateTime? @db.DateTime(3)
   status        String    @default("pending") @db.VarChar(50)
-  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @db.DateTime(3)
 
   @@index([installmentId])
   @@index([status])
@@ -661,12 +658,12 @@ model PaymentReminder {
 }
 
 model VerificationToken {
-  id        String           @id @default(uuid()) @db.Uuid
-  userId    String           @db.Uuid
+  id        String           @id @default(uuid()) @db.Char(36)
+  userId    String           @db.Char(36)
   token     String           @unique @db.VarChar(255)
   type      VerificationType
   expiresAt DateTime
-  createdAt DateTime         @default(now()) @db.Timestamptz(3)
+  createdAt DateTime         @default(now()) @db.DateTime(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -679,15 +676,15 @@ model VerificationToken {
 
 // Add SchoolSupportMessage model for school-specific support
 model SchoolSupportMessage {
-  id        String    @id @default(uuid()) @db.Uuid
-  schoolId  String    @db.Uuid
+  id        String    @id @default(uuid()) @db.Char(36)
+  schoolId  String    @db.Char(36)
   message   String
   priority  String    @default("normal") @db.VarChar(50) // normal, urgent
   isRead    Boolean   @default(false)
-  readAt    DateTime? @db.Timestamptz(3)
-  expiresAt DateTime? @db.Timestamptz(3)
-  createdAt DateTime  @default(now()) @db.Timestamptz(3)
-  updatedAt DateTime  @updatedAt @db.Timestamptz(3)
+  readAt    DateTime? @db.DateTime(3)
+  expiresAt DateTime? @db.DateTime(3)
+  createdAt DateTime  @default(now()) @db.DateTime(3)
+  updatedAt DateTime  @updatedAt @db.DateTime(3)
 
   @@index([schoolId])
   @@index([isRead])
@@ -696,8 +693,8 @@ model SchoolSupportMessage {
 }
 
 model NotificationSettings {
-  id                   String   @id @default(uuid()) @db.Uuid
-  userId               String   @unique @db.Uuid
+  id                   String   @id @default(uuid()) @db.Char(36)
+  userId               String   @unique @db.Char(36)
   emailNotifications   Boolean  @default(true)
   inAppNotifications   Boolean  @default(true)
   walletFunding        Boolean  @default(true)
@@ -706,8 +703,8 @@ model NotificationSettings {
   verificationStatus   Boolean  @default(true)
   securityAlerts       Boolean  @default(true)
   promotions           Boolean  @default(true)
-  createdAt            DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt            DateTime @updatedAt @db.Timestamptz(3)
+  createdAt            DateTime @default(now()) @db.DateTime(3)
+  updatedAt            DateTime @updatedAt @db.DateTime(3)
   user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -715,8 +712,8 @@ model NotificationSettings {
 }
 
 model SavedPaymentMethod {
-  id                  String   @id @default(uuid()) @db.Uuid
-  userId              String   @db.Uuid
+  id                  String   @id @default(uuid()) @db.Char(36)
+  userId              String   @db.Char(36)
   authorizationCode   String   @db.VarChar(255)
   cardType            String   @db.VarChar(50)
   last4               String   @db.VarChar(4)
@@ -726,8 +723,8 @@ model SavedPaymentMethod {
   brand               String   @db.VarChar(50)
   isDefault           Boolean  @default(false)
   isActive            Boolean  @default(true)
-  createdAt           DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime @updatedAt @db.Timestamptz(3)
+  createdAt           DateTime @default(now()) @db.DateTime(3)
+  updatedAt           DateTime @updatedAt @db.DateTime(3)
 
   @@index([userId])
   @@index([authorizationCode])
