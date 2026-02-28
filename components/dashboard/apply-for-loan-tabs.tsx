@@ -23,13 +23,13 @@ export function ApplyForLoanTabs() {
   return (
     <div className="">
       {/* Tab Navigation */}
-      <div className="flex border-gray-200 border-b">
+      <div className="flex border-gray-200 border-b -mx-0 sm:mx-0">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "flex-1 px-3 md:px-4 lg:px-6 py-4 font-semibold text-[0.8125rem] md:text-[0.625rem] lg:text-[0.925rem] text-center transition-colors whitespace-nowrap",
+              "flex-1 px-2 sm:px-3 md:px-4 lg:px-6 py-3 sm:py-4 font-semibold text-[0.7rem] sm:text-[0.8125rem] md:text-[0.925rem] text-center transition-colors whitespace-nowrap",
               activeTab === tab.id
                 ? "bg-[#00296B] text-white"
                 : "text-[#191919] hover:text-[#00296B] hover:bg-gray-50 bg-white"

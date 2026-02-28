@@ -84,10 +84,10 @@ export function WalletStatCards({ stats, isLoading, className }: WalletStatCards
       <StatCard
         title="Funding History"
         value={stats?.fundingHistory
-          ? `${stats?.fundingHistory?.count} Top-Ups`
+          ? `${stats?.fundingHistory?.count} Top-Up${stats?.fundingHistory?.count > 1 ? 's' : ''}`
           : "-"
         }
-        subtitle={stats?.fundingHistory ? `This ${stats?.fundingHistory?.period}` : ""}
+        // subtitle={stats?.fundingHistory ? `This ${stats?.fundingHistory?.period}` : ""}
         footer="Funding activity and patterns."
       />
     </div>
