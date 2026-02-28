@@ -2,8 +2,9 @@
 
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Download, CheckSquare } from 'lucide-react';
+import { X, Download } from 'lucide-react';
 import { StatusBadge } from './status-badge';
+import { CheckSquareIcon } from '@/assets/icons/CheckSquareIcon';
 
 export interface DrawerSection {
   title: string;
@@ -261,13 +262,13 @@ export function LoanDisbursementDrawer({
 
   const actions: DrawerAction[] = [
     {
-      label: 'View Full Loan Information',
+      label: 'View',
       onClick: () => {
         onClose();
         window.location.href = `/dashboard/loans/${loan.loanId || 'PMF-2024-0021'}`;
       },
       variant: 'primary',
-      icon: <CheckSquare className="w-4 h-4" />
+      icon: <CheckSquareIcon className="w-4 h-4" />
     },
     {
       label: 'Make Repayment',
@@ -376,7 +377,7 @@ export function TransactionDrawer({
       icon: <Download className="w-4 h-4" />
     },
     {
-      label: 'View Transaction History',
+      label: 'View History',
       onClick: () => {
         onClose();
         window.location.href = `/dashboard/transactions`;
