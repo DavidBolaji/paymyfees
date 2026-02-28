@@ -35,7 +35,7 @@ function createPrismaClient() {
   const client = new PrismaClient({
     log: env.isDevelopment() 
       ? [
-          { level: 'warn', emit: 'stdout' },
+          // { level: 'warn', emit: 'stdout' },
           { level: 'error', emit: 'stdout' },
         ]
       : [

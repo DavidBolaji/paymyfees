@@ -14,18 +14,20 @@ export default function DashboardLayout({
 
   return (
     <Authenticated>
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
-        
-        <div className="flex-1 flex flex-col overflow-hidden w-full">
-          <Header onMenuToggle={() => setSidebarOpen(true)} />
+      <div className="w-full bg-gray-50 flex justify-center">
+        <div className="flex h-screen w-full max-w-[1512px]">
+          <Sidebar
+            isOpen={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+          />
           
-          <main className="flex-1 overflow-y-auto">
-            {children}
-          </main>
+          <div className="flex-1 flex flex-col overflow-hidden w-full">
+            <Header onMenuToggle={() => setSidebarOpen(true)} />
+            
+            <main className="flex-1 overflow-y-auto">
+              {children}
+            </main>
+          </div>
         </div>
       </div>
     </Authenticated>
