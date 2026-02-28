@@ -41,7 +41,7 @@ export default function HelpPage() {
     : generalFAQs;
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto">
+    <div className="pt-6 md:pt-0">
       {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">

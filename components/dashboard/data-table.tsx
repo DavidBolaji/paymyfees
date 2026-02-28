@@ -220,7 +220,7 @@ export function DataTable({
   return (
     <div className={cn("bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col", className)}>
       {/* Header */}
-      <div className="p-4 sm:p-6 border-b border-gray-200">
+      <div className="p-4 sm:p-6 border-b border-[#EFEFEF]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h2 className="text-base sm:text-lg font-semibold text-gray-900">{title}</h2>
           
@@ -335,8 +335,8 @@ export function DataTable({
 
       {/* Pagination Footer */}
       {isServerPaginated && (
-        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 mt-auto">
-          <div className="text-xs sm:text-sm text-gray-500 order-2 sm:order-1">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 flex flex-row items-center justify-between gap-3 mt-auto">
+          <div className="text-xs sm:text-sm text-gray-500">
             {isEmpty ? (
               "Showing 0 of 0 Records"
             ) : (
@@ -344,7 +344,7 @@ export function DataTable({
             )}
           </div>
           
-          <div className="flex items-center order-1 sm:order-2">
+          <div className="flex items-center">
             <button
               onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1 || isEmpty || isLoading}

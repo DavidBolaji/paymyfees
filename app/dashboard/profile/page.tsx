@@ -7,6 +7,7 @@ import { AvatarUpload } from "@/components/ui/avatar-upload";
 import { api } from "@/src/lib/api";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
+import useAuthStore from "@/src/authStore";
 
 interface UserProfile {
   id: string;
@@ -43,6 +44,7 @@ interface NotificationSettings {
 }
 
 export default function ProfilePage() {
+  const { updateUser } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +105,11 @@ export default function ProfilePage() {
       if (data.success) {
         const profileData = data.data;
         setProfile(profileData);
+
+        // Update auth store with profile image if it exists
+        if (profileData.profileImage) {
+          updateUser({ profileImage: profileData.profileImage });
+        }
 
         // Set 2FA status
         setTwoFactorEnabled(profileData.twoFactorEnabled || false);
@@ -366,6 +373,8 @@ export default function ProfilePage() {
 
       if (data.success) {
         setProfile(data.data);
+        // Update auth store with new profile image
+        updateUser({ profileImage: imageUrl });
       } else {
         setError(data.message || "Failed to update profile image");
       }
@@ -377,7 +386,7 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="p-4 md:p-6 max-w-7xl mx-auto animate-pulse">
+      <div className="animate-pulse">
         <BackNavigation href="/dashboard" label="Back to Dashboard" />
 
         <div className="mb-6">
@@ -508,7 +517,7 @@ export default function ProfilePage() {
   if (!profile) return null;
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
+    <div className="pt-6 md:pt-0">
       <BackNavigation href="/dashboard" label="Back to Dashboard" />
 
       <div className="mb-6">

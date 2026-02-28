@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Send, Wallet, Download, PhoneCall, CheckCircle2, X } from 'lucide-react';
+import { Download, PhoneCall, CheckCircle2, X } from 'lucide-react';
 import { DataTable } from '@/components/dashboard/data-table';
 import { BackNavigation } from '@/components/dashboard/back-navigation';
 import { WALLET_TRANSACTION_COLUMNS } from '@/data/constants';
@@ -16,6 +16,8 @@ import { LinkedPaymentMethods, PaymentMethodData } from '@/components/wallet/lin
 import { ChargeCardModal } from '@/components/wallet/charge-card-modal';
 import MakeRepaymentModal from '@/components/dashboard/make-repayment-modal';
 import { getPaymentMethods, initializeCardAddition, deletePaymentMethod, chargeSavedCard } from '@/src/utils/payment-method-api';
+import { GradientSendIcon } from '@/assets/icons/GredientSendIcon';
+import { GradientWalletIcon } from '@/assets/icons/GradientWalletIcon';
 // import useAuthStore from '@/src/authStore';
 
 export default function WalletPage() {
@@ -216,8 +218,8 @@ export default function WalletPage() {
   // const isWalletEmpty = !isLoading && balance?.balance === 0 && transactions.length === 0;
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="">
+    <div className="">
+      <div className="pt-6 md:pt-0">
         <BackNavigation href="/dashboard" label="Back to Dashboard" />
 
         <h1 className="text-xl md:text-2xl font-semibold text-[#191919] mb-2">Wallet</h1>
@@ -244,10 +246,10 @@ export default function WalletPage() {
           <WalletStatCards
             stats={stats}
             isLoading={isLoading}
-            className="mb-8"
+            className="mb-14"
           />
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-14 mb-8">
             {/* Wallet Card */}
             <div className="w-full col-span-1">
               {isLoading ? (
@@ -262,15 +264,15 @@ export default function WalletPage() {
 
             {/* Quick Actions Card */}
             <div className="w-full col-span-1">
-              <div className="h-full rounded-[16px] border-2 border-[#00296B] p-8 bg-[#C5D3E8] flex flex-col">
-                <h2 className="text-lg font-semibold text-[#191919] mb-6">Quick Actions</h2>
-                <div className="flex-1 flex items-center justify-center gap-8 md:gap-12">
+              <div className="lg:h-full rounded-[20px] border-2 border-[#00296B] px-4 md:px-[72px] bg-[#B0BDD1] flex flex-col py-6 md:py-0">
+                <h2 className="text-[22px] font-bold text-[#191919] mt-4 md:mt-9 mb-4 md:mb-10 text-center w-full">Quick Actions</h2>
+                <div className="flex justify-between items-center px-3">
                   {/* Make Repayment */}
-                  <div className="flex flex-col items-center gap-3">
+                  <div className="flex flex-col items-center gap-3 ">
                     <button 
                     onClick={() => setIsMakePaymentModalOpen(true)}
-                    className="w-16 h-16 rounded-full bg-[#00296B] flex items-center justify-center hover:bg-[#003D82] transition-colors">
-                      <Send className="w-6 h-6 text-white" />
+                    className="w-20 h-20 rounded-full bg-[#00296B] flex items-center justify-center hover:bg-[#003D82] transition-colors">
+                      <GradientSendIcon />
                     </button>
                     <span className="text-sm font-medium text-[#191919]">Make Repayment</span>
                   </div>
@@ -279,9 +281,9 @@ export default function WalletPage() {
                   <div className="flex flex-col items-center gap-3">
                     <button
                       onClick={() => setIsFundModalOpen(true)}
-                      className="w-16 h-16 rounded-full bg-[#00296B] flex items-center justify-center hover:bg-[#003D82] transition-colors"
+                      className="w-20 h-20 rounded-full bg-[#00296B] flex items-center justify-center hover:bg-[#003D82] transition-colors"
                     >
-                      <Wallet className="w-6 h-6 text-white" />
+                      <GradientWalletIcon />
                     </button>
                     <span className="text-sm font-medium text-[#191919]">Fund Wallet</span>
                   </div>

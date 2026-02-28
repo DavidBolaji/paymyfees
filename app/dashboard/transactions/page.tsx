@@ -27,8 +27,8 @@ export default function TransactionsPage() {
 
   return (
     <>
-      <div className="p-4 md:p-6">
-        <div className="">
+      <div className="">
+        <div className="pt-6 md:pt-0">
           <BackNavigation href="/dashboard" label="Back to Dashboard" />
 
           <div className="mb-6">

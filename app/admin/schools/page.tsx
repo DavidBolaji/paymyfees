@@ -243,7 +243,7 @@ export default function AdminSchoolsPage() {
   }));
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="p-4 md:p-6 pt-6 md:pt-0">
       <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h2 className='mb-2 font-semibold text-[#191919] text-xl md:text-[1.6875rem]'>School Management</h2>

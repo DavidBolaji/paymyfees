@@ -24,8 +24,23 @@ export function ProgressTracker({
   showAction = true,
   variant = 'mini'
 }: ProgressTrackerProps) {
-  // Limit steps based on variant
-  const displaySteps = variant === 'mini' ? steps.slice(0, 5) : steps;
+  // Ensure minimum of 5 steps by adding dummy steps if needed
+  const MIN_STEPS = 5;
+  let displaySteps = variant === 'mini' ? steps.slice(0, 5) : steps;
+  
+  // Add dummy steps if fewer than minimum
+  if (displaySteps.length < MIN_STEPS) {
+    const dummySteps: ProgressStep[] = Array.from(
+      { length: MIN_STEPS - displaySteps.length },
+      (_, index) => ({
+        id: `dummy-${index}`,
+        title: 'Upcoming Step',
+        status: 'upcoming' as const
+      })
+    );
+    displaySteps = [...displaySteps, ...dummySteps];
+  }
+  
   const hasMoreSteps = variant === 'max' && steps.length > 9;
 
   return (
