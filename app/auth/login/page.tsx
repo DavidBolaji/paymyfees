@@ -81,7 +81,7 @@ export default function LoginPage() {
       </div>
 
       {/* Login Form */}
-      <div className="w-full max-w-md p-6 border border-[#00296B] bg-white rounded-lg">
+      <div className="w-full max-w-sm sm:max-w-md p-6 border border-[#00296B] bg-white rounded-[16px] mx-4">
         <h1 className="text-[1.6875rem] font-semibold text-center mb-1">Sign In</h1>
         <p className="text-center font-semibold text-sm text-[#525252] mb-6">Finance Your Education, Stress Free</p>
 

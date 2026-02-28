@@ -1,12 +1,14 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 interface StatCardProps {
   title: string;
   value: string;
   subtitle?: string;
-  footer?: string;
+  hideSubtitleOnMobile?: boolean;
+  footer?: ReactNode;
   variant?: 'default' | 'primary' | 'success' | 'warning';
   trend?: 'up' | 'down';
   className?: string;
@@ -16,6 +18,7 @@ export function StatCard({
   title, 
   value, 
   subtitle, 
+  hideSubtitleOnMobile = false,
   footer,
   variant = 'default', 
   className 
@@ -60,13 +63,14 @@ export function StatCard({
 
         {/* Value */}
         <div className={cn(
-          "text-[22px] sm:text-2xl md:text-3xl font-semibold leading-[120%]",
+          "text-[18px] sm:text-2xl md:text-3xl font-semibold leading-[120%]",
           isActive ? "text-white" : "text-gray-900"
         )}>
           {value} 
           {subtitle && (
             <span className={cn(
               "text-[10px] sm:text-xs ml-1 sm:ml-2",
+              hideSubtitleOnMobile && "hidden sm:inline",
               isActive ? "text-white/80" : "text-gray-600"
             )}>
               {subtitle}
@@ -78,7 +82,7 @@ export function StatCard({
         {/* Footer */}
         {footer && (
           <p className={cn(
-            "text-[9px] sm:text-[10px] md:text-[0.6875rem] font-semibold leading-[120%] text-nowrap",
+            "text-[8px] sm:text-[10px] md:text-[0.6875rem] font-semibold leading-[120%] text-nowrap",
             isActive ? "text-white/80" : "text-gray-600"
           )}>
             {footer}

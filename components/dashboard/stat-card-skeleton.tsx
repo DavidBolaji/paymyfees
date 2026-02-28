@@ -26,13 +26,7 @@ export function StatCardSkeleton({
           : '#E6EAF0'
       }}
     >
-      {/* Arrow Icon Skeleton */}
-      <div className="absolute top-4 right-4">
-        <div className={cn(
-          "w-10 h-10 rounded-full",
-          isActive ? "bg-white/20" : "bg-white/60"
-        )}></div>
-      </div>
+      
 
       {/* Content Skeleton */}
       <div className="pr-14">
@@ -50,7 +44,7 @@ export function StatCardSkeleton({
         
         {/* Footer Skeleton */}
         <div className={cn(
-          "h-3 w-40 absolute bottom-4 left-4 right-6 rounded",
+          "h-3 md:w-40 w-5 absolute bottom-4 left-4 right-6 rounded",
           isActive ? "bg-white/20" : "bg-gray-300"
         )}></div>
       </div>

@@ -63,7 +63,7 @@ export default function HelpPage() {
             placeholder="Search help topics or guides..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4169E1] focus:border-transparent text-gray-900"
+            className="w-full pl-12 pr-20 sm:pr-24 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4169E1] focus:border-transparent text-gray-900 text-sm sm:text-base placeholder:text-xs placeholder:sm:text-sm"
           />
           <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-[#4169E1] text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors">
             Search

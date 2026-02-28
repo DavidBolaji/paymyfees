@@ -386,7 +386,7 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="animate-pulse">
+      <div className="animate-pulse pt-6 md:pt-0">
         <BackNavigation href="/dashboard" label="Back to Dashboard" />
 
         <div className="mb-6">

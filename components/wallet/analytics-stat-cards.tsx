@@ -30,7 +30,7 @@ export function AnalyticsStatCards({ stats, isLoading, className }: AnalyticsSta
         <StatCard
           title="Total wallet funding"
           value="-"
-          footer="Your current spendable wallet balance."
+          footer="spendable wallet balance."
           variant="primary"
         />
         
@@ -43,13 +43,13 @@ export function AnalyticsStatCards({ stats, isLoading, className }: AnalyticsSta
         <StatCard
           title="Repayment Progress"
           value="-"
-          footer="Your progress towards full repayment."
+          footer="Progress towards full repayment."
         />
         
         <StatCard
           title="Engagement Score"
           value="-"
-          footer="Based on dashboard activity & notifications."
+          footer="Based on activity"
         />
       </div>
     );
@@ -61,16 +61,16 @@ export function AnalyticsStatCards({ stats, isLoading, className }: AnalyticsSta
         title="Total Wallet Funding"
         value={`₦${stats.totalWalletFunding.toLocaleString()}`}
         // subtitle={`Balance: ₦${stats.walletBalance.toLocaleString()}`}
-        footer="Track inflow trends and wallet balance."
+        footer="Track wallet balance."
         variant="primary"
       />
       
       <StatCard
-        title="Total Repayments Completed"
+        title="Total Completed"
         value={`₦${stats.totalRepaymentAmount.toLocaleString()}`}
         // subtitle={`${stats.totalRepaymentsCompleted} payment${stats.totalRepaymentsCompleted !== 1 ? 's' : ''} made`}
         subtitle={"repaid"}
-        footer="Repayment adherence and payment history."
+        footer="Repayment adherence and history."
       />
       
       <StatCard
@@ -82,10 +82,10 @@ export function AnalyticsStatCards({ stats, isLoading, className }: AnalyticsSta
         }
         subtitle={
           stats.activeLoan
-            ? `installments completed`
+            ? `completed`
             : "-"
         }
-        footer="Visualize progress towards full repayment."
+        footer="Visualize progress."
       />
       
       <StatCard
@@ -97,7 +97,7 @@ export function AnalyticsStatCards({ stats, isLoading, className }: AnalyticsSta
             : "No activity yet"
         }
         // footer="Based on login, payments, and wallet activity."
-        footer="Based on dashboard activity & notifications."
+        footer="Based on dashboard activity."
       />
     </div>
   );

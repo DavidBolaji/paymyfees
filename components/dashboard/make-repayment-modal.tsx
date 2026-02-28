@@ -120,7 +120,7 @@ export default function MakeRepaymentModal({
     if (showConfirmation && nextDue) {
         return (
             <div
-                className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+                className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
                 onClick={handleOverlayClick}
             >
                 <div
@@ -232,7 +232,7 @@ export default function MakeRepaymentModal({
     // Main Screen
     return (
         <div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
             onClick={handleOverlayClick}
         >
             <div

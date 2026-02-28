@@ -120,7 +120,7 @@ export default function SchoolVerificationPage() {
           {/* Stats Grid */}
           <div className="gap-x-4 gap-y-2.5 sm:gap-x-4 sm:gap-y-3 md:gap-x-6 md:gap-y-4 grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 mb-8">
             <StatCard
-              title="Academic Verification Score"
+              title="Verification Score"
               value={scores.academicScore === 0 ? '-' : `${scores.academicScore}/100`}
               footer={getAcademicScoreFooter()}
               variant="primary"
@@ -158,11 +158,12 @@ export default function SchoolVerificationPage() {
           {/* Current School Information */}
           <div className="px-5 py-6 bg-white rounded-lg mb-8">
             <div className="flex flex-row items-center justify-between gap-3 mb-6">
-              <h3>Current School Information</h3>
+              <h3 className="font-medium text-sm sm:text-base md:text-lg">Current School Information</h3>
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="flex justify-center items-center gap-2 bg-[#00296B] hover:bg-[#002561] px-4 py-2.5 rounded-lg font-medium text-white transition-colors text-sm">
-                Edit Details
+                className="flex justify-center items-center gap-2 bg-[#00296B] hover:bg-[#002561] px-3 sm:px-4 py-2.5 rounded-lg font-medium text-white transition-colors text-sm whitespace-nowrap">
+                <span className="sm:hidden">Edit</span>
+                <span className="hidden sm:inline">Edit Details</span>
               </button>
             </div>
 

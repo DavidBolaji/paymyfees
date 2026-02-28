@@ -136,6 +136,7 @@ export default function DashboardPage() {
                       : `₦${Number(stats.balance.amount).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                   }
                   subtitle={stats.balance.amount === 0 ? "" : stats.balance.description}
+                  hideSubtitleOnMobile
                   footer="Your remaining loan balance."
                   variant="default"
                 />
@@ -150,7 +151,13 @@ export default function DashboardPage() {
                       : "₦-"
                   }
                   subtitle={stats.wallet.amount === 0 ? "" : stats.wallet.description}
-                  footer="Fund wallet, make repayment automated."
+                  hideSubtitleOnMobile
+                  footer={
+                    <>
+                      <span className="sm:hidden">Fund wallet to make repayment</span>
+                      <span className="hidden sm:inline">Fund wallet to make repayment automated.</span>
+                    </>
+                  }
                   variant="default"
                 />
               </>

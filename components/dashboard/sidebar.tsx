@@ -146,7 +146,7 @@ export function Sidebar({ className, isAdmin = false, isOpen = false, onClose }:
 
       {/* Sidebar */}
       <div className={cn(
-        "flex flex-col bg-white border-gray-200 border-r w-3/5 md:w-64 h-screen",
+        "flex flex-col bg-white border-gray-200 border-r w-[75%] md:w-64 h-screen",
         // Mobile: fixed overlay sidebar with slide animation
         "fixed z-50 transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:z-auto",
         isOpen ? "translate-x-0" : "-translate-x-full",
