@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
-import Logo from "@/assets/images/logo/logo.png";
+// import Image from "next/image";
+// import Logo from "@/assets/images/logo/logo.png";
 import { ForgotForm } from "@/components/forms/forgot-form";
 import { SentIcon } from "@/assets/icons/SentIcon";
+import { HomeHeader } from "@/components/home/home-header";
 
 // Interface for form data
 interface FormData {
@@ -48,16 +49,18 @@ export default function ForgotPage() {
   };
 
   return (
+    <>
+    <HomeHeader />
     <div className="flex flex-col items-center">
       {/* Logo */}
-      <div className="my-24">
+      {/* <div className="my-24">
         <Image
           src={Logo}
           alt="PayMyFees Logo"
           width={140}
           height={38}
         />
-      </div>
+      </div> */}
 
       {/* Form Container */}
       <div className="w-full max-w-md p-6 border border-[#00296B] bg-white rounded-lg">
@@ -108,5 +111,6 @@ export default function ForgotPage() {
         )}
       </div>
     </div>
+    </>
   );
 }

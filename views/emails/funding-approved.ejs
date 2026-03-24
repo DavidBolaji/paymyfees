@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>
+        <%= appName %> - Funding Approved
+    </title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f3f6fb;
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+            font-family: Manrope, "Segoe UI", Arial, sans-serif;
+        }
+
+        table {
+            border-spacing: 0;
+            border-collapse: collapse;
+        }
+
+        .wrapper {
+            width: 100%;
+            background-color: #f3f6fb;
+            padding: 24px 12px;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 640px;
+            background-color: #ffffff;
+            border-radius: 18px;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+
+        .header-image {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .content {
+            padding: 36px 42px 24px;
+            color: #292929;
+            text-align: center;
+            max-width: 471px;
+        }
+
+        .icon-wrap {
+            padding-bottom: 18px;
+        }
+
+        .icon {
+            width: 64px;
+            height: 64px;
+            display: inline-block;
+        }
+
+        .heading {
+            margin: 0 0 18px;
+            font-family: Manrope, "Segoe UI", Arial, sans-serif;
+            font-size: 22px;
+            line-height: 120%;
+            font-weight: 800;
+            letter-spacing: 0;
+            color: #292929;
+            text-align: center;
+        }
+
+        .body {
+            margin: 0 0 16px;
+            font-family: Manrope, "Segoe UI", Arial, sans-serif;
+            font-size: 18px;
+            line-height: 120%;
+            font-weight: 500;
+            letter-spacing: 0;
+            color: #292929;
+            text-align: left;
+        }
+
+        .amount-box {
+            margin: 8px 0 18px;
+            padding: 14px 18px;
+            border-radius: 12px;
+            background-color: #edf2fa;
+            text-align: center;
+            color: #00296b;
+            font-family: Manrope, "Segoe UI", Arial, sans-serif;
+            font-size: 26px;
+            line-height: 120%;
+            font-weight: 800;
+            letter-spacing: 0;
+        }
+
+        .button-wrap {
+            text-align: center;
+            padding: 12px 0 16px;
+        }
+
+        .button {
+            display: inline-block;
+            background-color: #00296b;
+            color: #ffffff !important;
+            text-decoration: none;
+            font-family: Manrope, "Segoe UI", Arial, sans-serif;
+            font-size: 16px;
+            line-height: 120%;
+            font-weight: 700;
+            letter-spacing: 0;
+            padding: 14px 24px;
+            border-radius: 10px;
+        }
+
+        .footer {
+            padding: 0 42px 30px;
+            text-align: center;
+            font-family: Manrope, "Segoe UI", Arial, sans-serif;
+            font-size: 14px;
+            line-height: 140%;
+            font-weight: 500;
+            color: #6c7480;
+        }
+
+        .footer p {
+            margin: 0 0 8px;
+        }
+
+        @media only screen and (max-width: 640px) {
+
+            .content,
+            .footer {
+                padding-left: 20px !important;
+                padding-right: 20px !important;
+            }
+
+            .heading {
+                font-size: 20px !important;
+            }
+
+            .body {
+                font-size: 16px !important;
+            }
+
+            .amount-box {
+                font-size: 22px !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <table role="presentation" width="100%" class="wrapper">
+        <tr>
+            <td align="center">
+                <table role="presentation" class="card" width="640">
+                    <tr>
+                        <td>
+                            <img src="https://res.cloudinary.com/dpi44zxlw/image/upload/v1772611742/header_hjx0ag.png"
+                                alt="<%= appName %>" class="header-image">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="content">
+                            <h1 class="heading">Congratulations!</h1>
+                            <h1 class="heading">Your funding has been approved!</h1>
+                            <div class="icon-wrap">
+                                <img src="https://res.cloudinary.com/dpi44zxlw/image/upload/v1772612076/Group_1000005840_g0mpyd.png"
+                                    alt="Funding approved" class="icon">
+                            </div>
+
+                            <p class="body">Hi <%= fullName || 'there' %>,</p>
+                            <p class="body">Great news your tuition funding request has been approved.</p>
+                            <p class="body">Approved Amount:  <%= amount || 'Approved' %>
+                            <br />
+                            Repayment Plan: <%= plan || 'plan' %>
+                            </p>
+                            
+                           
+                            <p class="body">Please log in to your dashboard to review disbursement details and next
+                                steps.</p>
+                            <div class="button-wrap">
+                                <a href="<%= dashboardUrl || (appUrl + '/dashboard') %>" class="button">Open
+                                    Dashboard</a>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="footer">
+                            <p>Need help? <a href="mailto:support@paymyfees.co"
+                                    style="color: #00296b; text-decoration: none;">support@paymyfees.co</a></p>
+                            <p>© <%= new Date().getFullYear() %>
+                                    <%= appName %>. All rights reserved.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

@@ -71,6 +71,45 @@ This application follows a strict three-layer architecture with SOLID principles
 
 The application will be available at `http://localhost:3000`
 
+## ✉️ Local Email Template Preview (No Send)
+
+You can render EJS templates in your browser without sending any email.
+
+1. Start dev server:
+   ```bash
+   pnpm dev
+   ```
+
+2. Open preview URLs:
+   - Welcome: `http://localhost:3000/api/dev/email-preview?template=welcome`
+   - OTP: `http://localhost:3000/api/dev/email-preview?template=verification-otp`
+   - Verification link: `http://localhost:3000/api/dev/email-preview?template=verification-link`
+   - Reset password: `http://localhost:3000/api/dev/email-preview?template=reset-password`
+   - Funding approved: `http://localhost:3000/api/dev/email-preview?template=funding-approved`
+
+3. Override template values using `data` JSON query param:
+   ```text
+   /api/dev/email-preview?template=verification-otp&data={"fullName":"David","otp":"482901"}
+   ```
+
+4. Optional POST usage:
+   - Endpoint: `POST /api/dev/email-preview`
+   - Body:
+   ```json
+   {
+     "template": "funding-approved",
+     "data": {
+       "fullName": "David",
+       "amount": "₦750,000",
+       "schoolName": "Babcock University"
+     }
+   }
+   ```
+
+Notes:
+- This route is dev-only by default (`NODE_ENV !== production`).
+- To enable in production for QA, set `ALLOW_EMAIL_PREVIEW=true`.
+
 ## 📁 Project Structure
 
 ```

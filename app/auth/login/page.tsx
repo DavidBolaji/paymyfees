@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import useAuthStore from "@/src/authStore";
-import Image from "next/image";
-import Logo from "@/assets/images/logo/logo.png";
+// import Image from "next/image";
+// import Logo from "@/assets/images/logo/logo.png";
 import { LoginForm } from "@/components/forms/login-form";
 import { api } from "@/src/lib/api";
+import { HomeHeader } from "@/components/home/home-header";
 
 // Interface for form data
 interface FormData {
@@ -40,7 +41,7 @@ export default function LoginPage() {
           // Store temporary token and email in sessionStorage
           sessionStorage.setItem('2fa_temp_token', data.data.token);
           sessionStorage.setItem('2fa_email', formData.email);
-          
+
           // Redirect to 2FA verification page
           window.location.href = "/auth/verify-2fa";
           return;
@@ -48,7 +49,7 @@ export default function LoginPage() {
 
         // Use Zustand to store user data
         login(data.data.user, data.data.token, data.data.refreshToken);
-        
+
         // Redirect based on user role
         if (data.data.user.role === 'ADMIN') {
           window.location.href = "/admin";
@@ -69,24 +70,28 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col items-center">
-      {/* Logo */}
-      <div className="my-24">
-        <Image
-          src={Logo}
-          alt="PayMyFees Logo"
-          width={140}
-          height={38}
-        />
-      </div>
+    <>
+      <HomeHeader />
+      <div className="flex flex-col items-center">
+        {/* Logo */}
+        {/* <div className="my-24">
+          <Image
+            src={Logo}
+            alt="PayMyFees Logo"
+            width={140}
+            height={38}
+          />
+        </div> */}
+        <div className="pt-24"/>
 
-      {/* Login Form */}
-      <div className="w-full max-w-sm sm:max-w-md p-6 border border-[#00296B] bg-white rounded-[16px] mx-4">
-        <h1 className="text-[1.6875rem] font-semibold text-center mb-1">Sign In</h1>
-        <p className="text-center font-semibold text-sm text-[#525252] mb-6">Finance Your Education, Stress Free</p>
+        {/* Login Form */}
+        <div className="w-full max-w-sm sm:max-w-md p-6 border border-[#00296B] bg-white rounded-[16px] mx-4">
+          <h1 className="text-[1.6875rem] font-semibold text-center mb-1">Sign In</h1>
+          <p className="text-center font-semibold text-sm text-[#525252] mb-6">Finance Your Education, Stress Free</p>
 
-        <LoginForm onSubmit={handleSubmit} />
+          <LoginForm onSubmit={handleSubmit} />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
