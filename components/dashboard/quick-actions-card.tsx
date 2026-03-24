@@ -11,13 +11,13 @@ import { CardIcon } from '@/assets/icons/CardIcon';
 const QUICK_ACTIONS = [
   {
     id: 'apply-loan',
-    label: 'Apply for\nLoan',
+    label: 'Loan Application',
     icon: EditSquareIcon,
     href: '/dashboard/apply-loan',
   },
   {
     id: 'view-payment-plan',
-    label: 'View Payment\nPlan',
+    label: 'Payment Plan',
     icon: ClipboardCheckIcon,
     href: '/dashboard/view-payment-plan',
   },
@@ -29,7 +29,7 @@ const QUICK_ACTIONS = [
   },
   {
     id: 'update-school',
-    label: 'Update\nSchool\u00A0Details',
+    label: 'School Details',
     icon: BuildingIcon,
     href: '/dashboard/school-verification',
   },
@@ -62,7 +62,7 @@ export function QuickActionsCard() {
               <div className="w-[47px] sm:w-12 md:w-[89px] h-[45px] sm:h-12 md:h-[87px] rounded-[8px] sm:rounded-[10px] md:rounded-[12px] bg-[#00296B] flex items-center justify-center p-[10px] sm:p-2.5 md:p-[10px] group-hover:bg-[#003D82] transition-colors">
                 <action.icon className="w-[25px] sm:w-6 md:w-10 h-[25px] sm:h-6 md:h-10 text-white" />
               </div>
-              <span className="text-[9px] sm:text-xs md:text-lg text-[#191919] text-center whitespace-pre-line leading-[120%] font-semibold">
+              <span className="text-[9px] sm:text-xs md:text-lg text-[#191919] text-center text-nowrap leading-[120%] font-semibold">
                 {action.label}
               </span>
             </button>
