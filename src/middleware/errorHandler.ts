@@ -340,6 +340,11 @@ export function asyncHandler<T = any>(
         );
       }
 
+      // Prevent browsers/CDNs from caching authenticated API responses
+      if (!response.headers.has('Cache-Control')) {
+        response.headers.set('Cache-Control', 'private, no-store');
+      }
+
       return response;
     } catch (error) {
       // Log the error with context

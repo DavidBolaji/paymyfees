@@ -167,7 +167,7 @@ export const requireParent = requireRole(UserRole.PARENT, UserRole.STUDENT);
 /**
  * Middleware for student-only routes
  */
-export const requireStudent = requireRole(UserRole.STUDENT, UserRole.PARENT);
+export const requireStudent = requireRole(UserRole.STUDENT, UserRole.PARENT, UserRole.SCHOOL);
 
 /**
  * Middleware for school-only routes

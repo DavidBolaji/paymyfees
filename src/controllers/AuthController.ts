@@ -276,7 +276,30 @@ export class AuthController {
    * POST /api/auth/verify
    */
   async verifyEmail(req: Request): Promise<NextResponse> {
-    const body = await req.json();
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "invalid_request",
+          message: "Invalid or empty request body",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "invalid_request",
+          message: "Request body must be a JSON object",
+        },
+        { status: 400 }
+      );
+    }
 
     const { token, mode } = body;
     console.log(token, mode);

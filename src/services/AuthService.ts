@@ -23,6 +23,7 @@ import {
   AuthResponse
 } from '@/src/types';
 import { executeTransaction } from '@/src/database/prisma';
+import { prisma } from '@/src/database/prisma';
 import { UserRole } from '@prisma/client';
 import { MailService, IMailService } from '@/src/services/MailService';
 import { createVerification, getUserByToken, verifyToken, createPasswordResetToken, verifyPasswordResetToken } from '@/src/utils/verification';
@@ -105,7 +106,13 @@ export class AuthService implements IAuthService {
           },
         });
       } else if (input.role === UserRole.SCHOOL) {
-        // School profile will be created separately with full details
+        await tx.schoolProfile.create({
+          data: {
+            userId: newUser.id,
+            schoolName: input.schoolName || input.fullName,
+            isPrimary: true,
+          },
+        });
       }
 
       return newUser;
@@ -166,6 +173,8 @@ export class AuthService implements IAuthService {
     const token = generateToken(authUser);
     const refreshToken = generateRefreshToken(authUser);
 
+    const userDTO = await this.userRepository.getUserById(user.id);
+
     return {
       user: {
         id: user.id,
@@ -183,10 +192,10 @@ export class AuthService implements IAuthService {
         country: user.country,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
-        parentProfile: null,
-        schoolProfile: null,
-        wallet: null,
-        notificationSettings: null,
+        parentProfile: userDTO?.parentProfile ?? null,
+        schoolProfile: userDTO?.schoolProfile ?? null,
+        wallet: userDTO?.wallet ?? null,
+        notificationSettings: userDTO?.notificationSettings ?? null,
       },
       token,
       refreshToken,
@@ -263,6 +272,20 @@ export class AuthService implements IAuthService {
     await this.userRepository.updateLastLogin(user.id);
     console.log('User logged in successfully', { userId: user.id });
 
+    // Auto-repair: ensure wallet and role-specific profile exist (in case they were missing)
+    const existingUserDTO = await this.userRepository.getUserById(user.id);
+    if (!existingUserDTO?.wallet) {
+      await prisma.wallet.create({ data: { userId: user.id } }).catch(() => {/* already exists */});
+    }
+    if (user.role === UserRole.SCHOOL) {
+      const hasSchoolProfile = existingUserDTO?.schoolProfile != null;
+      if (!hasSchoolProfile) {
+        await prisma.schoolProfile.create({
+          data: { userId: user.id, schoolName: user.fullName, isPrimary: true },
+        }).catch(() => {/* already exists */});
+      }
+    }
+
     // Generate tokens
     const authUser: AuthUser = {
       id: user.id,
@@ -272,6 +295,8 @@ export class AuthService implements IAuthService {
 
     const token = generateToken(authUser);
     const refreshToken = generateRefreshToken(authUser);
+
+    const userDTO = await this.userRepository.getUserById(user.id);
 
     return {
       user: {
@@ -291,10 +316,10 @@ export class AuthService implements IAuthService {
         country: user.country,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
-        parentProfile: null,
-        schoolProfile: null,
-        wallet: null,
-        notificationSettings: null,
+        parentProfile: userDTO?.parentProfile ?? null,
+        schoolProfile: userDTO?.schoolProfile ?? null,
+        wallet: userDTO?.wallet ?? null,
+        notificationSettings: userDTO?.notificationSettings ?? null,
       },
       token,
       refreshToken,
@@ -575,6 +600,8 @@ export class AuthService implements IAuthService {
       const token = generateToken(authUser);
       const refreshToken = generateRefreshToken(authUser);
 
+      const userDTO = await this.userRepository.getUserById(user.id);
+
       return {
         user: {
           id: user.id,
@@ -593,10 +620,10 @@ export class AuthService implements IAuthService {
           country: user.country,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
-          parentProfile: null,
-          schoolProfile: null,
-          wallet: null,
-          notificationSettings: null,
+          parentProfile: userDTO?.parentProfile ?? null,
+          schoolProfile: userDTO?.schoolProfile ?? null,
+          wallet: userDTO?.wallet ?? null,
+          notificationSettings: userDTO?.notificationSettings ?? null,
         },
         token,
         refreshToken,

@@ -97,24 +97,22 @@
     .otp-wrap {
       margin: 14px 0 18px;
       text-align: center;
-      gap: 8px;
-      display: inline-flex;
     }
 
     .otp-code {
-      display: inline-flex;
-      justify-content: center;
-      align-items: center;
-      padding: 9px 15px;
+      display: inline-block;
+      text-align: center;
+      vertical-align: middle;
       border-radius: 12px;
       background-color: #002561;
       color: #F4F4F4;
       font-family: Manrope, "Segoe UI", Arial, sans-serif;
-      font-size: 18px;
-      line-height: 120%;
+      font-size: 28px;
+      line-height: 60px;
       font-weight: 800;
-      width: 41px;
-      height: 40px;
+      width: 52px;
+      height: 60px;
+      margin: 0 5px;
     }
      .flex {
       display: flex;
@@ -182,37 +180,49 @@
               <p class="body-semi">Please use the 6 digit code below to
                 reset your password</p>
               <div class="otp-wrap">
-                <span class="otp-code">
-                  <%= otp.split('')[0] %>
-                </span>
-                <span class="otp-code">
-                  <%= otp.split('')[1]  %>
-                </span>
-                <span class="otp-code">
-                  <%= otp.split('')[2] %>
-                </span>
-                <span class="otp-code">
-                  <%= otp.split('')[3] %>
-                </span>
-                <span class="otp-code">
-                  <%= otp.split('')[4] %>
-                </span>
-                <span class="otp-code">
-                  <%= otp.split('')[5] %>
-                </span>
+                <table role="presentation" style="display:inline-table; border-collapse:separate; border-spacing:0;">
+                  <tr>
+                    <td style="padding: 0 5px;">
+                      <span class="otp-code"><%= otp.split('')[0] %></span>
+                    </td>
+                    <td style="padding: 0 5px;">
+                      <span class="otp-code"><%= otp.split('')[1] %></span>
+                    </td>
+                    <td style="padding: 0 5px;">
+                      <span class="otp-code"><%= otp.split('')[2] %></span>
+                    </td>
+                    <td style="padding: 0 5px;">
+                      <span class="otp-code"><%= otp.split('')[3] %></span>
+                    </td>
+                    <td style="padding: 0 5px;">
+                      <span class="otp-code"><%= otp.split('')[4] %></span>
+                    </td>
+                    <td style="padding: 0 5px;">
+                      <span class="otp-code"><%= otp.split('')[5] %></span>
+                    </td>
+                  </tr>
+                </table>
               </div>
               <hr />
               <p class="body" style="text-align: center;font-size: 14px;">If you didn't request this code, simply ignore this message.</p>
             </td>
           </tr>
          <tr>
-            <td class="">
-              <p class="heading" style="color: #001d4c;">© PAYMYFEES.CO <%= new Date().getFullYear() %>.</p>
-              <p class="flex">
-                <img src="https://res.cloudinary.com/dpi44zxlw/image/upload/v1772623805/Frame_1618869201_no2yks.png" alt="facebook" />
-                <img src="https://res.cloudinary.com/dpi44zxlw/image/upload/v1772623805/Frame_1618869202_yi6oh9.png" alt="instagram" />
-                <img src="https://res.cloudinary.com/dpi44zxlw/image/upload/v1772623805/Frame_1618869203_kbutsh.png" alt="linkedIn" />
-              </p>
+            <td style="padding: 12px 42px 30px; text-align: center;">
+              <p class="heading" style="color: #001d4c; font-weight: 600;">© PAYMYFEES.CO <%= new Date().getFullYear() %>.</p>
+              <table role="presentation" style="margin: 0 auto;">
+                <tr>
+                  <td style="padding: 0 10px;">
+                    <img src="https://res.cloudinary.com/dpi44zxlw/image/upload/v1772623805/Frame_1618869201_no2yks.png" alt="facebook" />
+                  </td>
+                  <td style="padding: 0 10px;">
+                    <img src="https://res.cloudinary.com/dpi44zxlw/image/upload/v1772623805/Frame_1618869202_yi6oh9.png" alt="instagram" />
+                  </td>
+                  <td style="padding: 0 10px;">
+                    <img src="https://res.cloudinary.com/dpi44zxlw/image/upload/v1772623805/Frame_1618869203_kbutsh.png" alt="linkedIn" />
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
         </table>

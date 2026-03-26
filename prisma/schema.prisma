@@ -88,7 +88,7 @@ model SchoolProfile {
   userId                String  @db.Char(36)
   isPrimary             Boolean @default(false)
   schoolName            String  @db.VarChar(255)
-  schoolAddress         String  @db.VarChar(500)
+  schoolAddress         String?  @db.VarChar(500)
   city                  String? @db.VarChar(100)
   state                 String? @db.VarChar(100)
   country               String? @default("Nigeria") @db.VarChar(100)
@@ -194,6 +194,7 @@ model Loan {
   updatedAt          DateTime            @updatedAt @db.DateTime(3)
   disbursement       Disbursement?
   documents          Document[]
+  fundingDetails     SchoolFundingDetails?
   installments       Installment[]
   statusHistory      LoanStatusHistory[]
   school             SchoolProfile       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -284,6 +285,40 @@ model Disbursement {
   @@index([schoolId])
   @@index([status])
   @@map("disbursements")
+}
+
+model SchoolFundingDetails {
+  id                       String   @id @default(uuid()) @db.Char(36)
+  loanId                   String   @unique @db.Char(36)
+
+  // Financial Information
+  totalTermlyRevenue       Decimal? @db.Decimal(15, 2)
+  numberOfTeachers         Int?
+  existingDebts            Decimal? @db.Decimal(15, 2)
+  otherIncomeSources       String?  @db.VarChar(100)
+
+  // School Identity (captured at application time)
+  schoolEmail              String?  @db.VarChar(255)
+  schoolRegistrationNumber String?  @db.VarChar(100)
+  schoolAddress            String?  @db.VarChar(500)
+
+  // School Operations
+  totalNumberOfStudents    Int?
+  academicLevelsOffered    String?  @db.VarChar(100)
+  numberOfNonTeachingStaff String?  @db.VarChar(50)
+
+  // Consent audit trail
+  consentSchoolDetails     Boolean  @default(false)
+  consentDirectPayment     Boolean  @default(false)
+  consentTerms             Boolean  @default(false)
+  consentTimestamp         DateTime @default(now()) @db.DateTime(3)
+
+  createdAt                DateTime @default(now()) @db.DateTime(3)
+  updatedAt                DateTime @updatedAt @db.DateTime(3)
+  loan                     Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@index([loanId])
+  @@map("school_funding_details")
 }
 
 model LoanStatusHistory {

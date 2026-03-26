@@ -58,9 +58,18 @@ export const registerSchema = z.object({
     required_error: 'Verification mode is required',
     invalid_type_error: 'Verification mode must be either "otp" or "link"',
   }),
+  schoolName: z.string().min(2, 'School name must be at least 2 characters').max(200).optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Passwords do not match',
   path: ['confirmPassword'],
+}).superRefine((data, ctx) => {
+  if (data.role === UserRole.SCHOOL && !data.schoolName) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'School name is required when registering as a school',
+      path: ['schoolName'],
+    });
+  }
 });
 
 export const loginSchema = z.object({

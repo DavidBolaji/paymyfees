@@ -212,7 +212,9 @@ export class UserRepository implements IUserRepository {
       twoFactorSecret: user.twoFactorSecret,
       // Include relations if they exist
       parentProfile: user.parentProfile || null,
-      schoolProfile: user.schoolProfile || null,
+      schoolProfile: Array.isArray(user.schoolProfile)
+        ? (user.schoolProfile.find((p: any) => p.isPrimary) || user.schoolProfile[0] || null)
+        : (user.schoolProfile || null),
       wallet: user.wallet || null,
       notificationSettings: user.notificationSettings || null,
     };

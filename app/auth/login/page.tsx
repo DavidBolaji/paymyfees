@@ -53,6 +53,8 @@ export default function LoginPage() {
         // Redirect based on user role
         if (data.data.user.role === 'ADMIN') {
           window.location.href = "/admin";
+        } else if (data.data.user.role === 'SCHOOL') {
+          window.location.href = "/school-dashboard";
         } else {
           window.location.href = "/dashboard";
         }

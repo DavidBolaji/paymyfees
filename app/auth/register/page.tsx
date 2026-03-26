@@ -14,6 +14,8 @@ interface FormData {
   email: string;
   password: string;
   country: string;
+  role: string;
+  schoolName: string;
   agreeToTerms: boolean;
   verificationMode: 'otp' | 'link';
 }
@@ -34,8 +36,8 @@ export default function RegisterPage() {
         password: formData.password,
         confirmPassword: formData.password,
         country: formData.country,
-        // phone: "", // This would need to be added to the form
-        role: "STUDENT", // Default role
+        role: formData.role || "STUDENT",
+        schoolName: formData.schoolName || undefined,
         mode: formData.verificationMode
       };
       
@@ -54,8 +56,6 @@ export default function RegisterPage() {
         
         // Redirect to appropriate verification page based on mode
         if (formData.verificationMode === 'link') {
-          // Show message about checking email
-          // alert("Registration successful! Please check your email for a verification link.");
            window.location.href = "/auth/register/complete";
         } else {
           // Redirect to OTP verification page

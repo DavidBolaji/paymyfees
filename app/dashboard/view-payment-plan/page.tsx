@@ -6,7 +6,7 @@ import { ViewPaymentPlan } from '@/components/dashboard/view-payment-plan';
 import { fetchPaymentPlanData } from '@/src/utils/loan-api';
 import type { PaymentPlan } from '@/data/types';
 
-export default function ViewPaymentPlanPage() {
+export default function ViewPaymentPlanPage({ basePath = "/dashboard" }: { basePath?: string }) {
   const [paymentPlan, setPaymentPlan] = useState<PaymentPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +50,7 @@ export default function ViewPaymentPlanPage() {
   if (loading) {
     return (
       <div className="pt-6 md:pt-0">
-        <BackNavigation href="/dashboard" label="Back to Dashboard" />
+        <BackNavigation href={basePath} label="Back to Dashboard" />
         
         <div className="space-y-6">
           {/* Header Skeleton */}
@@ -152,7 +152,7 @@ export default function ViewPaymentPlanPage() {
   if (error) {
     return (
       <div className="p-4 md:p-6">
-        <BackNavigation href="/dashboard" label="Back to Dashboard" />
+        <BackNavigation href={basePath} label="Back to Dashboard" />
         <div className="flex justify-center items-center min-h-[50vh]">
           <div className="text-center max-w-md">
             <div className="mx-auto mb-4 bg-red-100 rounded-full w-16 h-16 flex items-center justify-center">
@@ -178,7 +178,7 @@ export default function ViewPaymentPlanPage() {
     <div className="">
       {/* Back Navigation */}
       <div className='md:pt-0 pt-6' />
-      <BackNavigation href="/dashboard" label="Back to Dashboard" />
+      <BackNavigation href={basePath} label="Back to Dashboard" />
       
       {/* Payment Plan Component */}
       <ViewPaymentPlan paymentPlan={paymentPlan} />

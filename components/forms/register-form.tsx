@@ -19,6 +19,8 @@ interface FormData {
   email: string;
   password: string;
   country: string;
+  role: string;
+  schoolName: string;
   agreeToTerms: boolean;
   verificationMode: 'otp' | 'link';
 }
@@ -36,6 +38,8 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
     email: "",
     password: "",
     country: "",
+    role: "",
+    schoolName: "",
     agreeToTerms: false,
     verificationMode: "otp", // Default to link verification
   });
@@ -143,6 +147,22 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
         }
         break;
 
+      case "role":
+        if (!value) {
+          newErrors.role = "Please select your account type";
+        } else {
+          delete newErrors.role;
+        }
+        break;
+
+      case "schoolName":
+        if (formData.role === "SCHOOL" && !value?.trim()) {
+          newErrors.schoolName = "School name is required";
+        } else {
+          delete newErrors.schoolName;
+        }
+        break;
+
       case "agreeToTerms":
         if (!value) {
           newErrors.agreeToTerms = "You must agree to the terms";
@@ -180,11 +200,16 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
   // Check if form is valid
   const isFormValid = () => {
     // Check if all required fields have values
-    const requiredFields = ["firstName", "lastName", "email", "password", "country", "agreeToTerms"];
+    const requiredFields = ["firstName", "lastName", "email", "password", "country", "role", "agreeToTerms"];
     const hasAllRequiredFields = requiredFields.every(field => {
       if (field === "agreeToTerms") return formData[field as keyof typeof formData];
       return !!formData[field as keyof typeof formData];
     });
+
+    // If school is selected, school name is also required
+    if (formData.role === "SCHOOL" && !formData.schoolName.trim()) {
+      return false;
+    }
 
     // Check if there are no validation errors
     const hasNoErrors = Object.keys(errors).length === 0;
@@ -417,6 +442,72 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
         </AnimatePresence>
       </div>
 
+      {/* Account Type */}
+      <div>
+        <CustomInput
+          label="Account Type"
+          type="select"
+          value={formData.role}
+          placeholder="Select account type"
+          onChange={(value) => handleChange("role", value)}
+          onBlur={() => handleBlur("role")}
+          error={touched.role && !!errors.role}
+          options={[
+            { value: "PARENT", label: "Parent" },
+            { value: "SCHOOL", label: "School" },
+            { value: "STUDENT", label: "Student" },
+            { value: "TEACHER", label: "Teacher (Coming soon)", disabled: true },
+          ]}
+        />
+        <AnimatePresence>
+          {touched.role && errors.role && (
+            <motion.p
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="text-red-500 text-xs mt-1"
+            >
+              {errors.role}
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* School Name - only shown when School is selected */}
+      <AnimatePresence>
+        {formData.role === "SCHOOL" && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <CustomInput
+              label="School Name"
+              type="text"
+              value={formData.schoolName}
+              placeholder="Enter your school name"
+              onChange={(value) => handleChange("schoolName", value)}
+              onBlur={() => handleBlur("schoolName")}
+              error={touched.schoolName && !!errors.schoolName}
+            />
+            <AnimatePresence>
+              {touched.schoolName && errors.schoolName && (
+                <motion.p
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-red-500 text-xs mt-1"
+                >
+                  {errors.schoolName}
+                </motion.p>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Forgot Password Link */}
       <div className="-translate-y-3">
