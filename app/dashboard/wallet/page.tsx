@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Download, PhoneCall, CheckCircle2, X } from 'lucide-react';
 import { DataTable } from '@/components/dashboard/data-table';
@@ -18,9 +18,10 @@ import MakeRepaymentModal from '@/components/dashboard/make-repayment-modal';
 import { getPaymentMethods, initializeCardAddition, deletePaymentMethod, chargeSavedCard } from '@/src/utils/payment-method-api';
 import { GradientSendIcon } from '@/assets/icons/GredientSendIcon';
 import { GradientWalletIcon } from '@/assets/icons/GradientWalletIcon';
+import { NetworkIcon } from '@/assets/icons/NetworkIcon';
 // import useAuthStore from '@/src/authStore';
 
-export default function WalletPage() {
+export default function WalletPage({ basePath = "/dashboard" }: { basePath?: string }) {
   // const { user } = useAuthStore();
   const searchParams = useSearchParams();
   const [isFundModalOpen, setIsFundModalOpen] = useState(false);
@@ -31,6 +32,11 @@ export default function WalletPage() {
   const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false);
   const [selectedCard, setSelectedCard] = useState<PaymentMethodData | null>(null);
   const [isChargeModalOpen, setIsChargeModalOpen] = useState(false);
+  const activityTableRef = useRef<HTMLDivElement>(null);
+
+  const scrollToActivity = () => {
+    activityTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   // Get wallet state and actions from store
   const {
@@ -96,7 +102,7 @@ export default function WalletPage() {
       }, 5000);
       
       // Clean up URL params
-      window.history.replaceState({}, '', '/dashboard/wallet');
+      window.history.replaceState({}, '', `${basePath}/wallet`);
     }
 
     if (cardAdded === 'true') {
@@ -113,9 +119,9 @@ export default function WalletPage() {
       }, 5000);
       
       // Clean up URL params
-      window.history.replaceState({}, '', '/dashboard/wallet');
+      window.history.replaceState({}, '', `${basePath}/wallet`);
     }
-  }, [searchParams, fetchWalletBalance, fetchWalletTransactions, fetchChartData]);
+  }, [searchParams, fetchWalletBalance, fetchWalletTransactions, fetchChartData, basePath]);
 
   // Handle page change for transactions table
   const handlePageChange = (page: number) => {
@@ -220,7 +226,7 @@ export default function WalletPage() {
   return (
     <div className="">
       <div className="pt-6 md:pt-0">
-        <BackNavigation href="/dashboard" label="Back to Dashboard" />
+        <BackNavigation href={basePath} label="Back to Dashboard" />
 
         <h1 className="text-xl md:text-2xl font-semibold text-[#191919] mb-2">Wallet</h1>
         <p className="text-sm text-gray-600 mb-6">
@@ -265,7 +271,7 @@ export default function WalletPage() {
             {/* Quick Actions Card */}
             <div className="w-full col-span-1">
               <div className="lg:h-full rounded-[20px] border-2 border-[#00296B] px-3 sm:px-6 md:px-[72px] bg-[#B0BDD1] flex flex-col py-4 sm:py-5 md:py-0">
-                <h2 className="text-base sm:text-lg md:text-[22px] font-bold text-[#191919] mt-3 sm:mt-4 md:mt-9 mb-3 sm:mb-4 md:mb-10 text-center w-full">Quick Actions</h2>
+                <h2 className="text-base sm:text-lg md:text-[22px] font-bold text-[#00296B] mt-3 sm:mt-4 md:mt-9 mb-3 sm:mb-4 md:mb-10 text-center w-full">Quick Actions</h2>
                 <div className="flex justify-between items-center px-2 sm:px-3 gap-2 sm:gap-4">
                   {/* Make Repayment */}
                   <div className="flex flex-col items-center gap-2">
@@ -274,7 +280,17 @@ export default function WalletPage() {
                     className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-[#00296B] flex items-center justify-center hover:bg-[#003D82] transition-colors">
                       <GradientSendIcon />
                     </button>
-                    <span className="text-xs sm:text-sm font-medium text-[#191919] text-center">Make Repayment</span>
+                    <span className="text-xs sm:text-sm font-medium text-[#00296B] text-center">Make Repayment</span>
+                  </div>
+                  
+                  {/* Payment History */}
+                  <div className="flex flex-col items-center gap-2">
+                    <button 
+                    onClick={scrollToActivity}
+                    className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-[#00296B] flex items-center justify-center hover:bg-[#003D82] transition-colors">
+                      <NetworkIcon color='white' />
+                    </button>
+                    <span className="text-xs sm:text-sm font-medium text-[#00296B] text-center">Payment History</span>
                   </div>
 
                   {/* Fund Wallet */}
@@ -285,7 +301,7 @@ export default function WalletPage() {
                     >
                       <GradientWalletIcon />
                     </button>
-                    <span className="text-xs sm:text-sm font-medium text-[#191919] text-center">Fund Wallet</span>
+                    <span className="text-xs sm:text-sm font-medium text-[#00296B] text-center">Fund Wallet</span>
                   </div>
                 </div>
               </div>
@@ -293,6 +309,7 @@ export default function WalletPage() {
           </div>
 
           {/* Transactions Table */}
+          <div ref={activityTableRef}>
           <DataTable
             title="Wallet & Repayment Activity"
             columns={WALLET_TRANSACTION_COLUMNS}
@@ -304,6 +321,7 @@ export default function WalletPage() {
             onRowClick={(item) => console.log('Wallet transaction clicked:', item)}
             className="mb-8"
           />
+          </div>
 
           {/* Bottom Section */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

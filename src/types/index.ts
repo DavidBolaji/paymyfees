@@ -88,6 +88,7 @@ export interface CreateUserInput {
   fullName: string;
   profileImage?: string;
   mode: 'otp' | 'link'; // Verification mode: OTP or link
+  schoolName?: string;  // Required when role is SCHOOL
 }
 
 export interface UpdateUserInput {

@@ -73,7 +73,7 @@ export async function studentAuthMiddleware(req: Request): Promise<AuthMiddlewar
       role: user.role
     };
   } catch (error) {
-    console.warn({ msg: 'Parent authentication failed', error: (error as Error).message });
+    console.warn({ msg: 'Student authentication failed', error: (error as Error).message });
     
     const status = error instanceof UnauthorizedError ? 401 : 403;
     const message = error instanceof UnauthorizedError 

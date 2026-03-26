@@ -8,6 +8,7 @@ import Image from "next/image";
 interface Option {
   value: string;
   label: string;
+  disabled?: boolean;
 }
 
 interface Country {
@@ -238,7 +239,7 @@ export function CustomInput({
               Select {label}
             </option>
             {options.map((opt) => (
-              <option key={opt.value} value={opt.value}>
+              <option key={opt.value} value={opt.value} disabled={opt.disabled} className={opt.disabled ? "text-gray-400" : ""}>
                 {opt.label}
               </option>
             ))}

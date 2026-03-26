@@ -43,7 +43,7 @@ interface NotificationSettings {
   promotions: boolean;
 }
 
-export default function ProfilePage() {
+export default function ProfilePage({ basePath = "/dashboard" }: { basePath?: string }) {
   const { updateUser } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -387,7 +387,7 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <div className="animate-pulse pt-6 md:pt-0">
-        <BackNavigation href="/dashboard" label="Back to Dashboard" />
+        <BackNavigation href={basePath} label="Back to Dashboard" />
 
         <div className="mb-6">
           <div className="h-7 w-24 bg-gray-200 rounded mb-2" />
@@ -480,7 +480,7 @@ export default function ProfilePage() {
   if (error && !profile) {
     return (
       <div className="p-6">
-        <BackNavigation href="/dashboard" label="Back to Dashboard" />
+        <BackNavigation href={basePath} label="Back to Dashboard" />
         <div className="flex justify-center items-center min-h-[50vh]">
           <div className="text-center max-w-md">
             <div className="mx-auto mb-4 bg-red-100 rounded-full w-16 h-16 flex items-center justify-center">
@@ -518,7 +518,7 @@ export default function ProfilePage() {
 
   return (
     <div className="pt-6 md:pt-0">
-      <BackNavigation href="/dashboard" label="Back to Dashboard" />
+      <BackNavigation href={basePath} label="Back to Dashboard" />
 
       <div className="mb-6">
         <h1 className="text-xl md:text-2xl font-semibold text-[#191919] mb-2">Profile</h1>
