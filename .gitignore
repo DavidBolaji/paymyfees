@@ -44,3 +44,6 @@ summary.md
 2FA_IMPLEMENTATION_SUMMARY.md
 scripts
 docs
+
+# VSCode MCP config (may contain secrets)
+.vscode/mcp.json
