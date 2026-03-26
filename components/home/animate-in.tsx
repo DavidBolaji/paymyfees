@@ -18,7 +18,7 @@ export function AnimateIn({ children, delay = 0, className }: AnimateInProps) {
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
+        if (entry?.isIntersecting) {
           el.style.animationDelay = `${delay}ms`;
           el.classList.add("in-view");
           observer.disconnect();
