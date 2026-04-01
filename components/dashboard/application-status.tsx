@@ -7,6 +7,7 @@ import { SentIcon } from '@/assets/icons/SentIcon';
 import useLoan from '@/hooks/useLoan';
 import { LoanStatus } from '@prisma/client';
 import { CheckSquareIcon } from '@/assets/icons/CheckSquareIcon';
+import { useRouter } from 'next/navigation';
 
 
 
@@ -14,6 +15,12 @@ export function ApplicationStatus() {
   // This would normally come from API/state management
    const { currentLoan } = useLoan()
    console.log(currentLoan?.status)
+   const router = useRouter();
+
+   const handleRepayment = () => {
+    // Navigate to repayment page or open repayment modal
+    router.push('/dashboard/wallet');
+   };
 
 
   if (!currentLoan) {
@@ -34,7 +41,7 @@ export function ApplicationStatus() {
     );
   }
 
-  if (currentLoan.status === LoanStatus.APPROVED || 
+  if (
       currentLoan.status === LoanStatus.DISBURSED || 
       currentLoan.status === LoanStatus.ACTIVE) {
     return (
@@ -51,7 +58,7 @@ export function ApplicationStatus() {
           The loan you requested for your tuition has been paid to your school, for repayment click on the tab below.
         </p>
 
-        <button className="flex justify-center items-center gap-2 bg-[#00296B] hover:bg-[#002561] px-4 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 rounded-lg min-w-[180px] sm:min-w-[200px] font-medium text-white transition-colors text-sm sm:text-base">
+        <button onClick={handleRepayment} className="flex justify-center items-center gap-2 bg-[#00296B] hover:bg-[#002561] px-4 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 rounded-lg min-w-[180px] sm:min-w-[200px] font-medium text-white transition-colors text-sm sm:text-base">
           <CheckSquareIcon />
           Make Repayment
         </button>

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, Download, FileText } from 'lucide-react';
 import { RequestDocumentsModal } from '@/components/admin/request-documents-modal';
+import { SuccessModal } from '@/components/ui/success-modal';
 import { api } from '@/src/lib/api';
 
 interface LoanDetailDrawerProps {
@@ -87,8 +88,11 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
   const [note, setNote] = useState('');
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [disbursing, setDisbursing] = useState(false);
   const [showReqDocs, setShowReqDocs] = useState(false);
   const [reqDocsLoading, setReqDocsLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState({ title: '', message: '' });
 
   useEffect(() => {
     if (isOpen) document.body.style.overflow = 'hidden';
@@ -100,6 +104,7 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
     if (!isOpen || !loan?.id) return;
     setLoadingDetail(true);
     api.get(`/api/admin/loans/${loan.id}`)
+      .then(r => r.json())
       .then((d: any) => { if (d.success) setDetail(d.data); })
       .catch(console.error)
       .finally(() => setLoadingDetail(false));
@@ -109,23 +114,50 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
     if (!detail?.id) return;
     try {
       setApproving(true);
-      await api.post(`/api/admin/loans/${detail.id}/approve`, {});
-      onApprove?.();
-      onRefresh?.();
-      onClose();
+      const res = await api.patch(`/api/admin/loans/${detail.id}/status`, {
+        status: 'APPROVED',
+        reason: note.trim() || undefined,
+      }).then(r => r.json());
+      if (res.success) {
+        setSuccessMessage({ title: 'Loan Approved', message: 'The loan has been approved successfully. You can now disburse funds.' });
+        setShowSuccess(true);
+        setDetail((prev: any) => ({ ...prev, status: 'APPROVED' }));
+        onApprove?.();
+        onRefresh?.();
+      }
     } catch (e) { console.error(e); } finally { setApproving(false); }
+  };
+
+  const handleDisburse = async () => {
+    if (!detail?.id) return;
+    try {
+      setDisbursing(true);
+      const res = await api.post(`/api/admin/loans/${detail.id}/disburse`)
+        .then(r => r.json());
+      if (res.success) {
+        setSuccessMessage({ title: 'Loan Disbursed', message: 'Funds have been successfully disbursed to the school.' });
+        setShowSuccess(true);
+        setDetail((prev: any) => ({ ...prev, status: 'DISBURSED' }));
+        onRefresh?.();
+      }
+    } catch (e) { console.error(e); } finally { setDisbursing(false); }
   };
 
   const handleReject = async () => {
     if (!detail?.id) return;
     try {
       setRejecting(true);
-      await api.post(`/api/admin/loans/${detail.id}/reject`, {
+      const res = await api.patch(`/api/admin/loans/${detail.id}/status`, {
+        status: 'REJECTED',
         reason: note.trim() || 'Rejected by admin',
-      });
-      onReject?.();
-      onRefresh?.();
-      onClose();
+      }).then(r => r.json());
+      if (res.success) {
+        setSuccessMessage({ title: 'Loan Rejected', message: 'The loan application has been rejected.' });
+        setShowSuccess(true);
+        setDetail((prev: any) => ({ ...prev, status: 'REJECTED' }));
+        onReject?.();
+        onRefresh?.();
+      }
     } catch (e) { console.error(e); } finally { setRejecting(false); }
   };
 
@@ -146,8 +178,9 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
 
   const l = detail || loan;
   const isPending = l?.status === 'PENDING';
-  const isCommenced = ['ACTIVE', 'DISBURSED', 'COMPLETED', 'APPROVED'].includes(l?.status);
-  const drawerTitle = isPending ? 'Approve Loan' : 'Loan Detail';
+  const isApproved = l?.status === 'APPROVED';
+  const isCommenced = ['ACTIVE', 'DISBURSED', 'COMPLETED', 'REJECTED'].includes(l?.status);
+  const drawerTitle = isPending ? 'Approve Loan' : isApproved ? 'Disburse Loan' : 'Loan Detail';
   const accountStatus = l?.userIsActive === false ? 'Requires Attention' : 'Active';
   const verificationStatus = l?.schoolIsVerified ? 'Verified & Approved' : 'Pending Verification';
   const previousLoans = l?.userPreviousLoans ?? 0;
@@ -189,8 +222,10 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
                   <>
                     {/* Student Information */}
                     <div>
-                      <p className="font-bold text-[#191919] text-base mb-3">Student Information</p>
-                      <div className="space-y-3">
+                      <p className="font-semibolds text-[#191919] text-xl mb-5 inline-block">
+                        Student Information
+                      </p>
+                      <div className="space-y-4">
                         <Row label="Student Name:" value={l?.userName || '—'} valueClass="text-[#00296B] font-semibold" />
                         <Row label="School:" value={l?.schoolName || '—'} />
                         <Row label="Program / Level:" value={l?.programCourseOfStudy || l?.academicSession || '—'} />
@@ -202,10 +237,11 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
 
                     {/* Loan & Disbursement Context */}
                     <div>
-                      <p className="font-bold text-[#191919] text-base mb-1 pb-1 border-b-2 border-dashed border-[#00296B] inline-block">
+                      <p className="font-semibolds text-[#191919] text-xl mb-5 inline-block">
                         Loan &amp; Disbursement Context
                       </p>
-                      <div className="space-y-3 mt-3">
+
+                      <div className="space-y-4">
                         <Row label="Loan ID:" value={l?.loanNumber || '—'} />
                         <Row label="Tuition Amount:" value={fmt(l?.loanAmount)} />
                         <Row label="To be Disbursed to:" value={l?.schoolName || '—'} />
@@ -257,14 +293,27 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
                   {rejecting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                   Reject Loan
                 </button>
-                <button
-                  onClick={handleApprove}
-                  disabled={approving || loadingDetail || isCommenced}
-                  className="h-12 rounded-xl bg-[#00296B] text-white font-semibold text-sm hover:bg-[#001d4f] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1"
-                >
-                  {approving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                  Approve Loan
-                </button>
+
+                {isApproved ? (
+                  <button
+                    onClick={handleDisburse}
+                    disabled={disbursing || loadingDetail}
+                    className="h-12 rounded-xl bg-[#00296B] text-white font-semibold text-sm hover:bg-[#001d4f] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1"
+                  >
+                    {disbursing ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    Disburse Loan
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleApprove}
+                    disabled={approving || loadingDetail || isCommenced}
+                    className="h-12 rounded-xl bg-[#00296B] text-white font-semibold text-sm hover:bg-[#001d4f] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1"
+                  >
+                    {approving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    Approve Loan
+                  </button>
+                )}
+
                 <button
                   onClick={() => setShowReqDocs(true)}
                   disabled={loadingDetail || isCommenced}
@@ -283,6 +332,13 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
         onClose={() => setShowReqDocs(false)}
         onConfirm={handleRequestDocs}
         loading={reqDocsLoading}
+      />
+
+      <SuccessModal
+        isOpen={showSuccess}
+        onClose={() => { setShowSuccess(false); onClose(); }}
+        title={successMessage.title}
+        message={successMessage.message}
       />
     </>
   );
