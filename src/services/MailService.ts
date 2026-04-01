@@ -49,14 +49,14 @@ export class MailService implements IMailService {
       this.resend = new Resend(resendApiKey || '');
       
       // Set other configuration values with fallbacks
-      this.fromEmail = process.env.FROM_EMAIL || 'noreply@paymyfees.com';
+      this.fromEmail = process.env.FROM_EMAIL || 'noreply@paymyfees.co';
       this.appName = process.env.APP_NAME || 'PayMyFees';
       this.appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000';
     } catch (error) {
       console.error('Error initializing MailService:', error);
       // Initialize with defaults to prevent undefined errors
       this.resend = new Resend('');
-      this.fromEmail = 'noreply@paymyfees.com';
+      this.fromEmail = 'noreply@paymyfees.co';
       this.appName = 'PayMyFees';
       this.appUrl = 'http://localhost:3000';
     }
@@ -122,8 +122,8 @@ export class MailService implements IMailService {
       // Render email template
       const html = await this.renderTemplate(templateName, templateData);
 
-      // Send email
-      const result = await this.resend.emails.send({
+      // Send email (with retry on transient network errors)
+      const result = await this.sendWithRetry({
         from: `${this.appName} <${this.fromEmail}>`,
         to: [to],
         subject,
@@ -174,8 +174,8 @@ export class MailService implements IMailService {
       // Render email template
       const html = await this.renderTemplate('welcome', templateData);
 
-      // Send email
-      const result = await this.resend.emails.send({
+      // Send email (with retry on transient network errors)
+      const result = await this.sendWithRetry({
         from: `${this.appName} <${this.fromEmail}>`,
         to: [to],
         subject,
@@ -246,8 +246,8 @@ export class MailService implements IMailService {
       // Render email template
       const html = await this.renderTemplate(templateName, templateData);
 
-      // Send email
-      const result = await this.resend.emails.send({
+      // Send email (with retry on transient network errors)
+      const result = await this.sendWithRetry({
         from: `${this.appName} <${this.fromEmail}>`,
         to: [to],
         subject,
@@ -267,6 +267,33 @@ export class MailService implements IMailService {
       console.error(`Error sending verification email to ${to} : ${error}`);
       return false;
     }
+  }
+
+  /**
+   * Send a Resend email with automatic retry on transient network errors (ETIMEDOUT).
+   * The Resend SDK wraps all fetch exceptions as application_error/statusCode:null — we
+   * retry those up to maxAttempts times with a short delay before giving up.
+   */
+  private async sendWithRetry(
+    payload: Parameters<typeof this.resend.emails.send>[0],
+    maxAttempts = 3,
+    delayMs = 500
+  ): Promise<Awaited<ReturnType<typeof this.resend.emails.send>>> {
+    let lastResult: Awaited<ReturnType<typeof this.resend.emails.send>> | null = null;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const result = await this.resend.emails.send(payload);
+      // statusCode:null means the fetch itself threw (e.g. ETIMEDOUT) — retry
+      if (result.error?.statusCode === null) {
+        console.warn(`Email send attempt ${attempt}/${maxAttempts} failed with network error: ${result.error.message}`);
+        lastResult = result;
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, delayMs * attempt));
+        }
+        continue;
+      }
+      return result;
+    }
+    return lastResult!;
   }
 
   /**
@@ -292,6 +319,7 @@ export class MailService implements IMailService {
 
       // Ensure required data fields exist with fallbacks
       const safeData: Record<string, any> = {
+        ...data,
         fullName: data.fullName || 'User',
         appName: data.appName || this.appName,
         appUrl: data.appUrl || this.appUrl,
@@ -300,7 +328,6 @@ export class MailService implements IMailService {
         loginUrl: data.loginUrl || `${data.appUrl || this.appUrl}/auth/login`,
         subject: data.subject || 'Notification',
         message: data.message || 'This is a notification from our service',
-        ...data
       };
 
       // For development, we'll use a simple HTML template if the EJS file doesn't exist

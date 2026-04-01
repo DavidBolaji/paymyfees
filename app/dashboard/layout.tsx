@@ -12,12 +12,14 @@ function SchoolRoleGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (hasHydrated && user?.role === 'SCHOOL') {
+    if (hasHydrated && user?.role === 'ADMIN') {
+      router.replace('/admin/dashboard');
+    } else if (hasHydrated && user?.role === 'SCHOOL') {
       router.replace('/school-dashboard');
     }
   }, [hasHydrated, user, router]);
 
-  if (hasHydrated && user?.role === 'SCHOOL') {
+  if (hasHydrated && (user?.role === 'SCHOOL' || user?.role === 'ADMIN')) {
     return null;
   }
 
@@ -35,7 +37,7 @@ export default function DashboardLayout({
     <Authenticated>
       <SchoolRoleGuard>
         <div className="w-full bg-gray-50 flex justify-center">
-          <div className="flex h-screen w-full max-w-[1512px]">
+          <div className="flex h-screen w-full">
             <Sidebar
               isOpen={sidebarOpen}
               onClose={() => setSidebarOpen(false)}

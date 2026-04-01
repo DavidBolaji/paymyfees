@@ -1,5 +1,6 @@
 import Image from "next/image";
 import SmartEducationBadge from "@/assets/images/smart_education_badge.png";
+import { MaxScreenContainer } from "../layout/max-screen-container";
 // import leftWaveMetric from "@/assets/images/left-wave-metric.png";
 // import rightWaveMetric from "@/assets/images/right-wave-metric.png";
 
@@ -13,6 +14,7 @@ const metricItems = [
 export function HomeMetricsSection() {
   return (
     <section className="relative w-full overflow-hidden bg-[#F4F4F4] py-[3rem] md:py-[4.5rem]">
+     
       <div className="relative z-10 mx-auto flex w-full max-w-[1512px] flex-col items-center px-6 [font-family:Manrope] md:px-10">
         <div>
           <Image src={SmartEducationBadge} alt="Smart Education Finance" width={279} height={41} priority />

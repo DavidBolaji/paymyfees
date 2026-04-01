@@ -14,7 +14,7 @@ import { LoanStatus } from '@prisma/client';
  */
 export interface IAdminService {
   getAnalytics(): Promise<any>;
-  getLoanApplications(page: number, limit: number, status?: string): Promise<any>;
+  getLoanApplications(page: number, limit: number, statuses?: string[]): Promise<any>;
   getLoanDetails(loanId: string): Promise<any>;
   updateLoanStatus(loanId: string, status: LoanStatus, adminId: string, reason?: string): Promise<any>;
   processDisbursement(loanId: string, adminId: string): Promise<any>;
@@ -24,11 +24,24 @@ export interface IAdminService {
   rejectSchool(schoolId: string, adminId: string, reason: string): Promise<any>;
   addSchool(data: any, adminId: string): Promise<any>;
   getSupportTickets(page: number, limit: number, status?: string): Promise<any>;
+  getTicketDetails(ticketId: string): Promise<any>;
   respondToTicket(ticketId: string, message: string, adminId: string): Promise<any>;
   updateTicketStatus(ticketId: string, status: string, adminId: string): Promise<any>;
   getVerificationLogs(schoolId: string): Promise<any>;
   addVerificationMessage(schoolId: string, message: string, adminId: string): Promise<any>;
   addVerificationLog(schoolId: string, activity: string, details: string, status: string, adminId: string): Promise<any>;
+  getDashboardStats(): Promise<any>;
+  getStudents(page: number, limit: number, status?: string): Promise<any>;
+  getStudentsRequiringAction(page: number, limit: number): Promise<any>;
+  getRecentlyActiveStudents(page: number, limit: number): Promise<any>;
+  getDelayedPayments(page: number, limit: number): Promise<any>;
+  getStudentDetails(userId: string): Promise<any>;
+  suspendLoanEligibility(userId: string, adminId: string, reason: string, duration: string, notes: string): Promise<any>;
+  sendPaymentReminder(userId: string, adminId: string, reminderType: string, notes: string, channels: string[]): Promise<any>;
+  freezeAccount(userId: string, adminId: string, reason: string, duration: string, notes: string): Promise<any>;
+  flagAccount(userId: string, adminId: string, reason: string, notes: string): Promise<any>;
+  getPendingVerificationSchools(page: number, limit: number): Promise<any>;
+  requestAdditionalDocuments(schoolId: string, adminId: string, data: any): Promise<any>;
 }
 
 /**
@@ -55,9 +68,9 @@ export class AdminService implements IAdminService {
   /**
    * Get loan applications for admin review
    */
-  async getLoanApplications(page: number = 1, limit: number = 10, status?: string): Promise<any> {
-    console.log({ msg: 'Getting loan applications for admin', page, limit, status });
-    return await this.adminRepository.getLoanApplications(page, limit, status);
+  async getLoanApplications(page: number = 1, limit: number = 10, statuses?: string[]): Promise<any> {
+    console.log({ msg: 'Getting loan applications for admin', page, limit, statuses });
+    return await this.adminRepository.getLoanApplications(page, limit, statuses);
   }
 
   /**
@@ -171,6 +184,14 @@ export class AdminService implements IAdminService {
   }
 
   /**
+   * Get single ticket details
+   */
+  async getTicketDetails(ticketId: string): Promise<any> {
+    console.log({ msg: 'Getting ticket details', ticketId });
+    return await this.adminRepository.getTicketDetails(ticketId);
+  }
+
+  /**
    * Respond to support ticket
    */
   async respondToTicket(ticketId: string, message: string, adminId: string): Promise<any> {
@@ -208,5 +229,53 @@ export class AdminService implements IAdminService {
   async addVerificationLog(schoolId: string, activity: string, details: string, status: string, adminId: string): Promise<any> {
     console.log({ msg: 'Adding verification log', schoolId, activity, adminId });
     return await this.adminRepository.addVerificationLog(schoolId, activity, details, status, adminId);
+  }
+
+  async getDashboardStats(): Promise<any> {
+    return await this.adminRepository.getDashboardStats();
+  }
+
+  async getStudents(page: number = 1, limit: number = 10, status?: string): Promise<any> {
+    return await this.adminRepository.getStudents(page, limit, status);
+  }
+
+  async getStudentsRequiringAction(page: number = 1, limit: number = 10): Promise<any> {
+    return await this.adminRepository.getStudentsRequiringAction(page, limit);
+  }
+
+  async getRecentlyActiveStudents(page: number = 1, limit: number = 10): Promise<any> {
+    return await this.adminRepository.getRecentlyActiveStudents(page, limit);
+  }
+
+  async getDelayedPayments(page: number = 1, limit: number = 10): Promise<any> {
+    return await this.adminRepository.getDelayedPayments(page, limit);
+  }
+
+  async getStudentDetails(userId: string): Promise<any> {
+    return await this.adminRepository.getStudentDetails(userId);
+  }
+
+  async suspendLoanEligibility(userId: string, adminId: string, reason: string, duration: string, notes: string): Promise<any> {
+    return await this.adminRepository.suspendLoanEligibility(userId, adminId, reason, duration, notes);
+  }
+
+  async sendPaymentReminder(userId: string, adminId: string, reminderType: string, notes: string, channels: string[]): Promise<any> {
+    return await this.adminRepository.sendPaymentReminder(userId, adminId, reminderType, notes, channels);
+  }
+
+  async freezeAccount(userId: string, adminId: string, reason: string, duration: string, notes: string): Promise<any> {
+    return await this.adminRepository.freezeAccount(userId, adminId, reason, duration, notes);
+  }
+
+  async flagAccount(userId: string, adminId: string, reason: string, notes: string): Promise<any> {
+    return await this.adminRepository.flagAccount(userId, adminId, reason, notes);
+  }
+
+  async getPendingVerificationSchools(page: number = 1, limit: number = 10): Promise<any> {
+    return await this.adminRepository.getPendingVerificationSchools(page, limit);
+  }
+
+  async requestAdditionalDocuments(schoolId: string, adminId: string, data: any): Promise<any> {
+    return await this.adminRepository.requestAdditionalDocuments(schoolId, adminId, data);
   }
 }

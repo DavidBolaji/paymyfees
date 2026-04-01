@@ -26,7 +26,7 @@ export default function VerifyOtpPage() {
   );
   const [message, setMessage] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
-  const [timeLeft, setTimeLeft] = useState<number>(600); // 10 minutes
+  const [timeLeft, setTimeLeft] = useState<number>(60); // 1 minute
 
   // ✅ Zustand auth store
   const { user, hasHydrated, login } = useAuthStore();
@@ -84,7 +84,8 @@ export default function VerifyOtpPage() {
     }
 
     if (value && index === 5 && newOtp.every((d) => d)) {
-      handleVerify();
+      // Pass newOtp directly to avoid reading stale state
+      handleVerify(newOtp.join(''));
     }
   };
 
@@ -94,15 +95,16 @@ export default function VerifyOtpPage() {
   ) => {
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       // Focus previous input on backspace if current input is empty 
-      const prevInput = inputRefs.current[index - 1]; 
-      if (prevInput) { 
-        prevInput.focus(); 
+      const prevInput = inputRefs.current[index - 1];
+      if (prevInput) {
+        prevInput.focus();
       }
     }
   };
 
-  const handleVerify = async () => {
-    if (otp.some((digit) => !digit)) {
+  const handleVerify = async (otpOverride?: string) => {
+    const otpValue = otpOverride ?? otp.join('');
+    if (otpValue.length < 6 || otpValue.split('').some((d) => !d)) {
       setMessage('Please enter the complete 6-digit OTP code.');
       return;
     }
@@ -116,6 +118,12 @@ export default function VerifyOtpPage() {
     setStatus(VerificationStatus.LOADING);
     setLoading(true);
 
+    console.log({
+      token: otpValue,
+      mode: 'otp',
+      userId: user.id
+    })
+
     try {
       const response = await fetch('/api/auth/verify', {
         method: 'POST',
@@ -123,8 +131,8 @@ export default function VerifyOtpPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          token: otp.join(''),
-          mode: 'otp',
+          token: otpValue,
+          mode: 'otp'
         }),
       });
 
@@ -227,11 +235,11 @@ export default function VerifyOtpPage() {
 
             {/* Verify Button */}
             <button
-              onClick={handleVerify}
+              onClick={() => handleVerify()}
               disabled={otp.some((d) => !d)}
               className={`w-full py-3 rounded-lg font-semibold ${otp.some((d) => !d)
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-[#00296B] text-white hover:bg-blue-700'
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-[#00296B] text-white hover:bg-blue-700'
                 } transition-colors`}
             >
               Verify
@@ -243,8 +251,8 @@ export default function VerifyOtpPage() {
                 onClick={handleResendOtp}
                 disabled={timeLeft > 0}
                 className={`text-sm ${timeLeft > 0
-                    ? 'text-gray-400'
-                    : 'text-[#00296B] hover:underline'
+                  ? 'text-gray-400'
+                  : 'text-[#00296B] hover:underline'
                   }`}
               >
                 {timeLeft > 0

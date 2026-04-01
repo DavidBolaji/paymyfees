@@ -89,7 +89,7 @@ export function HomeFeaturesSection() {
             </p>
           </div>
 
-          <div className="mt-10 grid gap-5 md:grid-cols-2">
+          <div className="mt-10 grid gap-5 md:grid-cols-2 max-w-6xl mx-auto">
             {featureItems.map((item) => (
               <article
                 key={item.title}

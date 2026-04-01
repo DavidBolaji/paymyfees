@@ -56,24 +56,23 @@ export function DataTable({
 }: DataTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredData, setFilteredData] = useState<TableData[]>(data);
+  const [clientPage, setClientPage] = useState(1);
 
   const isServerPaginated = !!paginationInfo && !!onPageChange;
   
   useEffect(() => {
     if (searchTerm.trim() === '') {
       setFilteredData(data);
-      return;
+    } else {
+      const searchTermLower = searchTerm.toLowerCase();
+      setFilteredData(data.filter(item =>
+        Object.values(item).some(value => {
+          if (value === null || value === undefined) return false;
+          return String(value).toLowerCase().includes(searchTermLower);
+        })
+      ));
     }
-    
-    const searchTermLower = searchTerm.toLowerCase();
-    const filtered = data.filter(item => {
-      return Object.values(item).some(value => {
-        if (value === null || value === undefined) return false;
-        return String(value).toLowerCase().includes(searchTermLower);
-      });
-    });
-    
-    setFilteredData(filtered);
+    setClientPage(1);
   }, [searchTerm, data]);
   
   const currentPage = paginationInfo?.page || 1;
@@ -82,17 +81,28 @@ export function DataTable({
   const limit = itemsPerPage || paginationInfo?.limit || 5;
   const isEmpty = data.length === 0;
 
-  const startIndex = (currentPage - 1) * limit;
-  const endIndex = Math.min(startIndex + data.length, total);
+  // Client-side pagination
+  const clientTotalPages = Math.max(1, Math.ceil(filteredData.length / itemsPerPage));
+  const clientStart = (clientPage - 1) * itemsPerPage;
+  const displayData = isServerPaginated ? filteredData : filteredData.slice(clientStart, clientStart + itemsPerPage);
 
-  const emptyRowsCount = isServerPaginated ? limit : itemsPerPage;
-  const fillerRowsCount = filteredData.length > 0 && filteredData.length < emptyRowsCount ? emptyRowsCount - filteredData.length : 0;
+  const activePage = isServerPaginated ? currentPage : clientPage;
+  const activeTotalPages = isServerPaginated ? totalPages : clientTotalPages;
+
+  const startIndex = isServerPaginated ? (currentPage - 1) * limit : clientStart;
+  const endIndex = isServerPaginated ? Math.min(startIndex + data.length, total) : Math.min(clientStart + displayData.length, filteredData.length);
+  const displayTotal = isServerPaginated ? total : filteredData.length;
+
+  const emptyRowsCount = itemsPerPage;
+  const fillerRowsCount = displayData.length > 0 && displayData.length < emptyRowsCount ? emptyRowsCount - displayData.length : 0;
   const emptyRows = Array(emptyRowsCount).fill(null);
   const fillerRows = Array(fillerRowsCount).fill(null);
 
   const handlePageChange = (page: number) => {
     if (isServerPaginated && onPageChange) {
       onPageChange(page);
+    } else {
+      setClientPage(page);
     }
   };
 
@@ -113,8 +123,8 @@ export function DataTable({
   const renderPaginationButtons = () => {
     const buttons = [];
     
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) {
+    if (activeTotalPages <= 5) {
+      for (let i = 1; i <= activeTotalPages; i++) {
         buttons.push(
           <button
             key={i}
@@ -122,7 +132,7 @@ export function DataTable({
             disabled={isEmpty && i !== 1}
             className={cn(
               "w-8 h-8 sm:w-10 sm:h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-xs sm:text-sm font-medium transition-colors",
-              currentPage === i
+              activePage === i
                 ? "bg-gray-900 text-white border-gray-900"
                 : "text-gray-600 hover:bg-gray-50",
               isEmpty && i !== 1 && "opacity-50 cursor-not-allowed"
@@ -139,7 +149,7 @@ export function DataTable({
           onClick={() => handlePageChange(1)}
           className={cn(
             "w-8 h-8 sm:w-10 sm:h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-xs sm:text-sm font-medium transition-colors",
-            currentPage === 1
+            activePage === 1
               ? "bg-gray-900 text-white border-gray-900"
               : "text-gray-600 hover:bg-gray-50"
           )}
@@ -148,7 +158,7 @@ export function DataTable({
         </button>
       );
 
-      if (totalPages >= 2) {
+      if (activeTotalPages >= 2) {
         buttons.push(
           <button
             key={2}
@@ -156,7 +166,7 @@ export function DataTable({
             disabled={isEmpty}
             className={cn(
               "w-8 h-8 sm:w-10 sm:h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-xs sm:text-sm font-medium transition-colors",
-              currentPage === 2
+              activePage === 2
                 ? "bg-gray-900 text-white border-gray-900"
                 : "text-gray-600 hover:bg-gray-50",
               isEmpty && "opacity-50 cursor-not-allowed"
@@ -167,7 +177,7 @@ export function DataTable({
         );
       }
 
-      if (totalPages >= 3) {
+      if (activeTotalPages >= 3) {
         buttons.push(
           <button
             key={3}
@@ -175,7 +185,7 @@ export function DataTable({
             disabled={isEmpty}
             className={cn(
               "w-8 h-8 sm:w-10 sm:h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-xs sm:text-sm font-medium transition-colors",
-              currentPage === 3
+              activePage === 3
                 ? "bg-gray-900 text-white border-gray-900"
                 : "text-gray-600 hover:bg-gray-50",
               isEmpty && "opacity-50 cursor-not-allowed"
@@ -186,7 +196,7 @@ export function DataTable({
         );
       }
 
-      if (totalPages > 4) {
+      if (activeTotalPages > 4) {
         buttons.push(
           <span key="ellipsis" className="px-1 sm:px-2 text-gray-400 border-t border-b border-gray-300 h-8 sm:h-10 flex items-center text-xs sm:text-sm">
             ...
@@ -194,21 +204,21 @@ export function DataTable({
         );
       }
 
-      if (totalPages > 3) {
+      if (activeTotalPages > 3) {
         buttons.push(
           <button
-            key={totalPages}
-            onClick={() => handlePageChange(totalPages)}
+            key={activeTotalPages}
+            onClick={() => handlePageChange(activeTotalPages)}
             disabled={isEmpty}
             className={cn(
               "w-8 h-8 sm:w-10 sm:h-10 border-t border-b border-r border-gray-300 flex items-center justify-center text-xs sm:text-sm font-medium transition-colors",
-              currentPage === totalPages
+              activePage === activeTotalPages
                 ? "bg-gray-900 text-white border-gray-900"
                 : "text-gray-600 hover:bg-gray-50",
               isEmpty && "opacity-50 cursor-not-allowed"
             )}
           >
-            {totalPages}
+            {activeTotalPages}
           </button>
         );
       }
@@ -301,7 +311,7 @@ export function DataTable({
               ))
             ) : (
               <>
-                {filteredData.map((item, index) => (
+                {displayData.map((item, index) => (
                   <tr
                     key={index}
                     onClick={() => onRowClick?.(item)}
@@ -334,20 +344,20 @@ export function DataTable({
       </div>
 
       {/* Pagination Footer */}
-      {isServerPaginated && (
+      {(isServerPaginated || clientTotalPages > 1) && (
         <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-200 flex flex-row items-center justify-between gap-3 mt-auto">
           <div className="text-xs sm:text-sm text-gray-500">
             {isEmpty ? (
               "Showing 0 of 0 Records"
             ) : (
-              `Showing ${startIndex + 1}-${endIndex} of ${total} Records`
+              `Showing ${startIndex + 1}-${endIndex} of ${displayTotal} Records`
             )}
           </div>
           
           <div className="flex items-center">
             <button
-              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1 || isEmpty || isLoading}
+              onClick={() => handlePageChange(Math.max(1, activePage - 1))}
+              disabled={activePage === 1 || isEmpty || isLoading}
               className="w-8 h-8 sm:w-10 sm:h-10 border border-gray-300 rounded-l-md flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -356,8 +366,8 @@ export function DataTable({
             {renderPaginationButtons()}
             
             <button
-              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages || isEmpty || isLoading}
+              onClick={() => handlePageChange(Math.min(activeTotalPages, activePage + 1))}
+              disabled={activePage === activeTotalPages || isEmpty || isLoading}
               className="w-8 h-8 sm:w-10 sm:h-10 border border-gray-300 rounded-r-md flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight className="w-4 h-4" />

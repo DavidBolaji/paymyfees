@@ -1,54 +1,27 @@
 /**
- * Prisma Client Singleton with Prisma Accelerate
- * Implements connection pooling, caching, and transaction management
- * Optimized for PostgreSQL with Prisma Accelerate
+ * Prisma Client Singleton
+ * Implements connection pooling and transaction management
  */
 
-// import { PrismaClient, Transaction } from '@/prisma/app/generated/prisma-client';
-import { withAccelerate } from '@prisma/extension-accelerate';
 import { env } from '@/src/config/env';
 import { DatabaseError } from '@/src/types/errors';
-import { PrismaClient, Transaction } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
-/**
- * Extended Prisma Client type with Accelerate
- */
-type PrismaClientWithAccelerate = ReturnType<typeof createPrismaClient>;
+type PrismaClientInstance = ReturnType<typeof createPrismaClient>;
 
 // Prisma Client singleton instance
 declare global {
   // eslint-disable-next-line no-var
-  var prisma: PrismaClientWithAccelerate | undefined;
+  var prisma: PrismaClientInstance | undefined;
 }
 
-/**
- * Creates and configures Prisma Client instance with Accelerate extension
- * 
- * Best Practices:
- * - Uses singleton pattern to prevent connection pool exhaustion
- * - Configures appropriate logging based on environment
- * - Applies Accelerate extension for connection pooling and caching
- * - Handles graceful shutdown
- * - Optimized for high concurrency with connection limits
- */
 function createPrismaClient() {
-  const client = new PrismaClient({
-    log: env.isDevelopment() 
-      ? [
-          // { level: 'warn', emit: 'stdout' },
-          { level: 'error', emit: 'stdout' },
-        ]
-      : [
-          { level: 'error', emit: 'stdout' },
-        ],
+  return new PrismaClient({
+    log: env.isDevelopment()
+      ? [{ level: 'error', emit: 'stdout' }]
+      : [{ level: 'error', emit: 'stdout' }],
     errorFormat: env.isDevelopment() ? 'pretty' : 'minimal',
   });
-
-  // Extend with Accelerate for connection pooling and caching
-  // Accelerate handles connection pooling automatically
-  const extendedClient = client.$extends(withAccelerate());
-
-  return extendedClient;
 }
 
 /**
@@ -108,8 +81,8 @@ export async function executeTransaction<T>(
 ): Promise<T> {
   try {
     const result = await prisma.$transaction(
-      async (tx: Transaction) => {
-        return await callback(tx as any);
+      async (tx) => {
+        return await callback(tx);
       },
       {
         maxWait: options.maxWait || 5000, // 5 seconds
@@ -198,10 +171,10 @@ export async function executeWriteTransaction<T>(
  * ```
  */
 export async function executeBatch<T>(
-  operations: Array<Promise<T>>
+  operations: Array<Parameters<typeof prisma.$transaction>[0] extends (infer U)[] ? U : never>
 ): Promise<T[]> {
   try {
-    return await prisma.$transaction(operations);
+    return await prisma.$transaction(operations as any) as T[];
   } catch (error) {
     if (error instanceof Error) {
       throw new DatabaseError(`Batch operation failed: ${error.message}`);

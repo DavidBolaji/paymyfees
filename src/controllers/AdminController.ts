@@ -43,9 +43,10 @@ export class AdminController {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
-    const status = searchParams.get('status') || undefined;
+    const statusParam = searchParams.get('status') || undefined;
+    const statuses = statusParam ? statusParam.split(',').map(s => s.trim()) : undefined;
 
-    const result = await this.adminService.getLoanApplications(page, limit, status);
+    const result = await this.adminService.getLoanApplications(page, limit, statuses);
 
     const response: ApiResponse = {
       success: true,
@@ -255,6 +256,20 @@ export class AdminController {
   }
 
   /**
+   * GET /api/admin/support/:ticketId
+   */
+  async getTicketDetails(_req: Request, ticketId: string): Promise<NextResponse> {
+    console.log({ msg: 'Get ticket details request', ticketId });
+    const ticket = await this.adminService.getTicketDetails(ticketId);
+    const response: ApiResponse = {
+      success: true,
+      data: ticket,
+      metadata: { timestamp: new Date().toISOString() },
+    };
+    return NextResponse.json(response, { status: 200 });
+  }
+
+  /**
    * POST /api/admin/support/:ticketId/respond
    */
   async respondToTicket(req: Request, ticketId: string, adminId: string): Promise<NextResponse> {
@@ -363,5 +378,86 @@ export class AdminController {
     };
 
     return NextResponse.json(response, { status: 201 });
+  }
+
+  async getDashboardStats(_req: Request): Promise<NextResponse> {
+    const data = await this.adminService.getDashboardStats();
+    return NextResponse.json({ success: true, data }, { status: 200 });
+  }
+
+  async getStudents(req: Request): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const status = searchParams.get('status') || undefined;
+    const result = await this.adminService.getStudents(page, limit, status);
+    return NextResponse.json({ success: true, data: result.students, metadata: { pagination: result.pagination } }, { status: 200 });
+  }
+
+  async getStudentsRequiringAction(req: Request): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const result = await this.adminService.getStudentsRequiringAction(page, limit);
+    return NextResponse.json({ success: true, data: result.students, metadata: { pagination: result.pagination } }, { status: 200 });
+  }
+
+  async getRecentlyActiveStudents(req: Request): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const result = await this.adminService.getRecentlyActiveStudents(page, limit);
+    return NextResponse.json({ success: true, data: result.students, metadata: { pagination: result.pagination } }, { status: 200 });
+  }
+
+  async getDelayedPayments(req: Request): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const result = await this.adminService.getDelayedPayments(page, limit);
+    return NextResponse.json({ success: true, data: result.students, metadata: { pagination: result.pagination } }, { status: 200 });
+  }
+
+  async getStudentDetails(_req: Request, userId: string): Promise<NextResponse> {
+    const data = await this.adminService.getStudentDetails(userId);
+    return NextResponse.json({ success: true, data }, { status: 200 });
+  }
+
+  async suspendLoanEligibility(req: Request, userId: string, adminId: string): Promise<NextResponse> {
+    const { reason, duration, notes } = await req.json();
+    await this.adminService.suspendLoanEligibility(userId, adminId, reason, duration, notes);
+    return NextResponse.json({ success: true, message: 'Loan eligibility suspended' }, { status: 200 });
+  }
+
+  async sendPaymentReminder(req: Request, userId: string, adminId: string): Promise<NextResponse> {
+    const { reminderType, notes, channels } = await req.json();
+    await this.adminService.sendPaymentReminder(userId, adminId, reminderType, notes, channels || []);
+    return NextResponse.json({ success: true, message: 'Payment reminder sent' }, { status: 200 });
+  }
+
+  async freezeAccount(req: Request, userId: string, adminId: string): Promise<NextResponse> {
+    const { reason, duration, notes } = await req.json();
+    await this.adminService.freezeAccount(userId, adminId, reason, duration, notes);
+    return NextResponse.json({ success: true, message: 'Account frozen' }, { status: 200 });
+  }
+
+  async flagAccount(req: Request, userId: string, adminId: string): Promise<NextResponse> {
+    const { reason, notes } = await req.json();
+    await this.adminService.flagAccount(userId, adminId, reason, notes);
+    return NextResponse.json({ success: true, message: 'Account flagged' }, { status: 200 });
+  }
+
+  async getPendingVerificationSchools(req: Request): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const result = await this.adminService.getPendingVerificationSchools(page, limit);
+    return NextResponse.json({ success: true, data: result.schools, metadata: { pagination: result.pagination } }, { status: 200 });
+  }
+
+  async requestAdditionalDocuments(req: Request, schoolId: string, adminId: string): Promise<NextResponse> {
+    const data = await req.json();
+    await this.adminService.requestAdditionalDocuments(schoolId, adminId, data);
+    return NextResponse.json({ success: true, message: 'Document request sent' }, { status: 200 });
   }
 }

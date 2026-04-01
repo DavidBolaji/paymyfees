@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PaymentInstallment } from '@/data/types';
+import { StatusBadge } from './status-badge';
 
 interface InstallmentTableProps {
   installments: PaymentInstallment[];
@@ -19,32 +20,7 @@ export function InstallmentTable({ installments }: InstallmentTableProps) {
   const currentInstallments = installments.slice(startIndex, endIndex);
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'paid':
-        return (
-          <span className="inline-flex items-center bg-green-100 px-2 py-1 rounded-full font-medium text-green-800 text-xs">
-            Paid
-          </span>
-        );
-      case 'pending':
-        return (
-          <span className="inline-flex items-center bg-yellow-100 px-2 py-1 rounded-full font-medium text-yellow-800 text-xs">
-            Pending
-          </span>
-        );
-      case 'overdue':
-        return (
-          <span className="inline-flex items-center bg-red-100 px-2 py-1 rounded-full font-medium text-red-800 text-xs">
-            Overdue
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center bg-gray-100 px-2 py-1 rounded-full font-medium text-gray-800 text-xs">
-            {status}
-          </span>
-        );
-    }
+    return <StatusBadge status={status} />;
   };
 
   const handlePageChange = (page: number) => {
