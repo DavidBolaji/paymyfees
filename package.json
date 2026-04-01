@@ -3,7 +3,7 @@
   "version": "0.1.2",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3001",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
@@ -22,6 +22,7 @@
     "fix:john-doe": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/fix-john-doe-loan.ts"
   },
   "dependencies": {
+    "@fontsource-variable/manrope": "^5.2.8",
     "@hookform/resolvers": "^5.2.2",
     "@prisma/client": "^5.22.0",
     "@prisma/extension-accelerate": "^3.0.1",
@@ -45,11 +46,13 @@
     "react-hook-form": "^7.71.1",
     "react-hot-toast": "^2.6.0",
     "react-phone-input-2": "^2.15.1",
+    "react-simple-maps": "^3.0.0",
     "recharts": "^3.6.0",
     "resend": "^6.8.0",
     "speakeasy": "^2.0.0",
     "tailwind-merge": "^2.5.0",
     "tailwindcss-animate": "^1.0.7",
+    "topojson-client": "^3.1.0",
     "uuid": "^13.0.0",
     "zod": "^3.24.1",
     "zustand": "^5.0.10"
@@ -63,6 +66,7 @@
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@types/speakeasy": "^2.0.10",
+    "@types/topojson-client": "^3.1.5",
     "autoprefixer": "^10.4.22",
     "eslint": "^8.57.0",
     "eslint-config-next": "^15.0.0",

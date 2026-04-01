@@ -38,8 +38,6 @@ export class UserRepository implements IUserRepository {
         wallet: true,
         notificationSettings: true,
       },
-      // Bypass Prisma Accelerate cache for fresh data
-      cacheStrategy: { ttl: 0 },
     });
     return user ? this.toDTO(user) : null;
   }

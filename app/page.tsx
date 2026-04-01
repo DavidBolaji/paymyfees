@@ -31,7 +31,7 @@ import { AnimateIn } from "@/components/home/animate-in";
 
 export default function HomePage() {
   return (
-    <MaxScreenContainer className="max-w-[1512px] bg-white">
+    <>
       <HomeHeader />
       <AnimateIn>
         <HomeHeroSection />
@@ -57,6 +57,6 @@ export default function HomePage() {
       <AnimateIn>
         <HomeFooterSection />
       </AnimateIn>
-    </MaxScreenContainer>
+    </>
   );
 }

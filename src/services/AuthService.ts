@@ -135,32 +135,32 @@ export class AuthService implements IAuthService {
       );
 
       // Send verification email
-      await this.mailService.sendVerificationEmail(
+      const emailSent = await this.mailService.sendVerificationEmail(
         user.email,
         user.fullName,
         input.mode as 'otp' | 'link',
         verificationData
       );
 
-      try {
+      if (emailSent) {
         console.log({
           message: 'Verification email sent',
           email: user.email,
           mode: input.mode
         });
-      } catch (loggingError) {
-        console.info(`Verification email sent to ${user.email} using ${input.mode} mode`);
-      }
-    } catch (error) {
-      try {
+      } else {
         console.error({
           message: 'Failed to send verification email',
           email: user.email,
-          errorMessage: error instanceof Error ? error.message : String(error)
+          mode: input.mode
         });
-      } catch (loggingError) {
-        console.error(`Failed to send verification email to ${user.email}: ${error}`);
       }
+    } catch (error) {
+      console.error({
+        message: 'Failed to send verification email',
+        email: user.email,
+        errorMessage: error instanceof Error ? error.message : String(error)
+      });
     }
 
     // Generate tokens

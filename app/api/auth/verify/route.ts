@@ -5,7 +5,7 @@
 
 import { AuthController } from '@/src/controllers/AuthController';
 import { asyncHandler } from '@/src/middleware/errorHandler';
-import { lenientRateLimiter } from '@/src/middleware/rateLimiter';
+// import { lenientRateLimiter } from '@/src/middleware/rateLimiter';
 
 const authController = new AuthController();
 
@@ -14,6 +14,7 @@ const authController = new AuthController();
  * Verify user email with token or OTP
  */
 export const POST = asyncHandler(async (req: Request) => {
-  await lenientRateLimiter(req);
+  // await lenientRateLimiter(req);
+  console.log('Received email verification request');
   return await authController.verifyEmail(req);
 });

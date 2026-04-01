@@ -117,10 +117,24 @@ export class LoanRepository implements ILoanRepository {
     const loan = await prisma.loan.findUnique({
       where: isUUID ? { id } : { loanNumber: id },
       include: {
-        user: true,
-        school: true,
+        user: {
+          include: {
+            parentProfile: {
+              select: { city: true, country: true, completedLoans: true, totalLoans: true }
+            }
+          }
+        },
+        school: {
+          select: { id: true, schoolName: true, isVerified: true }
+        },
         installments: {
           orderBy: { installmentNumber: 'asc' },
+        },
+        documents: {
+          select: {
+            id: true, documentType: true, fileName: true,
+            fileUrl: true, fileSize: true, mimeType: true, isVerified: true
+          }
         },
       },
     });
@@ -329,6 +343,11 @@ export class LoanRepository implements ILoanRepository {
       userName: loan.user?.fullName,
       userEmail: loan.user?.email,
       userPhone: loan.user?.phone,
+      userCountry: loan.user?.country,
+      userCity: loan.user?.parentProfile?.city,
+      userIsActive: loan.user?.isActive,
+      schoolIsVerified: loan.school?.isVerified,
+      userPreviousLoans: loan.user?.parentProfile?.completedLoans ?? 0,
       
       // International student specific fields
       countryOfStudy: loan.countryOfStudy,

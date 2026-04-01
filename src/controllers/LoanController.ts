@@ -387,10 +387,44 @@ async getPaymentPlanById(_req: Request, loanId: string, user: AuthUser): Promise
 }
 
 /**
+ * Generate virtual installments from loan data when none exist in DB
+ */
+private generateVirtualInstallments(loan: any): any[] {
+  const monthlyPayment = Number(loan.monthlyPayment);
+  const repaymentMonths = loan.repaymentMonths;
+
+  // Pick the best reference date: disbursement > first payment > application > today
+  const refDate = loan.disbursementDate || loan.firstPaymentDate || loan.applicationDate || new Date();
+  const firstPaymentDate = new Date(refDate);
+  firstPaymentDate.setDate(firstPaymentDate.getDate() + 30);
+
+  const virtualInstallments = [];
+  for (let i = 0; i < repaymentMonths; i++) {
+    const dueDate = new Date(firstPaymentDate);
+    dueDate.setMonth(dueDate.getMonth() + i);
+    virtualInstallments.push({
+      installmentNumber: i + 1,
+      amount: monthlyPayment,
+      dueDate,
+      status: 'PENDING',
+      daysOverdue: 0,
+      lateFee: 0,
+    });
+  }
+  return virtualInstallments;
+}
+
+/**
  * Transform detailed loan data to PaymentPlan format
  */
 private transformToPaymentPlan(loan: any): any {
-  const installments = loan.installments || [];
+  let installments = loan.installments || [];
+
+  // If no installments exist in DB, generate virtual ones from loan terms
+  if (installments.length === 0 && loan.repaymentMonths > 0 && loan.monthlyPayment) {
+    installments = this.generateVirtualInstallments(loan);
+  }
+
   const paidInstallments = installments.filter((i: any) => i.status === 'PAID');
   const overdueInstallments = installments.filter((i: any) => i.status === 'OVERDUE');
   const nextPendingInstallment = installments.find((i: any) => i.status === 'PENDING');

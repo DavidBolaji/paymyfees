@@ -279,6 +279,7 @@ export class AuthController {
     let body: any;
     try {
       body = await req.json();
+      console.log('[EMAIL_BODY]:', body);
     } catch {
       return NextResponse.json(
         {

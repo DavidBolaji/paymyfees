@@ -1,573 +1,258 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DataTable, PaginationInfo } from '@/components/dashboard/data-table';
-import { CustomInput } from '@/components/ui/custom-input';
-import { Modal } from '@/components/ui/modal';
-import { Plus } from 'lucide-react';
-import { SchoolDetailDrawer } from '@/components/dashboard/school-detail-drawer';
+import { useRouter } from 'next/navigation';
+import { DataTable } from '@/components/dashboard/data-table';
+import { StatCard } from '@/components/dashboard/stat-card';
+import { StatCardSkeleton } from '@/components/dashboard/stat-card-skeleton';
+import { SchoolVerifyDrawer } from '@/components/admin/school-verify-drawer';
+import { BackNavigation } from '@/components/dashboard';
+import useAuthStore from '@/src/authStore';
+import { api } from '@/src/lib/api';
 
-const SCHOOL_COLUMNS = [
+const TABLE_COLUMNS = [
   { key: 'schoolName', label: 'School Name' },
-  { key: 'schoolEmail', label: 'Email' },
-  { key: 'city', label: 'City' },
-  { key: 'totalStudents', label: 'Students' },
-  { key: 'isVerified', label: 'Status' },
-  { key: 'createdAt', label: 'Registered' },
+  { key: 'location', label: 'Location' },
+  { key: 'applicationLinked', label: 'Application Linked' },
+  { key: 'dateSubmitted', label: 'Date Submitted' },
+  { key: 'status', label: 'Status' },
+  { key: 'assignedAdmin', label: 'Assigned Admin' },
 ];
 
-const ACTIVITY_OPTIONS = [
-  { value: 'SUBMISSION_RECEIVED', label: 'Submission Received' },
-  { value: 'DOCUMENT_REVIEW', label: 'Document Review' },
-  { value: 'SCHOOL_VERIFICATION', label: 'School Verification' },
-  { value: 'BANK_VERIFICATION', label: 'Bank Verification' },
-  { value: 'CONTACT_VERIFICATION', label: 'Contact Verification' },
-  { value: 'ADDITIONAL_INFO_REQUESTED', label: 'Additional Info Requested' },
-  { value: 'VERIFICATION_COMPLETE', label: 'Verification Complete' },
-];
+type Tab = 'all' | 'pending' | 'verified';
 
-const STATUS_OPTIONS = [
-  { value: 'PENDING', label: 'Pending' },
-  { value: 'IN_PROGRESS', label: 'In Progress' },
-  { value: 'APPROVED', label: 'Approved' },
-  { value: 'REJECTED', label: 'Rejected' },
-  { value: 'REQUIRES_INFO', label: 'Requires Info' },
-];
+function fmt(d: any) {
+  return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
+}
+
+function toRow(s: any) {
+  return {
+    ...s,
+    location: [s.city, s.country].filter(Boolean).join(', ') || 'N/A',
+    applicationLinked: s.loans?.length ?? 0,
+    dateSubmitted: fmt(s.createdAt),
+    status: s.isVerified ? 'completed' : 'pending',
+    assignedAdmin: 'N/A',
+  };
+}
 
 export default function AdminSchoolsPage() {
-  const [schools, setSchools] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+  const { user } = useAuthStore();
+  const router = useRouter();
+
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [stats, setStats] = useState<any>(null);
+
+  const [activeTab, setActiveTab] = useState<Tab>('all');
+
+  const [allSchools, setAllSchools] = useState<any[]>([]);
+  const [allPagination, setAllPagination] = useState<any>(null);
+  const [allLoading, setAllLoading] = useState(true);
+
+  const [pendingSchools, setPendingSchools] = useState<any[]>([]);
+  const [pendingPagination, setPendingPagination] = useState<any>(null);
+  const [pendingLoading, setPendingLoading] = useState(false);
+
+  const [verifiedSchools, setVerifiedSchools] = useState<any[]>([]);
+  const [verifiedPagination, setVerifiedPagination] = useState<any>(null);
+  const [verifiedLoading, setVerifiedLoading] = useState(false);
+
   const [selectedSchool, setSelectedSchool] = useState<any>(null);
   const [showDrawer, setShowDrawer] = useState(false);
-  const [showAddSchoolModal, setShowAddSchoolModal] = useState(false);
-  const [processing, setProcessing] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('');
-  const [loadingSchoolDetails, setLoadingSchoolDetails] = useState(false);
-  
-  // Approval/Rejection modals
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
-  const [showRejectionModal, setShowRejectionModal] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState('');
-  
-  // Log modal
-  const [showLogModal, setShowLogModal] = useState(false);
-  const [logForm, setLogForm] = useState({
-    activity: '',
-    details: '',
-    status: 'IN_PROGRESS'
-  });
-  
-  // Add school form state
-  const [schoolForm, setSchoolForm] = useState({
-    schoolName: '',
-    schoolEmail: '',
-    schoolPhone: '',
-    schoolAddress: '',
-    city: '',
-    state: '',
-    country: 'Nigeria',
-    contactPersonName: '',
-    contactPersonEmail: '',
-    contactPersonPhone: '',
-    bankName: '',
-    accountNumber: '',
-    accountName: '',
-  });
 
   useEffect(() => {
-    fetchSchools(1);
-  }, [statusFilter]);
+    if (user?.role !== 'ADMIN') { router.push('/dashboard'); return; }
+    fetchStats();
+    fetchAll(1);
+  }, [user]);
 
-  const fetchSchools = async (page: number) => {
+  const fetchStats = async () => {
     try {
-      setLoading(true);
-      const url = `/api/admin/schools?page=${page}&limit=10${statusFilter ? `&status=${statusFilter}` : ''}`;
-      const res = await fetch(url);
+      const res = await api.get('/api/admin/dashboard');
       const data = await res.json();
-      
-      if (data.success) {
-        setSchools(data.data || []);
-        setPagination(data.metadata?.pagination);
-      }
-    } catch (error) {
-      console.error('Error fetching schools:', error);
+      setStats(data.data);
+    } catch (e) {
+      console.error(e);
     } finally {
-      setLoading(false);
+      setStatsLoading(false);
     }
   };
 
-  const handleViewDetails = async (school: any) => {
-    // Show drawer immediately with basic data
-    setSelectedSchool(school);
+  const fetchAll = async (page: number) => {
+    try {
+      setAllLoading(true);
+      const res = await api.get(`/api/admin/schools?page=${page}&limit=10`);
+      const data = await res.json();
+      setAllSchools(data.data || []);
+      setAllPagination(data.metadata?.pagination);
+    } catch (e) { console.error(e); }
+    finally { setAllLoading(false); }
+  };
+
+  const fetchPending = async (page: number) => {
+    try {
+      setPendingLoading(true);
+      const res = await api.get(`/api/admin/schools?page=${page}&limit=10&status=pending`);
+      const data = await res.json();
+      setPendingSchools(data.data || []);
+      setPendingPagination(data.metadata?.pagination);
+    } catch (e) { console.error(e); }
+    finally { setPendingLoading(false); }
+  };
+
+  const fetchVerified = async (page: number) => {
+    try {
+      setVerifiedLoading(true);
+      const res = await api.get(`/api/admin/schools?page=${page}&limit=10&status=verified`);
+      const data = await res.json();
+      setVerifiedSchools(data.data || []);
+      setVerifiedPagination(data.metadata?.pagination);
+    } catch (e) { console.error(e); }
+    finally { setVerifiedLoading(false); }
+  };
+
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    if (tab === 'pending' && pendingSchools.length === 0) fetchPending(1);
+    if (tab === 'verified' && verifiedSchools.length === 0) fetchVerified(1);
+  };
+
+  const handleRowClick = (row: any) => {
+    setSelectedSchool(row);
     setShowDrawer(true);
-    
-    // Fetch full details in background
-    try {
-      setLoadingSchoolDetails(true);
-      const res = await fetch(`/api/admin/schools/${school.id}`);
-      const data = await res.json();
-      
-      if (data.success) {
-        setSelectedSchool(data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching school details:', error);
-    } finally {
-      setLoadingSchoolDetails(false);
-    }
   };
 
-  const handleApprove = async (schoolId: string) => {
-    if (!schoolId) return;
-    
-    try {
-      setProcessing(true);
-      const res = await fetch(`/api/admin/schools/${schoolId}/approve`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      const data = await res.json();
-      
-      if (data.success) {
-        setShowApprovalModal(false);
-        setShowDrawer(false);
-        setSelectedSchool(null);
-        fetchSchools(pagination?.page || 1);
-      }
-    } catch (error) {
-      console.error('Error approving school:', error);
-    } finally {
-      setProcessing(false);
-    }
+  const handleApproved = () => {
+    fetchAll(1);
+    fetchPending(1);
+    fetchVerified(1);
+    fetchStats();
   };
 
-  const handleReject = async (schoolId: string, reason: string) => {
-    if (!schoolId || !reason) return;
-    
-    try {
-      setProcessing(true);
-      const res = await fetch(`/api/admin/schools/${schoolId}/reject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason })
-      });
-
-      const data = await res.json();
-      
-      if (data.success) {
-        setShowRejectionModal(false);
-        setRejectionReason('');
-        setShowDrawer(false);
-        setSelectedSchool(null);
-        fetchSchools(pagination?.page || 1);
-      }
-    } catch (error) {
-      console.error('Error rejecting school:', error);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleAddLog = async () => {
-    if (!logForm.activity || !logForm.details || !selectedSchool) return;
-
-    try {
-      setProcessing(true);
-      const res = await fetch(`/api/admin/schools/${selectedSchool.id}/verification-log`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(logForm)
-      });
-
-      const data = await res.json();
-      
-      if (data.success) {
-        setShowLogModal(false);
-        setLogForm({
-          activity: '',
-          details: '',
-          status: 'IN_PROGRESS'
-        });
-        fetchSchools(pagination?.page || 1);
-      }
-    } catch (error) {
-      console.error('Error adding verification log:', error);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleAddSchool = async () => {
-    try {
-      setProcessing(true);
-      const res = await fetch('/api/admin/schools', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(schoolForm)
-      });
-
-      const data = await res.json();
-      
-      if (data.success) {
-        setShowAddSchoolModal(false);
-        setSchoolForm({
-          schoolName: '',
-          schoolEmail: '',
-          schoolPhone: '',
-          schoolAddress: '',
-          city: '',
-          state: '',
-          country: 'Nigeria',
-          contactPersonName: '',
-          contactPersonEmail: '',
-          contactPersonPhone: '',
-          bankName: '',
-          accountNumber: '',
-          accountName: '',
-        });
-        fetchSchools(1);
-      }
-    } catch (error) {
-      console.error('Error adding school:', error);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const formattedSchools = schools.map(school => ({
-    ...school,
-    isVerified: school.isVerified ? 'Verified' : 'Pending',
-    createdAt: new Date(school.createdAt).toLocaleDateString()
-  }));
+  const TABS: { id: Tab; label: string }[] = [
+    { id: 'all', label: 'All Schools' },
+    { id: 'pending', label: 'Pending' },
+    { id: 'verified', label: 'Verified' },
+  ];
 
   return (
-    <div className="p-4 md:p-6 pt-6 md:pt-0">
-      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div>
-          <h2 className='mb-2 font-semibold text-[#191919] text-xl md:text-[1.6875rem]'>School Management</h2>
-          <p className='text-[#5F5F5F] text-sm md:text-base'>Manage and verify school registrations</p>
+    <>
+      <div className="bg-[#F6F6F6] min-h-full p-4 sm:p-6 md:p-8">
+        <BackNavigation href="/admin" label="Back to Dashboard" />
+
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl md:text-[1.6875rem] font-bold text-[#191919]">School Verification</h1>
+          <p className="text-[#5F5F5F] mt-1">Review and validate schools submitted during loan applications.</p>
         </div>
-        <button
-          onClick={() => setShowAddSchoolModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          <Plus className="w-4 h-4" />
-          Add School
-        </button>
+
+        {/* Stat Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {statsLoading ? (
+            Array(4).fill(null).map((_, i) => <StatCardSkeleton key={i} />)
+          ) : (
+            <>
+              <StatCard
+                title="Pending Schools"
+                value={stats?.pendingSchoolsCount?.toString() ?? '0'}
+                subtitle="Pending schools"
+                footer="Awaiting review and documentation"
+                variant="primary"
+              />
+              <StatCard
+                title="Under Review"
+                value={stats?.underReviewCount?.toString() ?? '0'}
+                subtitle="School under review"
+                footer="Currently being verified by admin"
+              />
+              <StatCard
+                title="Verified Schools"
+                value={stats?.verifiedSchoolsCount?.toString() ?? '0'}
+                subtitle="Verified schools"
+                footer="Approved institutions"
+              />
+              <StatCard
+                title="Rejected Schools"
+                value={stats?.rejectedSchoolsCount?.toString() ?? '0'}
+                subtitle="Rejected schools"
+                footer="Institution flagged due to compliance"
+              />
+            </>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200 mb-6">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => handleTabChange(tab.id)}
+              className={`flex-1 px-2 sm:px-3 md:px-4 lg:px-6 py-3 sm:py-4 font-semibold text-[0.7rem] sm:text-[0.8125rem] md:text-[0.925rem] text-center transition-colors whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'bg-[#00296B] text-white'
+                  : 'bg-white text-[#191919] hover:text-[#00296B] hover:bg-gray-50'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* All Schools */}
+        {activeTab === 'all' && (
+          <DataTable
+            title="All School Verification"
+            columns={TABLE_COLUMNS}
+            data={allSchools.map(toRow)}
+            viewAllHref="/admin/schools/all-active-schools"
+            onRowClick={handleRowClick}
+            paginationInfo={allPagination}
+            onPageChange={fetchAll}
+            isLoading={allLoading}
+            itemsPerPage={10}
+            searchable
+          />
+        )}
+
+        {/* Pending */}
+        {activeTab === 'pending' && (
+          <DataTable
+            title="Pending Verification"
+            columns={TABLE_COLUMNS}
+            data={pendingSchools.map(toRow)}
+            viewAllHref="/admin/schools/all-pending-schools"
+            onRowClick={handleRowClick}
+            paginationInfo={pendingPagination}
+            onPageChange={fetchPending}
+            isLoading={pendingLoading}
+            itemsPerPage={10}
+            searchable
+          />
+        )}
+
+        {/* Verified */}
+        {activeTab === 'verified' && (
+          <DataTable
+            title="Verified Schools"
+            columns={TABLE_COLUMNS}
+            data={verifiedSchools.map(toRow)}
+            viewAllHref="/admin/schools/all-verified-schools"
+            onRowClick={handleRowClick}
+            paginationInfo={verifiedPagination}
+            onPageChange={fetchVerified}
+            isLoading={verifiedLoading}
+            itemsPerPage={10}
+            searchable
+          />
+        )}
       </div>
 
-      <div className="mb-6 max-w-xs">
-        <CustomInput
-          label="Filter by Status"
-          type="select"
-          value={statusFilter}
-          onChange={setStatusFilter}
-          options={[
-            { value: '', label: 'All Schools' },
-            { value: 'verified', label: 'Verified' },
-            { value: 'pending', label: 'Pending' },
-          ]}
-        />
-      </div>
-
-      <DataTable
-        title="All Schools"
-        columns={SCHOOL_COLUMNS}
-        data={formattedSchools}
-        paginationInfo={pagination || undefined}
-        onPageChange={fetchSchools}
-        itemsPerPage={10}
-        isLoading={loading}
-        onRowClick={handleViewDetails}
-        searchable={true}
-        filterable={true}
-      />
-
-      {/* School Detail Drawer */}
-      <SchoolDetailDrawer
+      <SchoolVerifyDrawer
         isOpen={showDrawer}
-        onClose={() => {
-          setShowDrawer(false);
-          setSelectedSchool(null);
-        }}
+        onClose={() => setShowDrawer(false)}
         school={selectedSchool}
-        onApprove={() => {
-          setShowDrawer(false);
-          setShowApprovalModal(true);
-        }}
-        onReject={() => {
-          setShowDrawer(false);
-          setShowRejectionModal(true);
-        }}
-        onAddLog={() => {
-          setShowDrawer(false);
-          setShowLogModal(true);
-        }}
-        onRefresh={() => fetchSchools(pagination?.page || 1)}
-        isLoading={loadingSchoolDetails}
+        onApproved={handleApproved}
       />
-
-      {/* Add School Modal */}
-      {showAddSchoolModal && (
-        <Modal
-          isOpen={showAddSchoolModal}
-          onClose={() => setShowAddSchoolModal(false)}
-          title="Add New School"
-        >
-          <div className="space-y-4 max-h-[70vh] overflow-y-auto">
-            <CustomInput
-              label="School Name"
-              type="text"
-              value={schoolForm.schoolName}
-              onChange={(val) => setSchoolForm({ ...schoolForm, schoolName: val })}
-              placeholder="Enter school name"
-            />
-            <CustomInput
-              label="School Email"
-              type="email"
-              value={schoolForm.schoolEmail}
-              onChange={(val) => setSchoolForm({ ...schoolForm, schoolEmail: val })}
-              placeholder="school@example.com"
-            />
-            <CustomInput
-              label="School Phone"
-              type="phone"
-              value={schoolForm.schoolPhone}
-              onChange={(val) => setSchoolForm({ ...schoolForm, schoolPhone: val })}
-              placeholder="Phone number"
-            />
-            <CustomInput
-              label="School Address"
-              type="text"
-              value={schoolForm.schoolAddress}
-              onChange={(val) => setSchoolForm({ ...schoolForm, schoolAddress: val })}
-              placeholder="Enter address"
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <CustomInput
-                label="City"
-                type="text"
-                value={schoolForm.city}
-                onChange={(val) => setSchoolForm({ ...schoolForm, city: val })}
-                placeholder="City"
-              />
-              <CustomInput
-                label="State"
-                type="text"
-                value={schoolForm.state}
-                onChange={(val) => setSchoolForm({ ...schoolForm, state: val })}
-                placeholder="State"
-              />
-            </div>
-            <CustomInput
-              label="Contact Person Name"
-              type="text"
-              value={schoolForm.contactPersonName}
-              onChange={(val) => setSchoolForm({ ...schoolForm, contactPersonName: val })}
-              placeholder="Contact person name"
-            />
-            <CustomInput
-              label="Contact Person Email"
-              type="email"
-              value={schoolForm.contactPersonEmail}
-              onChange={(val) => setSchoolForm({ ...schoolForm, contactPersonEmail: val })}
-              placeholder="contact@example.com"
-            />
-            <CustomInput
-              label="Contact Person Phone"
-              type="phone"
-              value={schoolForm.contactPersonPhone}
-              onChange={(val) => setSchoolForm({ ...schoolForm, contactPersonPhone: val })}
-              placeholder="Contact phone"
-            />
-            <CustomInput
-              label="Bank Name"
-              type="text"
-              value={schoolForm.bankName}
-              onChange={(val) => setSchoolForm({ ...schoolForm, bankName: val })}
-              placeholder="Bank name"
-            />
-            <CustomInput
-              label="Account Number"
-              type="text"
-              value={schoolForm.accountNumber}
-              onChange={(val) => setSchoolForm({ ...schoolForm, accountNumber: val })}
-              placeholder="Account number"
-            />
-            <CustomInput
-              label="Account Name"
-              type="text"
-              value={schoolForm.accountName}
-              onChange={(val) => setSchoolForm({ ...schoolForm, accountName: val })}
-              placeholder="Account name"
-            />
-
-            <div className="flex gap-3 pt-4 sticky bottom-0 bg-white">
-              <button
-                onClick={() => setShowAddSchoolModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                disabled={processing}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddSchool}
-                disabled={processing || !schoolForm.schoolName || !schoolForm.schoolEmail}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {processing ? 'Adding...' : 'Add School'}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Approval Modal */}
-      {selectedSchool && (
-        <Modal
-          isOpen={showApprovalModal}
-          onClose={() => setShowApprovalModal(false)}
-          title="Approve School"
-        >
-          <div className="space-y-4">
-            <p className="text-gray-600">
-              Are you sure you want to approve <strong>{selectedSchool.schoolName}</strong>?
-            </p>
-
-            <div className="flex gap-3 pt-4">
-              <button
-                onClick={() => setShowApprovalModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                disabled={processing}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleApprove(selectedSchool.id)}
-                disabled={processing}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {processing ? 'Processing...' : 'Approve'}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Rejection Modal */}
-      {selectedSchool && (
-        <Modal
-          isOpen={showRejectionModal}
-          onClose={() => {
-            setShowRejectionModal(false);
-            setRejectionReason('');
-          }}
-          title="Reject School"
-        >
-          <div className="space-y-4">
-            <p className="text-gray-600">
-              Please provide a reason for rejecting <strong>{selectedSchool.schoolName}</strong>.
-            </p>
-
-            <CustomInput
-              label="Rejection Reason"
-              type="text"
-              value={rejectionReason}
-              onChange={setRejectionReason}
-              placeholder="Enter reason for rejection"
-            />
-
-            <div className="flex gap-3 pt-4">
-              <button
-                onClick={() => {
-                  setShowRejectionModal(false);
-                  setRejectionReason('');
-                }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                disabled={processing}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleReject(selectedSchool.id, rejectionReason)}
-                disabled={processing || !rejectionReason}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {processing ? 'Processing...' : 'Reject'}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Add Verification Log Modal */}
-      {selectedSchool && (
-        <Modal
-          isOpen={showLogModal}
-          onClose={() => {
-            setShowLogModal(false);
-            setLogForm({
-              activity: '',
-              details: '',
-              status: 'IN_PROGRESS'
-            });
-          }}
-          title="Add Verification Log"
-        >
-          <div className="space-y-4">
-            <CustomInput
-              label="Activity"
-              type="select"
-              value={logForm.activity}
-              onChange={(val) => setLogForm({ ...logForm, activity: val })}
-              options={ACTIVITY_OPTIONS}
-              placeholder="Select activity"
-            />
-
-            <CustomInput
-              label="Status"
-              type="select"
-              value={logForm.status}
-              onChange={(val) => setLogForm({ ...logForm, status: val })}
-              options={STATUS_OPTIONS}
-            />
-
-            <CustomInput
-              label="Details"
-              type="text"
-              value={logForm.details}
-              onChange={(val) => setLogForm({ ...logForm, details: val })}
-              placeholder="Enter details about this activity"
-            />
-
-            <div className="flex gap-3 pt-4">
-              <button
-                onClick={() => {
-                  setShowLogModal(false);
-                  setLogForm({
-                    activity: '',
-                    details: '',
-                    status: 'IN_PROGRESS'
-                  });
-                }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                disabled={processing}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddLog}
-                disabled={processing || !logForm.activity || !logForm.details}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {processing ? 'Adding...' : 'Add Log'}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-    </div>
+    </>
   );
 }

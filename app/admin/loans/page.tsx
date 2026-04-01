@@ -1,353 +1,298 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { DataTable, PaginationInfo } from '@/components/dashboard/data-table';
-import { CustomInput } from '@/components/ui/custom-input';
-import { Modal } from '@/components/ui/modal';
+import { useRouter } from 'next/navigation';
+import { DataTable } from '@/components/dashboard/data-table';
+import { StatCard } from '@/components/dashboard/stat-card';
+import { StatCardSkeleton } from '@/components/dashboard/stat-card-skeleton';
 import { LoanDetailDrawer } from '@/components/dashboard/loan-detail-drawer';
+import useAuthStore from '@/src/authStore';
 import { api } from '@/src/lib/api';
 
-const LOAN_COLUMNS = [
-  { key: 'loanNumber', label: 'Loan Number' },
-  { key: 'userName', label: 'Applicant' },
+const TABLE_COLUMNS = [
+  { key: 'userName', label: 'Student Name' },
   { key: 'schoolName', label: 'School' },
-  { key: 'loanAmount', label: 'Amount' },
-  { key: 'repaymentMonths', label: 'Months' },
+  { key: 'loanNumber', label: 'Application ID' },
   { key: 'status', label: 'Status' },
+  { key: 'loanAmount', label: 'Loan Amount' },
   { key: 'applicationDate', label: 'Date' },
 ];
 
+type Tab = 'all' | 'pending' | 'approved' | 'rejected';
+
+function fmt(d: any) {
+  return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
+}
+
+function toRow(l: any) {
+  return {
+    ...l,
+    loanAmount: `₦${Number(l.loanAmount || 0).toLocaleString()}`,
+    applicationDate: fmt(l.applicationDate),
+  };
+}
+
 export default function AdminLoansPage() {
-  const [loans, setLoans] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
+  const { user } = useAuthStore();
+  const router = useRouter();
+
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [stats, setStats] = useState<any>(null);
+
+  const [activeTab, setActiveTab] = useState<Tab>('all');
+
+  const [allLoans, setAllLoans] = useState<any[]>([]);
+  const [allPagination, setAllPagination] = useState<any>(null);
+  const [allLoading, setAllLoading] = useState(true);
+
+  const [pendingLoans, setPendingLoans] = useState<any[]>([]);
+  const [pendingPagination, setPendingPagination] = useState<any>(null);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [pendingLoaded, setPendingLoaded] = useState(false);
+
+  const [approvedLoans, setApprovedLoans] = useState<any[]>([]);
+  const [approvedPagination, setApprovedPagination] = useState<any>(null);
+  const [approvedLoading, setApprovedLoading] = useState(false);
+  const [approvedLoaded, setApprovedLoaded] = useState(false);
+
+  const [rejectedLoans, setRejectedLoans] = useState<any[]>([]);
+  const [rejectedPagination, setRejectedPagination] = useState<any>(null);
+  const [rejectedLoading, setRejectedLoading] = useState(false);
+  const [rejectedLoaded, setRejectedLoaded] = useState(false);
+
   const [selectedLoan, setSelectedLoan] = useState<any>(null);
   const [showDrawer, setShowDrawer] = useState(false);
-  const [showStatusModal, setShowStatusModal] = useState(false);
-  const [showDisbursementModal, setShowDisbursementModal] = useState(false);
-  const [statusAction, setStatusAction] = useState<'approve' | 'reject' | null>(null);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [processing, setProcessing] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('');
+  const [drawerLoading, setDrawerLoading] = useState(false);
 
   useEffect(() => {
-    fetchLoans(1);
-  }, [statusFilter]);
+    if (user?.role !== 'ADMIN') { router.push('/dashboard'); return; }
+    fetchStats();
+    fetchAll(1);
+  }, [user]);
 
-  const fetchLoans = async (page: number) => {
+  const fetchStats = async () => {
     try {
-      setLoading(true);
-      const url = `/api/admin/loans?page=${page}&limit=10${statusFilter ? `&status=${statusFilter}` : ''}`;
-      const res = await api.get(url);
+      const res = await api.get('/api/admin/dashboard');
       const data = await res.json();
-      
-      if (data.success) {
-        setLoans(data.data || []);
-        setPagination(data.metadata?.pagination);
-      }
-    } catch (error) {
-      console.error('Error fetching loans:', error);
+      setStats(data.data);
+    } catch (e) {
+      console.error(e);
     } finally {
-      setLoading(false);
+      setStatsLoading(false);
     }
   };
 
-  const handleViewDetails = async (loan: any) => {
+  const fetchAll = async (page: number) => {
     try {
-      setLoading(true);
+      setAllLoading(true);
+      const res = await api.get(`/api/admin/loans?page=${page}&limit=10`);
+      const data = await res.json();
+      if (data.success) {
+        setAllLoans((data.data || []).map(toRow));
+        setAllPagination(data.metadata?.pagination);
+      }
+    } catch (e) { console.error(e); }
+    finally { setAllLoading(false); }
+  };
+
+  const fetchPending = async (page: number) => {
+    try {
+      setPendingLoading(true);
+      const res = await api.get(`/api/admin/loans?page=${page}&limit=10&status=PENDING`);
+      const data = await res.json();
+      if (data.success) {
+        setPendingLoans((data.data || []).map(toRow));
+        setPendingPagination(data.metadata?.pagination);
+        setPendingLoaded(true);
+      }
+    } catch (e) { console.error(e); }
+    finally { setPendingLoading(false); }
+  };
+
+  const fetchApproved = async (page: number) => {
+    try {
+      setApprovedLoading(true);
+      const res = await api.get(`/api/admin/loans?page=${page}&limit=10&status=APPROVED,ACTIVE,DISBURSED,COMPLETED`);
+      const data = await res.json();
+      if (data.success) {
+        setApprovedLoans((data.data || []).map(toRow));
+        setApprovedPagination(data.metadata?.pagination);
+        setApprovedLoaded(true);
+      }
+    } catch (e) { console.error(e); }
+    finally { setApprovedLoading(false); }
+  };
+
+  const fetchRejected = async (page: number) => {
+    try {
+      setRejectedLoading(true);
+      const res = await api.get(`/api/admin/loans?page=${page}&limit=10&status=REJECTED`);
+      const data = await res.json();
+      if (data.success) {
+        setRejectedLoans((data.data || []).map(toRow));
+        setRejectedPagination(data.metadata?.pagination);
+        setRejectedLoaded(true);
+      }
+    } catch (e) { console.error(e); }
+    finally { setRejectedLoading(false); }
+  };
+
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    if (tab === 'pending' && !pendingLoaded) fetchPending(1);
+    if (tab === 'approved' && !approvedLoaded) fetchApproved(1);
+    if (tab === 'rejected' && !rejectedLoaded) fetchRejected(1);
+  };
+
+  const handleRowClick = async (loan: any) => {
+    try {
+      setDrawerLoading(true);
+      setShowDrawer(true);
       const res = await api.get(`/api/admin/loans/${loan.id}`);
       const data = await res.json();
-      
-      if (data.success) {
-        setSelectedLoan(data.data);
-        setShowDrawer(true);
-      }
-    } catch (error) {
-      console.error('Error fetching loan details:', error);
-    } finally {
-      setLoading(false);
-    }
+      if (data.success) setSelectedLoan(data.data);
+    } catch (e) { console.error(e); }
+    finally { setDrawerLoading(false); }
   };
 
-  const handleApprove = () => {
-    setShowDrawer(false); // Close drawer first
-    setStatusAction('approve');
-    setShowStatusModal(true);
-  };
-
-  const handleReject = () => {
-    setShowDrawer(false); // Close drawer first
-    setStatusAction('reject');
-    setShowStatusModal(true);
-  };
-
-  const handleDisburse = () => {
-    setShowDrawer(false); // Close drawer first
-    setShowDisbursementModal(true);
-  };
-
-  const handleRefresh = async () => {
-    if (selectedLoan) {
-      await handleViewDetails(selectedLoan);
-    }
-    await fetchLoans(pagination?.page || 1);
-  };
-
-  const [disburseLoanImmediately, setDisburseLoanImmediately] = useState(false);
-
-  const handleStatusChange = async () => {
-    if (!selectedLoan || !statusAction) return;
-
-    try {
-      setProcessing(true);
-      
-      // Step 1: Update loan status
-      const res = await api.patch(`/api/admin/loans/${selectedLoan.id}/status`, {
-        status: statusAction === 'approve' ? 'APPROVED' : 'REJECTED',
-        reason: rejectionReason
-      });
-
-      const data = await res.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to update loan status');
-      }
-
-      // Step 2: If approved and disburse immediately is checked, trigger disbursement
-      if (statusAction === 'approve' && disburseLoanImmediately) {
-        const disburseRes = await api.post(`/api/admin/loans/${selectedLoan.id}/disburse`);
-        const disburseData = await disburseRes.json();
-        
-        if (!disburseData.success) {
-          console.error('Disbursement failed:', disburseData.error);
-          alert('Loan approved but disbursement failed. You can disburse it manually from the loan details.');
-        }
-      }
-
-      setShowStatusModal(false);
-      setRejectionReason('');
-      setStatusAction(null);
-      setDisburseLoanImmediately(false);
-      setSelectedLoan(null); // Clear selected loan
-      fetchLoans(pagination?.page || 1);
-    } catch (error) {
-      console.error('Error updating loan status:', error);
-      alert('Failed to update loan status. Please try again.');
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const handleDisbursement = async () => {
-    if (!selectedLoan) return;
-
-    try {
-      setProcessing(true);
-      const res = await api.post(`/api/admin/loans/${selectedLoan.id}/disburse`);
-      const data = await res.json();
-      
-      if (data.success) {
-        setShowDisbursementModal(false);
-        setSelectedLoan(null); // Clear selected loan
-        fetchLoans(pagination?.page || 1);
-      }
-    } catch (error) {
-      console.error('Error disbursing loan:', error);
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const formattedLoans = loans.map(loan => ({
-    ...loan,
-    applicationDate: new Date(loan.applicationDate).toLocaleDateString(),
-    loanAmount: `₦${Number(loan.loanAmount).toLocaleString()}`
-  }));
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'all', label: 'All Applications' },
+    { key: 'pending', label: 'Pending' },
+    { key: 'approved', label: 'Approved' },
+    { key: 'rejected', label: 'Rejected' },
+  ];
 
   return (
-    <div className="p-4 md:p-6 pt-6 md:pt-0">
+    <div className="p-4 md:p-6 pt-6 ">
+      {/* Header */}
       <div className="mb-6">
-        <h2 className='mb-2 font-semibold text-[#191919] text-xl md:text-[1.6875rem]'>Loan Management</h2>
-        <p className='text-[#5F5F5F] text-sm md:text-base'>Review and manage all loan applications</p>
+        <h2 className="mb-1 font-semibold text-[#191919] text-xl md:text-[1.6875rem]">
+          Loan Application
+        </h2>
+        <p className="text-[#5F5F5F] text-sm md:text-base">
+          Review and validate loan applications.
+        </p>
       </div>
 
-      <div className="mb-6 max-w-xs">
-        <CustomInput
-          label="Filter by Status"
-          type="select"
-          value={statusFilter}
-          onChange={setStatusFilter}
-          options={[
-            { value: '', label: 'All Loans' },
-            { value: 'PENDING', label: 'Pending' },
-            { value: 'APPROVED', label: 'Approved' },
-            { value: 'DISBURSED', label: 'Disbursed' },
-            { value: 'ACTIVE', label: 'Active' },
-            { value: 'COMPLETED', label: 'Completed' },
-            { value: 'REJECTED', label: 'Rejected' },
-          ]}
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+        {statsLoading ? (
+          Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+        ) : (
+          <>
+            <StatCard
+              title="Total Applications"
+              value={String(stats?.loans?.total ?? 0)}
+              subtitle="Total application"
+              footer="All student application"
+            />
+            <StatCard
+              title="Pending Review"
+              value={String(stats?.loans?.pending ?? 0)}
+              subtitle="Pending review"
+              footer="Awaiting admin action"
+            />
+            <StatCard
+              title="Approved"
+              value={String(stats?.loans?.approved ?? 0)}
+              subtitle="Loans approved"
+              footer="Loans ready for disbursement"
+            />
+            <StatCard
+              title="Rejected"
+              value={String(stats?.loans?.rejected ?? 0)}
+              subtitle="Rejected loans"
+              footer="Applications flagged due to compliance"
+            />
+          </>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200 mb-6">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => handleTabChange(t.key)}
+            className={`flex-1 py-2.5 font-semibold text-[0.7rem] sm:text-[0.8125rem] md:text-[0.925rem] whitespace-nowrap text-center transition-colors ${
+              activeTab === t.key
+                ? 'bg-[#00296B] text-white'
+                : 'bg-white text-[#191919] hover:text-[#00296B] hover:bg-gray-50'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tables */}
+      {activeTab === 'all' && (
+        <DataTable
+          title="All Loan Applications"
+          columns={TABLE_COLUMNS}
+          data={allLoans}
+          paginationInfo={allPagination}
+          onPageChange={fetchAll}
+          itemsPerPage={10}
+          isLoading={allLoading}
+          onRowClick={handleRowClick}
+          searchable
+          viewAllHref="/admin/loans/all-loans"
         />
-      </div>
+      )}
 
-      <DataTable
-        title="All Loan Applications"
-        columns={LOAN_COLUMNS}
-        data={formattedLoans}
-        paginationInfo={pagination || undefined}
-        onPageChange={fetchLoans}
-        itemsPerPage={10}
-        isLoading={loading}
-        onRowClick={handleViewDetails}
-        searchable={true}
-        filterable={true}
-      />
+      {activeTab === 'pending' && (
+        <DataTable
+          title="Pending Applications"
+          columns={TABLE_COLUMNS}
+          data={pendingLoans}
+          paginationInfo={pendingPagination}
+          onPageChange={fetchPending}
+          itemsPerPage={10}
+          isLoading={pendingLoading}
+          onRowClick={handleRowClick}
+          searchable
+          viewAllHref="/admin/loans/all-pending-loans"
+        />
+      )}
 
-      {/* Loan Detail Drawer */}
+      {activeTab === 'approved' && (
+        <DataTable
+          title="Approved Applications"
+          columns={TABLE_COLUMNS}
+          data={approvedLoans}
+          paginationInfo={approvedPagination}
+          onPageChange={fetchApproved}
+          itemsPerPage={10}
+          isLoading={approvedLoading}
+          onRowClick={handleRowClick}
+          searchable
+          viewAllHref="/admin/loans/all-approved-loan"
+        />
+      )}
+
+      {activeTab === 'rejected' && (
+        <DataTable
+          title="Rejected Applications"
+          columns={TABLE_COLUMNS}
+          data={rejectedLoans}
+          paginationInfo={rejectedPagination}
+          onPageChange={fetchRejected}
+          itemsPerPage={10}
+          isLoading={rejectedLoading}
+          onRowClick={handleRowClick}
+          searchable
+          viewAllHref="/admin/loans/all-rejected-loan"
+        />
+      )}
+
+      {/* Drawer */}
       <LoanDetailDrawer
         isOpen={showDrawer}
-        onClose={() => {
-          setShowDrawer(false);
-          setSelectedLoan(null);
-        }}
+        onClose={() => { setShowDrawer(false); setSelectedLoan(null); }}
         loan={selectedLoan}
-        onApprove={handleApprove}
-        onReject={handleReject}
-        onDisburse={handleDisburse}
-        onRefresh={handleRefresh}
-        isLoading={loading}
+        isLoading={drawerLoading}
       />
-
-      {/* Status Change Modal */}
-      {showStatusModal && (
-        <Modal
-          isOpen={showStatusModal}
-          onClose={() => {
-            setShowStatusModal(false);
-            setRejectionReason('');
-            setStatusAction(null);
-            setDisburseLoanImmediately(false);
-          }}
-          title={statusAction === 'approve' ? 'Approve Loan' : 'Reject Loan'}
-        >
-          <div className="space-y-4">
-            <p className="text-gray-600">
-              {statusAction === 'approve'
-                ? 'Are you sure you want to approve this loan application?'
-                : 'Please provide a reason for rejecting this loan application.'}
-            </p>
-
-            {statusAction === 'approve' && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    id="disburse-immediately"
-                    checked={disburseLoanImmediately}
-                    onChange={(e) => setDisburseLoanImmediately(e.target.checked)}
-                    className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <div className="flex-1">
-                    <label 
-                      htmlFor="disburse-immediately" 
-                      className="font-medium text-blue-900 text-sm cursor-pointer"
-                    >
-                      Disburse funds immediately after approval
-                    </label>
-                    <p className="mt-1 text-blue-700 text-xs">
-                      This will automatically create a disbursement and transfer funds to the school. 
-                      The loan status will change to ACTIVE.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {statusAction === 'reject' && (
-              <CustomInput
-                label="Rejection Reason"
-                type="text"
-                value={rejectionReason}
-                onChange={setRejectionReason}
-                placeholder="Enter reason for rejection"
-              />
-            )}
-
-            <div className="flex gap-3 pt-4">
-              <button
-                onClick={() => {
-                  setShowStatusModal(false);
-                  setRejectionReason('');
-                  setStatusAction(null);
-                  setDisburseLoanImmediately(false);
-                }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                disabled={processing}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleStatusChange}
-                disabled={processing || (statusAction === 'reject' && !rejectionReason)}
-                className={`flex-1 px-4 py-2 text-white rounded-lg ${
-                  statusAction === 'approve'
-                    ? 'bg-green-600 hover:bg-green-700'
-                    : 'bg-red-600 hover:bg-red-700'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-              >
-                {processing ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="border-2 border-white border-t-transparent rounded-full w-4 h-4 animate-spin" />
-                    {statusAction === 'approve' && disburseLoanImmediately ? 'Approving & Disbursing...' : 'Processing...'}
-                  </span>
-                ) : (
-                  statusAction === 'approve' && disburseLoanImmediately ? 'Approve & Disburse' : 'Confirm'
-                )}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Disbursement Modal */}
-      {showDisbursementModal && (
-        <Modal
-          isOpen={showDisbursementModal}
-          onClose={() => setShowDisbursementModal(false)}
-          title="Disburse Loan"
-        >
-          <div className="space-y-4">
-            <p className="text-gray-600">
-              Are you sure you want to disburse this loan? This action will transfer the funds to the school.
-            </p>
-
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <strong>Amount:</strong> ₦{Number(selectedLoan?.loanAmount).toLocaleString()}
-              </p>
-              <p className="text-sm text-blue-800">
-                <strong>School:</strong> {selectedLoan?.schoolName}
-              </p>
-            </div>
-
-            <div className="flex gap-3 pt-4">
-              <button
-                onClick={() => setShowDisbursementModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                disabled={processing}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDisbursement}
-                disabled={processing}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {processing ? 'Processing...' : 'Confirm Disbursement'}
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }

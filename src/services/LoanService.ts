@@ -253,16 +253,22 @@ export class LoanService implements ILoanService {
   ): Promise<void> {
     console.log({ msg: 'Saving documents', loanId, fileCount: uploadedFiles.length });
 
-    const documents = uploadedFiles.map(file => ({
-      userId,
-      loanId,
-      documentType: mapFileTypeToDocumentType(file.name, file.type),
-      fileName: file.name,
-      fileUrl: file.url,
-      fileSize: file.size,
-      mimeType: getMimeType(file.name, file.type),
-      isVerified: false,
-    }));
+    const documents = uploadedFiles.map(file => {
+      const fileName: string = (file as any).name || (file as any).fileName || (file as any).originalName || 'document';
+      const fileType: string = (file as any).type || (file as any).mimeType || '';
+      const fileUrl: string = (file as any).url || (file as any).fileUrl || (file as any).path || '';
+      const fileSize: number = (file as any).size || (file as any).fileSize || 0;
+      return {
+        userId,
+        loanId,
+        documentType: mapFileTypeToDocumentType(fileName, fileType),
+        fileName,
+        fileUrl,
+        fileSize,
+        mimeType: getMimeType(fileName, fileType),
+        isVerified: false,
+      };
+    });
 
     await tx.document.createMany({
       data: documents,

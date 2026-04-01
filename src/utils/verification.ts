@@ -56,8 +56,8 @@ export async function createVerification(
     
     return { token, expiresAt };
   } else {
-    // OTP expires in 10 minutes
-    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+    // OTP expires in 30 minutes
+    expiresAt.setMinutes(expiresAt.getMinutes() + 30);
     
     const otp = generateOTP();
     
@@ -123,15 +123,18 @@ export async function getUserByToken(
   mode: 'link' | 'otp'
 ): Promise<string | null> {
   try {
+    console.log('Getting user by token:', { tokenOrOtp, mode });
+    const nowUTC = new Date(new Date().toISOString());
     const verification = await prisma.verificationToken.findFirst({
       where: {
         token: tokenOrOtp,
         type: mode as any,
         expiresAt: {
-          gt: new Date(),
+          gt: nowUTC,
         },
       },
     });
+    console.log('Verification record found:', verification);
 
     return verification?.userId || null;
   } catch (error) {

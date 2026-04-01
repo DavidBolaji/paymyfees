@@ -37,7 +37,7 @@ export function HomeProductsSection() {
           </p>
         </div>
 
-        <div className="mt-10 grid gap-[1.625rem] sm:grid-cols-2 md:grid-cols-3">
+        <div className="mt-10 grid gap-[1.625rem] sm:grid-cols-2 md:grid-cols-3 max-w-6xl mx-auto">
           {products.map((product) => (
             <article
               key={product.title}

@@ -32,7 +32,7 @@ export const POST = asyncHandler(async (req: Request) => {
   const body = await req.json();
 
   // Resolve the school profile for the authenticated school user
-  const schoolProfile = await prisma.schoolProfile.findUnique({
+  const schoolProfile = await prisma.schoolProfile.findFirst({
     where: { userId },
     select: { id: true, schoolName: true },
   });
