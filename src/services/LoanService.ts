@@ -123,9 +123,6 @@ export class LoanService implements ILoanService {
   }): Promise<LoanDTO> {
     console.log({ msg: 'Creating local loan application', userId: input.userId });
 
-    // Check for existing active loans
-    await this.validateNoActiveLoan(input.userId);
-
     // Calculate loan details
     const loanCalculation = this.calculateLoan(input.loanAmount, input.repaymentMonths);
 
@@ -180,9 +177,6 @@ export class LoanService implements ILoanService {
     uploadedFiles?: UploadedFileData[];
   }): Promise<LoanDTO> {
     console.log({ msg: 'Creating international loan application', userId: input.userId });
-
-    // Check for existing active loans
-    await this.validateNoActiveLoan(input.userId);
 
     // Calculate loan details
     const loanCalculation = this.calculateLoan(input.loanAmount, input.repaymentMonths);
@@ -301,32 +295,6 @@ export class LoanService implements ILoanService {
     }
 
     await tx.installment.createMany({ data: installments });
-  }
-
-  /**
-   * Validate user doesn't have an active loan
-   */
-  private async validateNoActiveLoan(userId: string): Promise<void> {
-    const activeStatuses = [
-      LoanStatus.ACTIVE,
-      LoanStatus.DISBURSED,
-      LoanStatus.APPROVED,
-      LoanStatus.UNDER_REVIEW,
-      LoanStatus.PENDING,
-    ];
-
-    const { loans } = await this.loanRepository.findByUserId(
-      userId,
-      { status: activeStatuses },
-      { page: 1, limit: 1 }
-    );
-
-    if (loans.length > 0) {
-      const activeLoan = loans[0];
-      throw new ValidationError(
-        `You already have an active loan or in review (${activeLoan?.loanNumber}). Please complete or cancel your current loan before applying for another.`
-      );
-    }
   }
 
   /**

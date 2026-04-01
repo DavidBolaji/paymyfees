@@ -30,10 +30,13 @@ export class RepaymentController {
    * Get next due installment
    * GET /api/repayment/next-due
    */
-  async getNextDueInstallment(_req: Request, user: AuthUser): Promise<NextResponse> {
+  async getNextDueInstallment(req: Request, user: AuthUser): Promise<NextResponse> {
     console.log({ msg: 'Getting next due installment', userId: user.id });
 
-    const summary = await this.repaymentService.getNextDueInstallment(user.id);
+    const { searchParams } = new URL(req.url);
+    const loanId = searchParams.get('loanId') ?? undefined;
+
+    const summary = await this.repaymentService.getNextDueInstallment(user.id, loanId);
 
     const response: ApiResponse = {
       success: true,

@@ -39,11 +39,14 @@ export class WalletController {
    * Get wallet balance
    * GET /api/wallet/balance
    */
-  async getBalance(_req: Request, user: AuthUser): Promise<NextResponse> {
+  async getBalance(req: Request, user: AuthUser): Promise<NextResponse> {
     console.log({ msg: 'Getting wallet balance', userId: user.id });
     
+    const url = new URL(req.url);
+    const loanId = url.searchParams.get('loanId') || undefined;
+
     const walletDetails = await this.walletService.getWalletDetails(user.id);
-    const upcomingRepayment = await this.walletService.getUpcomingRepayment(user.id);
+    const upcomingRepayment = await this.walletService.getUpcomingRepayment(user.id, loanId);
     const fundingHistory = await this.walletService.getFundingHistory(user.id);
 
     const response: ApiResponse = {

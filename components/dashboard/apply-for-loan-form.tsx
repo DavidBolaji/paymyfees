@@ -11,10 +11,13 @@ import { validateLoanApplication, type LoanApplicationFormData } from '@/data';
 import { applyForLoan } from '../../src/utils/loan-api';
 import { SchoolSelector } from './school-selector';
 import RegistrationModal from './registration-modal';
+import { SuccessModal } from '../ui/success-modal';
 import { ResidencyStatus } from '@prisma/client';
 import useAuthStore from '@/src/authStore';
 import { CloudinaryUploadResult } from '@/src/utils/cloudinary-api';
 import { useLoanApplicationStore } from '@/src/stores/loanApplicationStore';
+import useDashboardStore from '@/src/stores/dashboardStore';
+import { fetchDashboardStats } from '@/src/utils/dashboard-api';
 import { CheckSquareIcon } from '@/assets/icons/CheckSquareIcon';
 
 interface RepaymentPlan {
@@ -41,11 +44,13 @@ interface FormErrors {
 export function ApplyForLoanForm() {
   const { user } = useAuthStore();
   const { formData, updateFormData, updateConsent, resetForm } = useLoanApplicationStore();
+  const { clearCache, setStats, setLastFetched } = useDashboardStore();
   const fileUploadRef = useRef<any>(null);
   
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [successModal, setSuccessModal] = useState({ open: false, title: '', message: '' });
 
   // Calculate repayment plans
 const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
@@ -211,22 +216,29 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
       const result = await applyForLoan(payload);
 
       if (!result.success) {
-        // Show error message from API
-        alert(result.error || 'Failed to submit application. Please try again.');
+        setSuccessModal({ open: true, title: 'Submission Failed', message: result.error || 'Failed to submit application. Please try again.' });
         return;
       }
 
       console.log(result.data);
-      alert('Loan application submitted successfully!');
+      setSuccessModal({ open: true, title: 'Application Submitted!', message: 'Your loan application has been submitted successfully.' });
+
+      // Invalidate dashboard cache and refresh so header dropdown shows the new loan
+      clearCache();
+      fetchDashboardStats().then((data) => {
+        if (data) {
+          setStats(data);
+          setLastFetched(Date.now());
+        }
+      });
 
       // Reset form
       resetForm();
 
     } catch (error: any) {
       console.error('Submission error:', error);
-      // Display the actual error message
       const errorMessage = error.message || 'Failed to submit application. Please try again.';
-      alert(errorMessage);
+      setSuccessModal({ open: true, title: 'Submission Failed', message: errorMessage });
     } finally {
       setIsSubmitting(false);
     }
@@ -498,6 +510,12 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
       <RegistrationModal
         isOpen={showRegisterModal}
         onClose={() => setShowRegisterModal(false)}
+      />
+      <SuccessModal
+        isOpen={successModal.open}
+        onClose={() => setSuccessModal({ open: false, title: '', message: '' })}
+        title={successModal.title}
+        message={successModal.message}
       />
     </>
   );

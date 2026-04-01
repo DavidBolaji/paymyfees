@@ -22,6 +22,7 @@ import { LoanDisbursementDrawer, TransactionDrawer } from '@/components/dashboar
 import useLoan from '@/hooks/useLoan';
 import useTransaction from '@/hooks/useTransaction';
 import useDashboard from '@/hooks/useDashboard';
+import useDashboardStore from '@/src/stores/dashboardStore';
 
 export interface TransactionItem {
   date: string;
@@ -72,6 +73,16 @@ export default function DashboardPage() {
   // Determine loading state
   const isLoading = dashboardLoading || !stats;
   
+  // Determine if selected loan is active (ACTIVE or DISBURSED)
+  const { selectedLoanId } = useDashboardStore();
+  const selectedLoanSummary = selectedLoanId
+    ? (stats?.allLoans ?? []).find((l) => l.id === selectedLoanId)
+    : null;
+  const selectedLoanIsActive =
+    !selectedLoanSummary ||
+    selectedLoanSummary.status === 'ACTIVE' ||
+    selectedLoanSummary.status === 'DISBURSED';
+
   // Ensure we have a valid user object even during loading
   const userName = user?.fullName?.split(" ")[0] || "User";
 
@@ -99,13 +110,13 @@ export default function DashboardPage() {
                 <StatCard
                   title="Upcoming Payment"
                   value={
-                    stats.upcomingPayment
+                    selectedLoanIsActive && stats.upcomingPayment
                       ? `₦${Number(stats.upcomingPayment.amount).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                       : "₦-"
                   }
-                  subtitle={stats.upcomingPayment ? "Due" : undefined}
+                  subtitle={selectedLoanIsActive && stats.upcomingPayment ? "Due" : undefined}
                   footer={
-                    stats.upcomingPayment
+                    selectedLoanIsActive && stats.upcomingPayment
                       ? `Next fee deadline: ${stats.upcomingPayment.dueDate}`
                       : "Next fee deadline:-"
                   }
@@ -115,13 +126,13 @@ export default function DashboardPage() {
                 <StatCard
                   title="Active Plan"
                   value={
-                    stats.activePlan
+                    selectedLoanIsActive && stats.activePlan
                       ? `${stats.activePlan.current}/${stats.activePlan.total}`
                       : "None"
                   }
-                  subtitle={stats.activePlan ? stats.activePlan.planType : undefined}
+                  subtitle={selectedLoanIsActive && stats.activePlan ? stats.activePlan.planType : undefined}
                   footer={
-                    stats.activePlan
+                    selectedLoanIsActive && stats.activePlan
                       ? "You're doing great. Keep it up!"
                       : "--"
                   }
@@ -144,7 +155,7 @@ export default function DashboardPage() {
                 <StatCard
                   title="Wallet"
                   value={
-                    stats.activePlan
+                    selectedLoanIsActive && stats.activePlan
                       ? (stats.wallet.amount === 0
                           ? "₦0"
                           : `₦${Number(stats.wallet.amount).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)

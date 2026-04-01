@@ -5,11 +5,13 @@ import { BackNavigation } from '@/components/dashboard/back-navigation';
 import { ViewPaymentPlan } from '@/components/dashboard/view-payment-plan';
 import { fetchPaymentPlanData } from '@/src/utils/loan-api';
 import type { PaymentPlan } from '@/data/types';
+import useDashboardStore from '@/src/stores/dashboardStore';
 
 export default function ViewPaymentPlanPage({ basePath = "/dashboard" }: { basePath?: string }) {
   const [paymentPlan, setPaymentPlan] = useState<PaymentPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { selectedLoanId } = useDashboardStore();
 
   useEffect(() => {
     const loadPaymentPlan = async () => {
@@ -20,7 +22,7 @@ export default function ViewPaymentPlanPage({ basePath = "/dashboard" }: { baseP
         console.log('🔍 Fetching payment plan data...');
         
         // Fetch payment plan data from API
-        const planData = await fetchPaymentPlanData();
+        const planData = await fetchPaymentPlanData(selectedLoanId ?? undefined);
         
         console.log('📊 Payment plan response:', planData);
         
@@ -45,7 +47,7 @@ export default function ViewPaymentPlanPage({ basePath = "/dashboard" }: { baseP
     };
 
     loadPaymentPlan();
-  }, []);
+  }, [selectedLoanId]);
 
   if (loading) {
     return (

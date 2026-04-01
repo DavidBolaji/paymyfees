@@ -80,7 +80,7 @@ interface WalletState {
   };
   
   // Actions
-  fetchWalletBalance: () => Promise<void>;
+  fetchWalletBalance: (loanId?: string) => Promise<void>;
   fetchWalletTransactions: (page?: number, limit?: number) => Promise<void>;
   fetchChartData: (period?: string) => Promise<void>;
   fetchPaymentMethods: () => Promise<void>;
@@ -119,11 +119,12 @@ const useWalletStore = create<WalletState>()(
       },
       
       // Actions
-      fetchWalletBalance: async () => {
+      fetchWalletBalance: async (loanId?: string) => {
         try {
           set({ isLoading: true, error: null });
           
-          const response = await api.get('/api/wallet/balance');
+          const url = loanId ? `/api/wallet/balance?loanId=${encodeURIComponent(loanId)}` : '/api/wallet/balance';
+          const response = await api.get(url);
           
           if (!response.ok) {
             throw new Error('Failed to fetch wallet balance');
@@ -163,7 +164,8 @@ const useWalletStore = create<WalletState>()(
           const response = await api.get(`/api/wallet/transactions?page=${page}&limit=${limit}`);
           
           if (!response.ok) {
-            throw new Error('Failed to fetch wallet transactions');
+            const text = await response.text().catch(() => null);
+            throw new Error(`Failed to fetch wallet transactions (status ${response.status})${text ? `: ${text}` : ''}`);
           }
           
           const data = await response.json();
@@ -198,7 +200,8 @@ const useWalletStore = create<WalletState>()(
           const response = await api.get(`/api/wallet/chart?period=${period}`);
           
           if (!response.ok) {
-            throw new Error('Failed to fetch wallet chart data');
+            const text = await response.text().catch(() => null);
+            throw new Error(`Failed to fetch wallet chart data (status ${response.status})${text ? `: ${text}` : ''}`);
           }
           
           const data = await response.json();

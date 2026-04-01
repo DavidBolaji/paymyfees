@@ -8,6 +8,7 @@ import { StatusBadge } from '@/components/dashboard/status-badge';
 import { FreezeAccountModal } from '@/components/admin/freeze-account-modal';
 import { SuspendLoanModal } from '@/components/admin/suspend-loan-modal';
 import { PaymentReminderModal } from '@/components/admin/payment-reminder-modal';
+import { SuccessModal } from '@/components/ui/success-modal';
 import useAuthStore from '@/src/authStore';
 import { api } from '@/src/lib/api';
 
@@ -65,6 +66,7 @@ export default function StudentProfilePage() {
   const [showSuspend, setShowSuspend] = useState(false);
   const [showReminder, setShowReminder] = useState(false);
   const [showFreeze, setShowFreeze] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<{ title: string; message: string } | null>(null);
 
   useEffect(() => {
     if (user?.role !== 'ADMIN') { router.push('/dashboard'); return; }
@@ -84,10 +86,25 @@ export default function StudentProfilePage() {
     }
   };
 
+  const ACTION_LABELS: Record<string, { title: string; message: string }> = {
+    suspend:        { title: 'Loan Suspended', message: 'Future loan eligibility has been successfully suspended.' },
+    freeze:         { title: 'Account Frozen', message: 'The student account has been temporarily frozen.' },
+    'send-reminder': { title: 'Reminder Sent', message: 'A payment reminder has been sent to the student.' },
+  };
+
   const postAction = async (path: string, body: any) => {
     try {
       setActionLoading(true);
-      await api.post(`/api/admin/students/${userId}/${path}`, body);
+      const res = await api.post(`/api/admin/students/${userId}/${path}`, body);
+      const json = await res.json();
+      if (json.success !== false) {
+        setSuccessMsg(ACTION_LABELS[path] ?? { title: 'Action Successful', message: 'The action was completed successfully.' });
+      } else {
+        alert(json.message || 'Action failed. Please try again.');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('An error occurred. Please try again.');
     } finally {
       setActionLoading(false);
     }
@@ -200,8 +217,8 @@ export default function StudentProfilePage() {
                   <InfoRow label="Disbursed To:" value={loan.schoolName} />
                   <InfoRow label="Disbursement Date:" value={loan.disbursementDate ? new Date(loan.disbursementDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'} />
                   <InfoRow label="Verification Status" value={<StatusBadge status={STATUS_MAP[loan.status] || 'pending'} />} />
-                  <InfoRow label="Paid Amount" value={`₦${Number(loan.paidAmount || 0).toLocaleString()}`} />
-                  <InfoRow label="Remaining Amount" value={`₦${Number(loan.remainingAmount || 0).toLocaleString()}`} />
+                  <InfoRow label="Paid Amount" value={`₦${Number(loan.amountRepaid || 0).toLocaleString()}`} />
+                  <InfoRow label="Remaining Amount" value={`₦${Number(loan.outstandingBalance || 0).toLocaleString()}`} />
                 </>
               ) : (
                 <p className="text-sm text-[#7C7C7C] py-4">No active loan.</p>
@@ -335,6 +352,12 @@ export default function StudentProfilePage() {
         onClose={() => setShowFreeze(false)}
         onConfirm={(d) => { postAction('freeze', d); setShowFreeze(false); }}
         loading={actionLoading}
+      />
+      <SuccessModal
+        isOpen={!!successMsg}
+        onClose={() => setSuccessMsg(null)}
+        title={successMsg?.title}
+        message={successMsg?.message}
       />
     </>
   );

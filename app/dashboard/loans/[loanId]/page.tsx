@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { BackNavigation } from '@/components/dashboard/back-navigation';
 import { InfoCard } from '@/components/dashboard/info-card';
 import { StatusBadge } from '@/components/dashboard/status-badge';
+import ContactSupportModal from '@/app/dashboard/school-verification/ContactSupportModal';
 
 import { fetchLoanDetails, DetailedLoanData } from '@/src/utils/loan-api';
 import { InfoCardSkeleton } from './InfoCardSkeleton';
@@ -18,6 +19,7 @@ export default function FullLoanInformationPage() {
   const [loanDetails, setLoanDetails] = useState<DetailedLoanData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isContactSupportOpen, setIsContactSupportOpen] = useState(false);
 
   useEffect(() => {
     const loadLoanDetails = async () => {
@@ -328,7 +330,7 @@ export default function FullLoanInformationPage() {
           <Button
             variant="navy-outline"
             className="flex-1 gap-2 h-[46px]"
-            onClick={() => console.log('Contact support')}
+            onClick={() => setIsContactSupportOpen(true)}
           >
             <Headphones className="w-6 h-6" />
             Contact Support
@@ -353,6 +355,11 @@ export default function FullLoanInformationPage() {
           </Button>
         </div>
       </div>
+
+      <ContactSupportModal
+        isOpen={isContactSupportOpen}
+        onClose={() => setIsContactSupportOpen(false)}
+      />
     </div>
   );
 }

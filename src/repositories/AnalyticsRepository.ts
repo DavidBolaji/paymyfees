@@ -53,19 +53,21 @@ export interface AnalyticsData {
 }
 
 export interface IAnalyticsRepository {
-  getAnalyticsByUserId(userId: string): Promise<AnalyticsData>;
+  getAnalyticsByUserId(userId: string, loanId?: string): Promise<AnalyticsData>;
 }
 
 export class AnalyticsRepository implements IAnalyticsRepository {
   /**
    * Get comprehensive analytics for a user
    */
-  async getAnalyticsByUserId(userId: string): Promise<AnalyticsData> {
+  async getAnalyticsByUserId(userId: string, loanId?: string): Promise<AnalyticsData> {
     // Get wallet data
     const wallet = await this.getWalletData(userId);
     
-    // Get active loan data
-    const activeLoan = await this.getActiveLoanData(userId);
+    // Get active loan data — use specified loan if provided
+    const activeLoan = loanId
+      ? await this.getLoanDataById(loanId, userId)
+      : await this.getActiveLoanData(userId);
     
     // Get repayment data
     const repaymentData = await this.getRepaymentData(userId, activeLoan?.id);
@@ -169,6 +171,25 @@ export class AnalyticsRepository implements IAnalyticsRepository {
   }
 
   /**
+   * Get specific loan data by ID (for selected loan analytics)
+   */
+  private async getLoanDataById(loanId: string, userId: string) {
+    const loan = await prisma.loan.findFirst({
+      where: { id: loanId, userId },
+    });
+
+    if (!loan) return null;
+
+    return {
+      id: loan.id,
+      loanNumber: loan.loanNumber,
+      totalAmount: Number(loan.totalAmount),
+      amountRepaid: Number(loan.amountRepaid),
+      outstandingBalance: Number(loan.outstandingBalance),
+    };
+  }
+
+  /**
    * Get repayment data including completed payments and progress
    */
   private async getRepaymentData(_userId: string, activeLoanId?: string | null) {
@@ -251,7 +272,7 @@ export class AnalyticsRepository implements IAnalyticsRepository {
     });
 
     const totalAmount = fundingTransactions.reduce(
-      (sum: number, transaction: Transaction) => sum + Number(transaction.amount),
+      (sum: number, transaction) => sum + Number(transaction.amount),
       0
     );
 

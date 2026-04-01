@@ -91,12 +91,13 @@ const useLoan = (forceRefresh = false) => {
                 
                 setLoanHistory(trimmed);
                 setPaginationInfo(loanData?.pagination);
-                
-                const curLoan = trimmed.filter(loan =>
-                    activeStatuses.includes(loan.status.toUpperCase() as any)
-                )[0];
-                
-                setCurrentLoan(curLoan ?? null);
+
+                // Default to the most recent loan (first in sorted list)
+                // Only set currentLoan if it hasn't been manually selected yet
+                const { currentLoan: existing } = useLoanStore.getState();
+                if (!existing) {
+                  setCurrentLoan(trimmed[0] ?? null);
+                }
                 setLastFetched(Date.now());
             } catch (err) {
                 console.error('Error loading loan history:', err);

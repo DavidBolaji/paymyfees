@@ -30,7 +30,9 @@ export function TicketDrawer({ isOpen, onClose, ticket, onReplySent }: TicketDra
   const [note, setNote] = useState('');
   const [sending, setSending] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [successMsg, setSuccessMsg] = useState({ title: 'Ticket Closed', message: 'The support ticket has been successfully closed.' });
 
   useEffect(() => {
     if (isOpen) document.body.style.overflow = 'hidden';
@@ -54,6 +56,7 @@ export function TicketDrawer({ isOpen, onClose, ticket, onReplySent }: TicketDra
       setClosing(true);
       const res = await (await api.patch(`/api/admin/support/${detail.id}/status`, { status: 'CLOSED' })).json();
       if (res.success !== false) {
+        setSuccessMsg({ title: 'Ticket Closed', message: 'The support ticket has been successfully closed.' });
         onReplySent?.();
         setShowSuccess(true);
       }
@@ -64,6 +67,24 @@ export function TicketDrawer({ isOpen, onClose, ticket, onReplySent }: TicketDra
     }
   };
 
+  const handleResolveTicket = async () => {
+    if (!detail?.id) return;
+    try {
+      setResolving(true);
+      const res = await (await api.patch(`/api/admin/support/${detail.id}/status`, { status: 'RESOLVED' })).json();
+      if (res.success !== false) {
+        setSuccessMsg({ title: 'Ticket Resolved', message: 'The support ticket has been marked as resolved.' });
+        setDetail((prev: any) => prev ? { ...prev, status: 'RESOLVED' } : prev);
+        onReplySent?.();
+        setShowSuccess(true);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setResolving(false);
+    }
+  };
+
   const handleSendReply = async () => {
     if (!note.trim() || !detail?.id) return;
     try {
@@ -71,6 +92,9 @@ export function TicketDrawer({ isOpen, onClose, ticket, onReplySent }: TicketDra
       const data = await (await api.post(`/api/admin/support/${detail.id}/respond`, { message: note.trim() })).json();
       if (data.success) {
         setNote('');
+        // Re-fetch ticket detail to show the new message in the thread
+        const refreshed = await api.get(`/api/admin/support/${detail.id}`).then(r => r.json()).catch(() => null);
+        if (refreshed?.success) setDetail(refreshed.data);
         onReplySent?.();
       }
     } catch (e) {
@@ -95,8 +119,8 @@ export function TicketDrawer({ isOpen, onClose, ticket, onReplySent }: TicketDra
     <SuccessModal
       isOpen={showSuccess}
       onClose={() => { setShowSuccess(false); onClose(); }}
-      title="Ticket Closed"
-      message="The support ticket has been successfully closed."
+      title={successMsg.title}
+      message={successMsg.message}
     />
     <AnimatePresence>
       {isOpen && (
@@ -169,6 +193,39 @@ export function TicketDrawer({ isOpen, onClose, ticket, onReplySent }: TicketDra
                     </div>
                   </div>
 
+                  {/* ── Message Thread ─────────────────────── */}
+                  {detail?.messages && detail.messages.length > 0 && (
+                    <div>
+                      <p className="font-semibold text-[#191919] text-base mb-3">Conversation History</p>
+                      <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                        {detail.messages.map((msg: any) => {
+                          const isAdmin = msg.senderRole === 'ADMIN';
+                          return (
+                            <div
+                              key={msg.id}
+                              className={`flex flex-col gap-1 ${
+                                isAdmin ? 'items-end' : 'items-start'
+                              }`}
+                            >
+                              <div
+                                className={`px-4 py-2.5 rounded-xl text-sm max-w-[85%] whitespace-pre-wrap ${
+                                  isAdmin
+                                    ? 'bg-[#00296B] text-white rounded-tr-none'
+                                    : 'bg-[#f3f4f6] text-[#191919] rounded-tl-none'
+                                }`}
+                              >
+                                {msg.message}
+                              </div>
+                              <span className="text-[11px] text-[#AEAEAE] px-1">
+                                {isAdmin ? 'Support' : t?.user?.fullName || 'Student'} • {fmt(msg.createdAt)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* ── Add Notes ─────────────────────────────── */}
                   <div>
                     <p className="font-semibold text-[#191919] text-base mb-3">Add Notes</p>
@@ -185,29 +242,41 @@ export function TicketDrawer({ isOpen, onClose, ticket, onReplySent }: TicketDra
             </div>
 
             {/* Footer Buttons */}
-            <div className="px-6 py-4 border-t border-gray-200 grid grid-cols-3 gap-3">
-              <button
-                onClick={handleViewProfile}
-                className="h-12 rounded-xl border-2 border-[#00296B] text-[#00296B] font-semibold text-sm hover:bg-[#00296B]/5 transition-colors"
-              >
-                View Student Profile
-              </button>
-              <button
-                onClick={handleSendReply}
-                disabled={sending || !note.trim()}
-                className="h-12 rounded-xl bg-[#00296B] text-white font-semibold text-sm hover:bg-[#001d4f] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              >
-                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                Send Reply
-              </button>
-              <button
-                onClick={handleCloseTicket}
-                disabled={closing || loadingDetail || detail?.status === 'CLOSED'}
-                className="h-12 rounded-xl border-2 border-[#CFCFCF] text-[#7D7D7D] font-semibold text-sm hover:bg-[#E3E3E3]/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              >
-                {closing ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                Close Ticket
-              </button>
+            <div className="px-6 py-4 border-t border-gray-200 space-y-2">
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={handleViewProfile}
+                  className="h-12 rounded-xl border-2 border-[#00296B] text-[#00296B] font-semibold text-sm hover:bg-[#00296B]/5 transition-colors"
+                >
+                  View Profile
+                </button>
+                <button
+                  onClick={handleSendReply}
+                  disabled={sending || !note.trim()}
+                  className="h-12 rounded-xl bg-[#00296B] text-white font-semibold text-sm hover:bg-[#001d4f] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  Send Reply
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={handleResolveTicket}
+                  disabled={resolving || loadingDetail || detail?.status === 'RESOLVED' || detail?.status === 'CLOSED'}
+                  className="h-12 rounded-xl bg-green-600 text-white font-semibold text-sm hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  {resolving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  Resolve Ticket
+                </button>
+                <button
+                  onClick={handleCloseTicket}
+                  disabled={closing || loadingDetail || detail?.status === 'CLOSED'}
+                  className="h-12 rounded-xl border-2 border-[#CFCFCF] text-[#7D7D7D] font-semibold text-sm hover:bg-[#E3E3E3]/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  {closing ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  Close Ticket
+                </button>
+              </div>
             </div>
           </motion.div>
         </>

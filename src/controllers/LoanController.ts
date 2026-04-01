@@ -10,6 +10,8 @@ import { createLoanSchema, loanQuerySchema } from '@/src/validation/schemas';
 import { ApiResponse } from '@/src/types';
 import { AuthUser } from '@/src/middleware/auth';
 import { LoanStatus, ResidencyStatus } from '@prisma/client';
+import { prisma } from '@/src/database/prisma';
+import { NotifyService } from '@/src/services/NotifyService';
 
 /**
  * Loan Controller
@@ -30,7 +32,28 @@ export class LoanController {
    */
   async applyForLoan(req: Request, user: AuthUser): Promise<NextResponse> {
     console.log({ msg: 'Loan application request', userId: user.id });
-    
+
+    // Check loan eligibility suspension and account freeze
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { loanEligibilitySuspended: true, frozenUntil: true, email: true, fullName: true }
+    });
+
+    if (dbUser?.loanEligibilitySuspended) {
+      return NextResponse.json(
+        { success: false, error: 'Forbidden', message: 'Your loan eligibility has been suspended. Please contact support.' },
+        { status: 403 }
+      );
+    }
+
+    if (dbUser?.frozenUntil && dbUser.frozenUntil > new Date()) {
+      const until = dbUser.frozenUntil.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
+      return NextResponse.json(
+        { success: false, error: 'Forbidden', message: `Your account is frozen until ${until}. You cannot apply for a loan during this period.` },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
     const validatedData = createLoanSchema.parse(body);
 
@@ -75,12 +98,33 @@ export class LoanController {
           accountHolderName: (validatedData as any).accountHolderName,
           bankName: (validatedData as any).bankName,
           accountNumber: (validatedData as any).accountNumber,
-          countryOfBankAccount: (validatedData as any).countryOfBankAccount
+          countryOfBankAccount: (validatedData as any).countryOfBankAccount,
+          uploadedFiles: (validatedData as any).uploadedFiles,
         })
       : await this.loanService.createLocalLoan({
           ...baseLoanData,
-          term: (validatedData as any).term
+          term: (validatedData as any).term,
+          uploadedFiles: (validatedData as any).uploadedFiles,
         });
+
+    // Send in-app + email notification (async, never breaks response)
+    const notify = new NotifyService();
+    const userEmail = dbUser?.email ?? '';
+    const userFullName = dbUser?.fullName ?? '';
+    const formattedAmount = new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(Number(loan.loanAmount));
+    notify.send({
+      userId: user.id,
+      type: 'INFO',
+      title: 'Loan Application Received',
+      message: `Your loan application (${loan.loanNumber}) for ${formattedAmount} has been submitted and is under review.`,
+      actionUrl: '/dashboard',
+      category: 'loan_approval',
+      email: {
+        to: userEmail,
+        fullName: userFullName,
+        method: (mail) => mail.sendLoanAppliedEmail(userEmail, userFullName, loan.loanNumber, Number(loan.loanAmount)),
+      },
+    });
 
     const response: ApiResponse = {
       success: true,

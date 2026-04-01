@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, CheckCircle2, Loader2, AlertTriangle, Calendar, CreditCard, Wallet as WalletIcon } from 'lucide-react';
 import { api } from '@/src/lib/api';
+import useDashboardStore from '@/src/stores/dashboardStore';
 
 interface NextDueInstallment {
     id: string;
@@ -29,6 +30,7 @@ export default function MakeRepaymentModal({
     onSuccess,
     walletBalance
 }: MakeRepaymentModalProps) {
+    const { selectedLoanId } = useDashboardStore();
     const [isLoading, setIsLoading] = useState(false);
     const [isFetchingInstallment, setIsFetchingInstallment] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -42,14 +44,17 @@ export default function MakeRepaymentModal({
         if (isOpen) {
             fetchNextDueInstallment();
         }
-    }, [isOpen]);
+    }, [isOpen, selectedLoanId]);
 
     const fetchNextDueInstallment = async () => {
         setIsFetchingInstallment(true);
         setError(null);
 
         try {
-            const response = await api.get('/api/repayment/next-due');
+            const url = selectedLoanId
+                ? `/api/repayment/next-due?loanId=${selectedLoanId}`
+                : '/api/repayment/next-due';
+            const response = await api.get(url);
 
             if (!response.ok) {
                 throw new Error('Failed to fetch next due installment');

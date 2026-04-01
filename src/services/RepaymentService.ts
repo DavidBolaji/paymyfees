@@ -72,7 +72,7 @@ export interface UserInstallmentsSummary {
  */
 export interface IRepaymentService {
   makeRepayment(input: MakeRepaymentInput): Promise<RepaymentResult>;
-  getNextDueInstallment(userId: string): Promise<UserInstallmentsSummary>;
+  getNextDueInstallment(userId: string, loanId?: string): Promise<UserInstallmentsSummary>;
 }
 
 /**
@@ -277,8 +277,8 @@ export class RepaymentService implements IRepaymentService {
    * Get next due installment for user
    * Rule 2: Only returns THE NEXT due installment (not all pending)
    */
-  async getNextDueInstallment(userId: string): Promise<UserInstallmentsSummary> {
-    console.log({ msg: 'Getting next due installment', userId });
+  async getNextDueInstallment(userId: string, loanId?: string): Promise<UserInstallmentsSummary> {
+    console.log({ msg: 'Getting next due installment', userId, loanId });
 
     // Get wallet balance
     const walletBalance = await this.walletRepository.getBalance(userId);
@@ -289,6 +289,7 @@ export class RepaymentService implements IRepaymentService {
       where: {
         loan: {
           userId,
+          ...(loanId ? { id: loanId } : {}),
           status: { in: ['ACTIVE', 'DISBURSED'] },
         },
         status: 'PENDING',

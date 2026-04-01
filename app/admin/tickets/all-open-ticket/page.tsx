@@ -20,9 +20,15 @@ export default function AllOpenTicketsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
-    fetch("/api/admin/support?status=OPEN")
+    fetch("/api/admin/support")
       .then((r) => r.json())
-      .then((d) => { setTickets(formatTickets(d.tickets || d || [])); })
+      .then((d) => {
+        const all: any[] = d.tickets || d || [];
+        const openAndInProgress = all.filter(
+          (t: any) => t.status === "OPEN" || t.status === "IN_PROGRESS"
+        );
+        setTickets(formatTickets(openAndInProgress));
+      })
       .catch(() => setTickets([]))
       .finally(() => setLoading(false));
   }, []);

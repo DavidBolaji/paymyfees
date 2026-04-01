@@ -16,7 +16,7 @@ import {
  * Dashboard Service Interface
  */
 export interface IDashboardService {
-  getStats(userId: string): Promise<DashboardStats>;
+  getStats(userId: string, loanId?: string): Promise<DashboardStats>;
   getAnalytics(userId: string): Promise<AnalyticsData>;
   getChartData(userId: string, year?: number): Promise<ChartDataPoint[]>;
 }
@@ -34,16 +34,21 @@ export class DashboardService implements IDashboardService {
   /**
    * Get dashboard statistics
    */
-  async getStats(userId: string): Promise<DashboardStats> {
-    console.log({ msg: 'Getting dashboard stats', userId });
+  async getStats(userId: string, loanId?: string): Promise<DashboardStats> {
+    console.log({ msg: 'Getting dashboard stats', userId, loanId });
 
     // Get data from repository
     const data = await this.dashboardRepository.getUserStats(userId);
     
+    // Use the specified loan (if provided) or fall back to the first active loan
+    let targetLoan = loanId
+      ? (data.activeLoans || []).find((l: any) => l.id === loanId) || data.activeLoans?.[0]
+      : data.activeLoans?.[0];
+
     // Get upcoming payment
     let upcomingPayment = null;
-    if (data.activeLoans && data.activeLoans.length > 0) {
-      const firstLoan = data.activeLoans[0];
+    if (targetLoan) {
+      const firstLoan = targetLoan;
       
       // Get the next pending installment
       const nextInstallment = await this.getNextPendingInstallment(firstLoan.id);
@@ -68,8 +73,8 @@ export class DashboardService implements IDashboardService {
 
     // Get active plan
     let activePlan = null;
-    if (data.activeLoans && data.activeLoans.length > 0) {
-      const loan = data.activeLoans[0];
+    if (targetLoan) {
+      const loan = targetLoan;
       
       // Calculate the number of installments paid and total installments
       const totalInstallments = loan?.repaymentMonths || 0;
@@ -84,23 +89,30 @@ export class DashboardService implements IDashboardService {
       };
     }
 
-    // Calculate total outstanding balance
-    const totalOutstandingBalance = (data.activeLoans || []).reduce(
-      (sum: number, loan: any) => sum + (loan.outstandingBalance || 0),
-      0
-    );
+    // Outstanding balance: per-selected-loan if loanId given, else total across all active loans
+    const outstandingBalance = targetLoan
+      ? (targetLoan.outstandingBalance || 0)
+      : (data.activeLoans || []).reduce((sum: number, loan: any) => sum + (loan.outstandingBalance || 0), 0);
 
     return {
       upcomingPayment,
       activePlan,
       balance: {
-        amount: totalOutstandingBalance,
+        amount: outstandingBalance,
         description: 'Balance',
       },
       wallet: {
         amount: data.wallet?.balance || 0,
         description: 'Available',
       },
+      allLoans: (data.allLoans || []).map((l: any) => ({
+        id: l.id,
+        loanNumber: l.loanNumber,
+        loanAmount: Number(l.loanAmount),
+        status: l.status,
+        schoolName: l.schoolName,
+        createdAt: l.createdAt,
+      })),
     };
   }
   

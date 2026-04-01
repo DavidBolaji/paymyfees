@@ -1,6 +1,5 @@
 import Image from "next/image";
 import SmartEducationBadge from "@/assets/images/smart_education_badge.png";
-import { MaxScreenContainer } from "../layout/max-screen-container";
 // import leftWaveMetric from "@/assets/images/left-wave-metric.png";
 // import rightWaveMetric from "@/assets/images/right-wave-metric.png";
 

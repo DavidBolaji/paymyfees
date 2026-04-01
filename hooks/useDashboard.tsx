@@ -9,6 +9,7 @@ const useDashboard = (forceRefresh = false) => {
     chartData,
     timelineData,
     selectedYear,
+    selectedLoanId,
     hasHydrated,
     shouldRefetch,
     shouldRefetchChart,
@@ -50,7 +51,7 @@ const useDashboard = (forceRefresh = false) => {
         // Fetch stats if needed
         if (needsFetch) {
           promises.push(
-            fetchDashboardStats().then((data) => {
+            fetchDashboardStats(selectedLoanId ?? undefined).then((data) => {
               if (data) {
                 setStats(data);
               }
@@ -92,7 +93,7 @@ const useDashboard = (forceRefresh = false) => {
     };
 
     loadData();
-  }, [hasHydrated, forceRefresh, selectedYear]);
+  }, [hasHydrated, forceRefresh, selectedYear, selectedLoanId]);
 
   // Handle year change
   const handleYearChange = async (year: string) => {
@@ -122,7 +123,7 @@ const useDashboard = (forceRefresh = false) => {
 
     try {
       const [statsData, chartDataResult, timelineDataResult] = await Promise.all([
-        fetchDashboardStats(),
+        fetchDashboardStats(selectedLoanId ?? undefined),
         fetchChartData(selectedYear),
         fetchTimelineData(),
       ]);
