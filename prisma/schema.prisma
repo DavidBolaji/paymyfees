@@ -19,13 +19,15 @@ model User {
   phoneVerified        Boolean               @default(false)
   isActive             Boolean               @default(true)
   isFirstTime          Boolean               @default(true)
-  twoFactorEnabled     Boolean               @default(false)
-  twoFactorSecret      String?               @db.VarChar(255)
-  lastLogin            DateTime?
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  country              String                @db.VarChar(255)
-  residencyStatus      ResidencyStatus       @default(LOCAL)
+  twoFactorEnabled          Boolean               @default(false)
+  twoFactorSecret           String?               @db.VarChar(255)
+  lastLogin                 DateTime?
+  loanEligibilitySuspended  Boolean               @default(false)
+  frozenUntil               DateTime?
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
+  country                   String                @db.VarChar(255)
+  residencyStatus           ResidencyStatus       @default(LOCAL)
   auditLogs            AuditLog[]
   documents            Document[]
   loans                Loan[]

@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server';
 import { AdminService, IAdminService } from '@/src/services/AdminService';
 import { ApiResponse } from '@/src/types';
 import { LoanStatus } from '@prisma/client';
+import { NotifyService } from '@/src/services/NotifyService';
 
 export class AdminController {
   private adminService: IAdminService;
@@ -90,6 +91,47 @@ export class AdminController {
 
     const loan = await this.adminService.updateLoanStatus(loanId, status as LoanStatus, adminId, reason);
 
+    // Fire notification (async — never blocks response)
+    const notify = new NotifyService();
+    const userId: string = loan?.user?.id ?? loan?.userId;
+    const email: string = loan?.user?.email ?? '';
+    const fullName: string = loan?.user?.fullName ?? '';
+    const loanNumber: string = loan?.loanNumber ?? loanId;
+
+    if (userId) {
+      if (status === LoanStatus.APPROVED) {
+        notify.send({
+          userId,
+          type: 'SUCCESS',
+          title: 'Loan Application Approved',
+          message: `Your loan application (${loanNumber}) has been approved!`,
+          actionUrl: '/dashboard',
+          category: 'loan_approval',
+          email: email ? { to: email, fullName, method: (mail) => mail.sendLoanApprovedEmail(email, fullName, loanNumber, Number(loan?.loanAmount ?? 0)) } : undefined,
+        });
+      } else if (status === LoanStatus.REJECTED) {
+        notify.send({
+          userId,
+          type: 'ERROR',
+          title: 'Loan Application Update',
+          message: `Your loan application (${loanNumber}) was not approved at this time.`,
+          actionUrl: '/dashboard',
+          category: 'loan_approval',
+          email: email ? { to: email, fullName, method: (mail) => mail.sendLoanRejectedEmail(email, fullName, loanNumber, reason) } : undefined,
+        });
+      } else if ((status as string) === 'COMPLETED') {
+        notify.send({
+          userId,
+          type: 'SUCCESS',
+          title: 'Loan Fully Repaid',
+          message: `Congratulations! Your loan (${loanNumber}) has been fully repaid.`,
+          actionUrl: '/dashboard',
+          category: 'loan_approval',
+          email: email ? { to: email, fullName, method: (mail) => mail.sendLoanCompletedEmail(email, fullName, loanNumber) } : undefined,
+        });
+      }
+    }
+
     const response: ApiResponse = {
       success: true,
       data: loan,
@@ -109,6 +151,36 @@ export class AdminController {
     console.log({ msg: 'Disburse loan request', loanId });
     
     const result = await this.adminService.processDisbursement(loanId, adminId);
+
+    // Fire disbursement notification
+    const loan = result?.loan;
+    if (loan) {
+      // fetch user info since processDisbursement doesn't include it
+      const { prisma } = await import('@/src/database/prisma');
+      const dbUser = await prisma.user.findUnique({
+        where: { id: loan.userId },
+        select: { email: true, fullName: true }
+      }).catch(() => null);
+
+      const schoolName = loan.school?.schoolName ?? '';
+
+      const notify = new NotifyService();
+      notify.send({
+        userId: loan.userId,
+        type: 'SUCCESS',
+        title: 'Loan Disbursed',
+        message: `Your loan (${loan.loanNumber}) has been disbursed. Funds have been sent to your school.`,
+        actionUrl: '/dashboard',
+        category: 'loan_approval',
+        email: dbUser?.email
+          ? {
+              to: dbUser.email,
+              fullName: dbUser.fullName,
+              method: (mail) => mail.sendLoanDisbursedEmail(dbUser.email, dbUser.fullName, loan.loanNumber, Number(loan.loanAmount), schoolName),
+            }
+          : undefined,
+      });
+    }
 
     const response: ApiResponse = {
       success: true,

@@ -393,12 +393,23 @@ export class AuthService implements IAuthService {
       console.log(isVerified, "isVerified");
       
       if (isVerified) {
-        // Send welcome email (don't let email failure break verification)
+        // Send welcome email and in-app notification
         try {
           const user = await this.userRepository.findById(userId);
           if (user && user.email) {
             await this.mailService.sendWelcomeEmail(user.email, user.fullName);
             console.log(`Welcome email sent to ${user.email}`);
+            // In-app welcome notification (don't await — fire and forget)
+            const { NotifyService } = await import('@/src/services/NotifyService');
+            const notify = new NotifyService();
+            notify.send({
+              userId: user.id,
+              type: 'INFO',
+              title: 'Welcome to PayMyFees!',
+              message: `Hi ${user.fullName}, your email is verified. You can now apply for a loan.`,
+              actionUrl: '/dashboard',
+              category: 'general',
+            }).catch(() => {});
           }
         } catch (emailError) {
           // Log but don't fail verification if email fails

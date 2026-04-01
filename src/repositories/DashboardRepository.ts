@@ -44,8 +44,20 @@ export class DashboardRepository implements IDashboardRepository {
             in: [LoanStatus.DISBURSED, LoanStatus.ACTIVE],
           },
         },
-        orderBy: {
-          createdAt: 'desc',
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Get ALL loans for the loan selector dropdown
+      const allLoans = await prisma.loan.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          loanNumber: true,
+          loanAmount: true,
+          status: true,
+          schoolName: true,
+          createdAt: true,
         },
       });
       
@@ -58,6 +70,7 @@ export class DashboardRepository implements IDashboardRepository {
       
       return {
         activeLoans,
+        allLoans,
         wallet,
         userRole: user.role,
       };

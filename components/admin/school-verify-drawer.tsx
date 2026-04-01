@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Eye, CheckCircle } from 'lucide-react';
 import { StatusBadge } from '@/components/dashboard/status-badge';
 import { RequestDocumentsModal } from './request-documents-modal';
+import { SuccessModal } from '@/components/ui/success-modal';
 import { api } from '@/src/lib/api';
 
 interface SchoolVerifyDrawerProps {
@@ -18,6 +19,7 @@ export function SchoolVerifyDrawer({ isOpen, onClose, school, onApproved }: Scho
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showReqSuccess, setShowReqSuccess] = useState(false);
 
   useEffect(() => {
     if (isOpen) document.body.style.overflow = 'hidden';
@@ -45,6 +47,7 @@ export function SchoolVerifyDrawer({ isOpen, onClose, school, onApproved }: Scho
       setLoading(true);
       await api.post(`/api/admin/schools/${school.id}/request-documents`, data);
       setShowRequestModal(false);
+      setShowReqSuccess(true);
     } catch (e) {
       console.error(e);
     } finally {
@@ -54,6 +57,12 @@ export function SchoolVerifyDrawer({ isOpen, onClose, school, onApproved }: Scho
 
   return (
     <>
+      <SuccessModal
+        isOpen={showReqSuccess}
+        onClose={() => setShowReqSuccess(false)}
+        title="Documents Requested"
+        message="The school has been notified to submit the required documents."
+      />
       <AnimatePresence>
         {isOpen && (
           <>

@@ -15,15 +15,18 @@ import { RechartsFundingChart } from '@/components/wallet/recharts-funding-chart
 import { LinkedPaymentMethods, PaymentMethodData } from '@/components/wallet/linked-payment-methods';
 import { ChargeCardModal } from '@/components/wallet/charge-card-modal';
 import MakeRepaymentModal from '@/components/dashboard/make-repayment-modal';
+import ContactSupportModal from '@/app/dashboard/school-verification/ContactSupportModal';
 import { getPaymentMethods, initializeCardAddition, deletePaymentMethod, chargeSavedCard } from '@/src/utils/payment-method-api';
 import { GradientSendIcon } from '@/assets/icons/GredientSendIcon';
 import { GradientWalletIcon } from '@/assets/icons/GradientWalletIcon';
 import { NetworkIcon } from '@/assets/icons/NetworkIcon';
+import useDashboardStore from '@/src/stores/dashboardStore';
 // import useAuthStore from '@/src/authStore';
 
 export default function WalletPage({ basePath = "/dashboard" }: { basePath?: string }) {
   // const { user } = useAuthStore();
   const searchParams = useSearchParams();
+  const { selectedLoanId } = useDashboardStore();
   const [isFundModalOpen, setIsFundModalOpen] = useState(false);
   const [isMakePaymentModalOpen, setIsMakePaymentModalOpen] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -32,10 +35,36 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
   const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false);
   const [selectedCard, setSelectedCard] = useState<PaymentMethodData | null>(null);
   const [isChargeModalOpen, setIsChargeModalOpen] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const activityTableRef = useRef<HTMLDivElement>(null);
 
   const scrollToActivity = () => {
     activityTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleDownloadStatement = () => {
+    if (!transactions || transactions.length === 0) return;
+    const headers = ['Date', 'Reference', 'Type', 'Description', 'Amount', 'Status'];
+    const rows = transactions.map((tx: any) => [
+      new Date(tx.transactionDate || tx.date || '').toLocaleDateString('en-GB'),
+      tx.reference || tx.transactionReference || '',
+      tx.transactionType || tx.type || '',
+      tx.description || '',
+      Number(tx.amount || 0).toFixed(2),
+      tx.status || '',
+    ]);
+    const csv = [headers, ...rows]
+      .map(row => row.map((v: string) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wallet-statement-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   // Get wallet state and actions from store
@@ -68,13 +97,13 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
     }
   };
 
-  // Fetch data on component mount
+  // Fetch data on component mount and when selected loan changes
   useEffect(() => {
-    fetchWalletBalance();
+    fetchWalletBalance(selectedLoanId ?? undefined);
     fetchWalletTransactions();
     fetchChartData('6months');
     loadPaymentMethods();
-  }, [fetchWalletBalance, fetchWalletTransactions, fetchChartData]);
+  }, [fetchWalletBalance, fetchWalletTransactions, fetchChartData, selectedLoanId]);
 
   // Check for payment success from URL params
   useEffect(() => {
@@ -92,7 +121,7 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
       setShowSuccessMessage(true);
       
       // Refresh wallet data
-      fetchWalletBalance();
+      fetchWalletBalance(selectedLoanId ?? undefined);
       fetchWalletTransactions();
       fetchChartData('6months');
       
@@ -121,7 +150,7 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
       // Clean up URL params
       window.history.replaceState({}, '', `${basePath}/wallet`);
     }
-  }, [searchParams, fetchWalletBalance, fetchWalletTransactions, fetchChartData, basePath]);
+  }, [searchParams, fetchWalletBalance, fetchWalletTransactions, fetchChartData, basePath, selectedLoanId]);
 
   // Handle page change for transactions table
   const handlePageChange = (page: number) => {
@@ -135,7 +164,7 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
     setShowSuccessMessage(true);
     
     // Refresh wallet data
-    fetchWalletBalance();
+    fetchWalletBalance(selectedLoanId ?? undefined);
     fetchWalletTransactions();
     fetchChartData('6months');
     
@@ -203,7 +232,7 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
         setShowSuccessMessage(true);
         
         // Refresh wallet data
-        fetchWalletBalance();
+        fetchWalletBalance(selectedLoanId ?? undefined);
         fetchWalletTransactions();
         fetchChartData('6months');
         
@@ -348,13 +377,14 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
           {/* Footer Actions */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
             <button
+              onClick={handleDownloadStatement}
               className="h-12 rounded-lg border border-[#00296B] bg-white text-[#00296B] font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
             >
               <Download className="w-5 h-5" />
               Download Statement
             </button>
             <button
-
+              onClick={() => setIsContactModalOpen(true)}
               className="h-12 rounded-lg border border-[#00296B] bg-white text-[#00296B] font-medium hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
             >
               <PhoneCall className="w-5 h-5" />
@@ -394,6 +424,11 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
           onCharge={handleChargeCard}
         />
       )}
+
+      <ContactSupportModal
+        isOpen={isContactModalOpen}
+        onClose={() => setIsContactModalOpen(false)}
+      />
     </div>
   );
 }

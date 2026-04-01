@@ -23,11 +23,19 @@ export interface IMailService {
     verificationData: { token?: string; otp?: string; expiresAt: Date }
   ): Promise<boolean>;
   sendWelcomeEmail(to: string, fullName: string): Promise<boolean>;
-   sendResetPasswordEmail(
+  sendResetPasswordEmail(
     to: string,
     fullName: string,
-    verificationData: { token?: string;  expiresAt: Date }
+    verificationData: { token?: string; expiresAt: Date }
   ): Promise<boolean>;
+  // Loan lifecycle emails
+  sendLoanAppliedEmail(to: string, fullName: string, loanNumber: string, amount: number): Promise<boolean>;
+  sendLoanApprovedEmail(to: string, fullName: string, loanNumber: string, amount: number): Promise<boolean>;
+  sendLoanRejectedEmail(to: string, fullName: string, loanNumber: string, reason?: string): Promise<boolean>;
+  sendLoanDisbursedEmail(to: string, fullName: string, loanNumber: string, amount: number, schoolName: string): Promise<boolean>;
+  sendLoanCompletedEmail(to: string, fullName: string, loanNumber: string): Promise<boolean>;
+  sendWalletFundedEmail(to: string, fullName: string, amount: number): Promise<boolean>;
+  sendRepaymentReminderEmail(to: string, fullName: string, amount: number, dueDate: string, loanNumber: string): Promise<boolean>;
 }
 
 /**
@@ -267,6 +275,74 @@ export class MailService implements IMailService {
       console.error(`Error sending verification email to ${to} : ${error}`);
       return false;
     }
+  }
+
+  // ─── Loan lifecycle emails ─────────────────────────────────────────────────
+
+  private async sendSimple(to: string, subject: string, templateName: string, data: Record<string, any>): Promise<boolean> {
+    try {
+      const html = await this.renderTemplate(templateName, { appName: this.appName, appUrl: this.appUrl, ...data });
+      const result = await this.sendWithRetry({ from: `${this.appName} <${this.fromEmail}>`, to: [to], subject, html });
+      return !result?.error;
+    } catch (err) {
+      console.error(`[MailService] ${templateName} error`, err);
+      return false;
+    }
+  }
+
+  async sendLoanAppliedEmail(to: string, fullName: string, loanNumber: string, amount: number): Promise<boolean> {
+    return this.sendSimple(to, `${this.appName} — Loan Application Received`, 'loan-applied', {
+      fullName, loanNumber,
+      amount: `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
+      dashboardUrl: `${this.appUrl}/dashboard`,
+    });
+  }
+
+  async sendLoanApprovedEmail(to: string, fullName: string, loanNumber: string, amount: number): Promise<boolean> {
+    return this.sendSimple(to, `${this.appName} — Your Loan Has Been Approved 🎉`, 'loan-approved', {
+      fullName, loanNumber,
+      amount: `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
+      dashboardUrl: `${this.appUrl}/dashboard`,
+    });
+  }
+
+  async sendLoanRejectedEmail(to: string, fullName: string, loanNumber: string, reason?: string): Promise<boolean> {
+    return this.sendSimple(to, `${this.appName} — Loan Application Update`, 'loan-rejected', {
+      fullName, loanNumber,
+      reason: reason || 'Please contact support for more information.',
+      dashboardUrl: `${this.appUrl}/dashboard`,
+    });
+  }
+
+  async sendLoanDisbursedEmail(to: string, fullName: string, loanNumber: string, amount: number, schoolName: string): Promise<boolean> {
+    return this.sendSimple(to, `${this.appName} — Your Funds Have Been Disbursed`, 'loan-disbursed', {
+      fullName, loanNumber, schoolName,
+      amount: `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
+      dashboardUrl: `${this.appUrl}/dashboard`,
+    });
+  }
+
+  async sendLoanCompletedEmail(to: string, fullName: string, loanNumber: string): Promise<boolean> {
+    return this.sendSimple(to, `${this.appName} — Loan Fully Repaid 🎊`, 'loan-completed', {
+      fullName, loanNumber,
+      dashboardUrl: `${this.appUrl}/dashboard`,
+    });
+  }
+
+  async sendWalletFundedEmail(to: string, fullName: string, amount: number): Promise<boolean> {
+    return this.sendSimple(to, `${this.appName} — Wallet Funded Successfully`, 'funding-approved', {
+      fullName,
+      amount: `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
+      dashboardUrl: `${this.appUrl}/dashboard/wallet`,
+    });
+  }
+
+  async sendRepaymentReminderEmail(to: string, fullName: string, amount: number, dueDate: string, loanNumber: string): Promise<boolean> {
+    return this.sendSimple(to, `${this.appName} — Upcoming Repayment Reminder`, 'repayment-reminder', {
+      fullName, loanNumber, dueDate,
+      amount: `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
+      dashboardUrl: `${this.appUrl}/dashboard/wallet`,
+    });
   }
 
   /**

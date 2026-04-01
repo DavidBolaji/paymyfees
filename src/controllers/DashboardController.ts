@@ -24,7 +24,7 @@ export class DashboardController {
    * Get dashboard statistics
    * GET /api/dashboard/stats
    */
-  async getStats(_req: Request, userId: string | undefined): Promise<NextResponse> {
+  async getStats(req: Request, userId: string | undefined): Promise<NextResponse> {
     console.log({ msg: 'Getting dashboard stats', userId });
     
     if (!userId) {
@@ -33,15 +33,16 @@ export class DashboardController {
           success: false,
           error: 'Authentication required',
           message: 'User ID is required to fetch dashboard stats',
-          metadata: {
-            timestamp: new Date().toISOString(),
-          },
+          metadata: { timestamp: new Date().toISOString() },
         },
         { status: 401 }
       );
     }
+
+    const { searchParams } = new URL(req.url);
+    const loanId = searchParams.get('loanId') ?? undefined;
     
-    const stats = await this.dashboardService.getStats(userId);
+    const stats = await this.dashboardService.getStats(userId, loanId);
 
     const response: ApiResponse = {
       success: true,

@@ -3,9 +3,10 @@ import { DashboardStats } from "../types";
 import { ChartDataItem } from "@/data";
 
 
-export const fetchDashboardStats = async (): Promise<DashboardStats | null> => {
+export const fetchDashboardStats = async (loanId?: string): Promise<DashboardStats | null> => {
   try {
-    const response = await api.get('/api/dashboard/stats');
+    const url = loanId ? `/api/dashboard/stats?loanId=${loanId}` : '/api/dashboard/stats';
+    const response = await api.get(url);
     const data = await response.json();
     
     if (data.success) {

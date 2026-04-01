@@ -8,6 +8,7 @@ import { TransactionRepository, ITransactionRepository } from '@/src/repositorie
 import { PaystackService, IPaystackService } from '@/src/services/PaystackService';
 import { executeWalletOperation, prisma } from '@/src/database/prisma';
 import { ValidationError, NotFoundError, PaymentError } from '@/src/types/errors';
+import { NotifyService } from '@/src/services/NotifyService';
 
 import { 
   TransactionType, 
@@ -52,7 +53,7 @@ export interface InitializePaymentInput {
 export interface IWalletService {
   getBalance(userId: string): Promise<number>;
   getWalletDetails(userId: string): Promise<{ balance: number; currency: string; autoDebitEnabled: boolean }>;
-  getUpcomingRepayment(userId: string): Promise<{ amount: number; dueDate: string } | null>;
+  getUpcomingRepayment(userId: string, loanId?: string): Promise<{ amount: number; dueDate: string } | null>;
   getFundingHistory(userId: string): Promise<{ count: number; period: string } | null>;
   initializePayment(input: InitializePaymentInput): Promise<{ paymentUrl: string; reference: string; accessCode: string }>;
   verifyAndFundWallet(reference: string, userId: string): Promise<{ wallet: WalletDTO; transaction: TransactionDTO }>;
@@ -135,15 +136,16 @@ export class WalletService implements IWalletService {
   /**
    * Get upcoming repayment for a user
    */
-  async getUpcomingRepayment(userId: string): Promise<{ amount: number; dueDate: string } | null> {
-    console.log({ msg: 'Getting upcoming repayment', userId });
+  async getUpcomingRepayment(userId: string, loanId?: string): Promise<{ amount: number; dueDate: string } | null> {
+    console.log({ msg: 'Getting upcoming repayment', userId, loanId });
     
     try {
       const upcomingInstallment = await prisma.installment.findFirst({
         where: {
           loan: {
             userId,
-            status: { in: ['ACTIVE', 'DISBURSED'] }
+            status: { in: ['ACTIVE', 'DISBURSED'] },
+            ...(loanId ? { id: loanId } : {}),
           },
           status: 'PENDING',
         },
@@ -388,6 +390,26 @@ export class WalletService implements IWalletService {
       userId, 
       reference,
       amount: verificationResult.amount 
+    });
+
+    // Send wallet funded notification
+    const notify = new NotifyService();
+    const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, fullName: true } }).catch(() => null);
+    const formattedAmount = new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(verificationResult.amount);
+    notify.send({
+      userId,
+      type: 'SUCCESS',
+      title: 'Wallet Funded',
+      message: `Your wallet has been funded with ${formattedAmount}.`,
+      actionUrl: '/dashboard/wallet',
+      category: 'wallet_funding',
+      email: dbUser?.email
+        ? {
+            to: dbUser.email,
+            fullName: dbUser.fullName,
+            method: (mail) => mail.sendWalletFundedEmail(dbUser.email, dbUser.fullName, +formattedAmount),
+          }
+        : undefined,
     });
 
     return result;

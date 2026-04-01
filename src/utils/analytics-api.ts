@@ -53,9 +53,10 @@ export interface AnalyticsStats {
 /**
  * Fetch analytics data for the current user
  */
-export const fetchAnalytics = async (): Promise<AnalyticsStats | null> => {
+export const fetchAnalytics = async (loanId?: string): Promise<AnalyticsStats | null> => {
   try {
-    const response = await api.get('/api/analytics');
+    const url = loanId ? `/api/analytics?loanId=${loanId}` : '/api/analytics';
+    const response = await api.get(url);
     const data = await response.json();
     
     if (data.success) {

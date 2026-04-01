@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '@/src/database/prisma';
-import { LoanStatus, PaymentStatus, SupportTicketStatus, UserRole, VerificationStatus } from '@prisma/client';
+import { Installment, LoanStatus, PaymentStatus, SupportTicketStatus, UserRole, VerificationStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 export interface IAdminRepository {
@@ -25,7 +25,7 @@ export interface IAdminRepository {
   addVerificationMessage(schoolId: string, message: string, adminId: string): Promise<any>;
   addVerificationLog(schoolId: string, activity: string, details: string, status: string, adminId: string): Promise<any>;
   getDashboardStats(): Promise<any>;
-  getStudents(page: number, limit: number): Promise<any>;
+  getStudents(page: number, limit: number, status?: string): Promise<any>;
   getStudentsRequiringAction(page: number, limit: number): Promise<any>;
   getRecentlyActiveStudents(page: number, limit: number): Promise<any>;
   getDelayedPayments(page: number, limit: number): Promise<any>;
@@ -1147,6 +1147,9 @@ export class AdminRepository implements IAdminRepository {
    * Suspend loan eligibility for a student
    */
   async suspendLoanEligibility(userId: string, adminId: string, reason: string, duration: string, notes: string): Promise<any> {
+    // Mark the user's loan eligibility as suspended
+    await prisma.user.update({ where: { id: userId }, data: { loanEligibilitySuspended: true } });
+
     await prisma.auditLog.create({
       data: {
         userId: adminId,
@@ -1202,7 +1205,9 @@ export class AdminRepository implements IAdminRepository {
    * Freeze a student account
    */
   async freezeAccount(userId: string, adminId: string, reason: string, duration: string, notes: string): Promise<any> {
-    await prisma.user.update({ where: { id: userId }, data: { isActive: false } });
+    // Parse duration (e.g. "7 days", "1 month", "3 months") into a future date
+    const frozenUntil = this.parseDuration(duration);
+    await prisma.user.update({ where: { id: userId }, data: { frozenUntil } });
 
     await prisma.auditLog.create({
       data: {
@@ -1210,7 +1215,7 @@ export class AdminRepository implements IAdminRepository {
         action: 'FREEZE',
         entity: 'user',
         entityId: userId,
-        newValues: { reason, duration, notes }
+        newValues: { reason, duration, notes, frozenUntil: frozenUntil.toISOString() }
       }
     });
 
@@ -1219,11 +1224,33 @@ export class AdminRepository implements IAdminRepository {
         userId,
         type: 'WARNING',
         title: 'Account Temporarily Frozen',
-        message: `Your account has been temporarily frozen. Reason: ${reason}. Duration: ${duration}.`
+        message: `Your account has been temporarily frozen until ${frozenUntil.toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}. Reason: ${reason}.`
       }
     });
 
     return { success: true };
+  }
+
+  /**
+   * Parse a human-readable duration string into an absolute future Date.
+   * Supports: "N day(s)", "N week(s)", "N month(s)", "N year(s)".
+   * Falls back to 30 days on unrecognised formats.
+   */
+  private parseDuration(duration: string): Date {
+    const now = new Date();
+    const match = duration.trim().match(/^(\d+)\s*(day|week|month|year)s?$/i);
+    if (!match) {
+      // fallback: 30 days
+      now.setDate(now.getDate() + 30);
+      return now;
+    }
+    const value = parseInt(match[1]!, 10);
+    const unit = match[2]!.toLowerCase();
+    if (unit === 'day') now.setDate(now.getDate() + value);
+    else if (unit === 'week') now.setDate(now.getDate() + value * 7);
+    else if (unit === 'month') now.setMonth(now.getMonth() + value);
+    else if (unit === 'year') now.setFullYear(now.getFullYear() + value);
+    return now;
   }
 
   /**

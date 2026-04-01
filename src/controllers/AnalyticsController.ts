@@ -23,10 +23,13 @@ export class AnalyticsController {
    * Get user analytics
    * GET /api/analytics
    */
-  async getUserAnalytics(_req: Request, user: AuthUser): Promise<NextResponse> {
+  async getUserAnalytics(req: Request, user: AuthUser): Promise<NextResponse> {
     console.log({ msg: 'Analytics request', userId: user.id });
 
-    const analytics = await this.analyticsService.getUserAnalytics(user.id);
+    const { searchParams } = new URL(req.url);
+    const loanId = searchParams.get('loanId') ?? undefined;
+
+    const analytics = await this.analyticsService.getUserAnalytics(user.id, loanId);
 
     const response: ApiResponse = {
       success: true,

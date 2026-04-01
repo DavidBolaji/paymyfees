@@ -301,6 +301,11 @@ export interface LoanDTO {
   userName?: string;
   userEmail?: string;
   userPhone?: string;
+  userCountry?: string;
+  userCity?: string;
+  userIsActive?: boolean;
+  schoolIsVerified?: boolean;
+  userPreviousLoans?: number;
 
   // International student specific fields
   countryOfStudy?: string;
@@ -668,6 +673,15 @@ export interface CreateWaitlistInput {
 // Dashboard Types
 // ============================================
 
+export interface DashboardLoanSummary {
+  id: string;
+  loanNumber: string;
+  loanAmount: number;
+  status: string;
+  schoolName: string;
+  createdAt: string;
+}
+
 export interface DashboardStats {
   upcomingPayment: {
     amount: number;
@@ -686,6 +700,7 @@ export interface DashboardStats {
     amount: number;
     description: string;
   };
+  allLoans?: DashboardLoanSummary[];
 }
 
 export interface AnalyticsData {

@@ -27,6 +27,7 @@ interface PaymentDetailDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   student: any;
+  mode?: string;
 }
 
 export function PaymentDetailDrawer({ isOpen, onClose, student }: PaymentDetailDrawerProps) {

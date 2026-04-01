@@ -7,7 +7,7 @@ import { AnalyticsRepository, IAnalyticsRepository, AnalyticsData } from '@/src/
 import { NotFoundError } from '@/src/types/errors';
 
 export interface IAnalyticsService {
-  getUserAnalytics(userId: string): Promise<AnalyticsData>;
+  getUserAnalytics(userId: string, loanId?: string): Promise<AnalyticsData>;
 }
 
 /**
@@ -23,14 +23,14 @@ export class AnalyticsService implements IAnalyticsService {
   /**
    * Get comprehensive analytics for a user
    */
-  async getUserAnalytics(userId: string): Promise<AnalyticsData> {
-    console.log({ msg: 'Getting user analytics', userId });
+  async getUserAnalytics(userId: string, loanId?: string): Promise<AnalyticsData> {
+    console.log({ msg: 'Getting user analytics', userId, loanId });
 
     if (!userId) {
       throw new NotFoundError('User ID is required');
     }
 
-    const analytics = await this.analyticsRepository.getAnalyticsByUserId(userId);
+    const analytics = await this.analyticsRepository.getAnalyticsByUserId(userId, loanId);
 
     console.log({ msg: 'User analytics retrieved', userId, analytics });
     return analytics;

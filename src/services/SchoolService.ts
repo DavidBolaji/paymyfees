@@ -288,15 +288,13 @@ export class SchoolService implements ISchoolService {
 
     const whereClause: any = {
       schoolName: {
-        equals: normalizedSchoolName,
-        mode: 'insensitive'
+        equals: normalizedSchoolName
       }
     };
 
     if (countryOfStudy) {
       whereClause.country = {
-        equals: countryOfStudy,
-        mode: 'insensitive'
+        equals: countryOfStudy.trim().toLowerCase()
       };
     }
 

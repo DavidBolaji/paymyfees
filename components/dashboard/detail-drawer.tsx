@@ -368,10 +368,39 @@ export function TransactionDrawer({
   const actions: DrawerAction[] = [
     {
       label: 'Download Receipt',
-      onClick: () => {
-        console.log(`Download receipt for transaction ${transactionId}`);
-        // In a real implementation, this would call an API endpoint to generate and download a receipt
-        window.location.href = `/api/payments/${transaction.id}/receipt`;
+      onClick: async () => {
+        try {
+          const res = await fetch(`/api/payments/${transaction.id}/receipt`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.receiptUrl) {
+              window.open(data.receiptUrl, '_blank', 'noopener,noreferrer');
+              return;
+            }
+          }
+        } catch {
+          // fall through to printable receipt
+        }
+        // Generate a printable receipt in a new tab as fallback
+        const receiptHtml = `<!DOCTYPE html><html><head><title>Receipt – ${transactionId}</title>
+<style>body{font-family:sans-serif;max-width:480px;margin:40px auto;padding:0 16px}h1{font-size:1.2rem}table{width:100%;border-collapse:collapse;margin-top:16px}td{padding:8px 4px;border-bottom:1px solid #eee;font-size:.9rem}td:last-child{text-align:right;font-weight:600}@media print{button{display:none}}</style>
+</head><body>
+<h1>Transaction Receipt</h1>
+<table>
+<tr><td>Transaction ID</td><td>${transactionId}</td></tr>
+<tr><td>Date</td><td>${formattedDate} ${formattedTime}</td></tr>
+<tr><td>Type</td><td>${transaction.type || 'Payment'}</td></tr>
+<tr><td>Amount</td><td>₦${(transaction.amount || 0).toLocaleString()}</td></tr>
+<tr><td>Payment Method</td><td>${transaction.method || 'Wallet'}</td></tr>
+<tr><td>Status</td><td>${transaction.status || 'Completed'}</td></tr>
+<tr><td>Reference</td><td>${transaction.reference || '-'}</td></tr>
+</table>
+<br/><button onclick="window.print()">Print / Save as PDF</button>
+</body></html>`;
+        const blob = new Blob([receiptHtml], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank', 'noopener,noreferrer');
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
       },
       variant: 'primary',
       icon: <Download className="w-4 h-4" />

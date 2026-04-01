@@ -15,6 +15,7 @@ import { BarChartIcon } from "@/assets/icons/BarChatIcon";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { AnalyticsPageSkeleton } from "./AnalyticsPageSkeleton";
+import useDashboardStore from "@/src/stores/dashboardStore";
 
 export default function AnalyticsPage() {
   const [stats, setStats] = useState<AnalyticsStats | null>(null);
@@ -29,13 +30,14 @@ export default function AnalyticsPage() {
     fetchChartData,
   } = useWalletStore();
   const { push } = useRouter()
+  const { selectedLoanId } = useDashboardStore();
 
   useEffect(() => {
     const loadAnalytics = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await fetchAnalytics();
+        const data = await fetchAnalytics(selectedLoanId ?? undefined);
         setStats(data);
       } catch (err) {
         console.error('Error loading analytics:', err);
@@ -48,7 +50,7 @@ export default function AnalyticsPage() {
     loadAnalytics();
     // Fetch chart data when component mounts
     fetchChartData('6months');
-  }, [fetchChartData]);
+  }, [fetchChartData, selectedLoanId]);
 
   return (
     <div className="">

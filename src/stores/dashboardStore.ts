@@ -12,6 +12,7 @@ interface DashboardState {
   chartData: ChartDataItem[];
   timelineData: TimelineData | null;
   selectedYear: string;
+  selectedLoanId: string | null;
   hasHydrated: boolean;
   lastFetched: number | null;
   lastChartFetch: Record<string, number>; // Track fetch time per year
@@ -20,6 +21,7 @@ interface DashboardState {
   setChartData: (data: ChartDataItem[], year: string) => void;
   setTimelineData: (data: TimelineData | null) => void;
   setSelectedYear: (year: string) => void;
+  setSelectedLoanId: (id: string | null) => void;
   setHasHydrated: (value: boolean) => void;
   setLastFetched: (timestamp: number) => void;
   shouldRefetch: () => boolean;
@@ -36,6 +38,7 @@ const useDashboardStore = create<DashboardState>()(
       chartData: [],
       timelineData: null,
       selectedYear: '2026',
+      selectedLoanId: null,
       hasHydrated: false,
       lastFetched: null,
       lastChartFetch: {},
@@ -62,6 +65,12 @@ const useDashboardStore = create<DashboardState>()(
       setSelectedYear: (year) =>
         set({
           selectedYear: year,
+        }),
+
+      setSelectedLoanId: (id) =>
+        set({
+          selectedLoanId: id,
+          lastFetched: null, // Force refetch when loan selection changes
         }),
 
       setHasHydrated: (value) =>

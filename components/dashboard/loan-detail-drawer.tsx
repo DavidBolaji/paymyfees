@@ -162,15 +162,19 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
   };
 
   const handleRequestDocs = async (data: { documents: string; instructions: string; channels: string[] }) => {
-    if (!detail?.userId) return;
+    if (!detail?.schoolId) return;
     try {
       setReqDocsLoading(true);
-      await api.post('/api/admin/notifications', {
-        userId: detail.userId,
-        type: 'DOCUMENT_REQUEST',
-        message: `Please upload: ${data.documents}. ${data.instructions}`,
-      });
-      setShowReqDocs(false);
+      const res = await api.post(`/api/admin/schools/${detail.schoolId}/request-documents`, {
+        documents: data.documents,
+        instructions: data.instructions,
+        channels: data.channels,
+      }).then(r => r.json());
+      if (res.success !== false) {
+        setShowReqDocs(false);
+        setSuccessMessage({ title: 'Documents Requested', message: 'A document request has been sent to the school.' });
+        setShowSuccess(true);
+      }
     } catch (e) { console.error(e); } finally { setReqDocsLoading(false); }
   };
 

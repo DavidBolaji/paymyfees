@@ -17,7 +17,6 @@
 //     </div>
 //   );
 // }
-import { MaxScreenContainer } from "@/components/layout/max-screen-container";
 import { HomeHeader } from "@/components/home/home-header";
 import { HomeHeroSection } from "@/components/home/home-hero-section";
 import { HomeMetricsSection } from "@/components/home/home-metrics-section";

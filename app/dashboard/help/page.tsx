@@ -243,6 +243,24 @@ export default function HelpPage() {
             })}
           </div>
 
+          {/* My Support Tickets */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4 text-center">
+              My Support Tickets
+            </h2>
+            <p className="text-center text-gray-500 text-sm mb-4">
+              View your submitted tickets and responses from our support team.
+            </p>
+            <div className="flex justify-center">
+              <a
+                href="/dashboard/help/tickets"
+                className="inline-flex items-center gap-2 bg-[#00296B] text-white px-6 py-3 rounded-xl font-semibold text-sm hover:bg-[#001d4f] transition-colors"
+              >
+                View My Tickets
+              </a>
+            </div>
+          </div>
+
           {/* General FAQs */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
