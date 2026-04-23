@@ -22,6 +22,7 @@ model User {
   twoFactorEnabled          Boolean               @default(false)
   twoFactorSecret           String?               @db.VarChar(255)
   lastLogin                 DateTime?
+  embedlyCustomerId         String?               @db.VarChar(255)
   loanEligibilitySuspended  Boolean               @default(false)
   frozenUntil               DateTime?
   createdAt                 DateTime              @default(now())
@@ -413,16 +414,19 @@ model Document {
 }
 
 model Wallet {
-  id               String        @id @default(uuid()) @db.Char(36)
-  userId           String        @unique @db.Char(36)
-  balance          Decimal       @default(0.00) @db.Decimal(15, 2)
-  currency         String        @default("NGN") @db.VarChar(3)
-  dailyLimit       Decimal?      @db.Decimal(15, 2)
-  monthlyLimit     Decimal?      @db.Decimal(15, 2)
-  autoDebitEnabled Boolean       @default(false)
-  isActive         Boolean       @default(true)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  id                   String        @id @default(uuid()) @db.Char(36)
+  userId               String        @unique @db.Char(36)
+  balance              Decimal       @default(0.00) @db.Decimal(15, 2)
+  currency             String        @default("NGN") @db.VarChar(3)
+  dailyLimit           Decimal?      @db.Decimal(15, 2)
+  monthlyLimit         Decimal?      @db.Decimal(15, 2)
+  autoDebitEnabled     Boolean       @default(false)
+  isActive             Boolean       @default(true)
+  embedlyWalletId      String?       @db.VarChar(255)
+  virtualAccountNumber String?       @db.VarChar(20)
+  virtualAccountBank   String?       @db.VarChar(100)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
   transactions     Transaction[]
   user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -781,6 +785,7 @@ enum PaymentMethod {
 
 enum PaymentStatus {
   PENDING
+  PROCESSING
   PAID
   OVERDUE
   FAILED

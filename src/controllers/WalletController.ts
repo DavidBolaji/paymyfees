@@ -1,42 +1,31 @@
 /**
- * Wallet Controller (Updated with Paystack Integration)
+ * Wallet Controller (Updated for Embedly Integration)
  * HTTP request/response handling for wallet endpoints
+ * Wallet funding is driven by Embedly inflow webhooks only (no checkout flow)
  */
 
 import { NextResponse } from 'next/server';
 import { WalletService, IWalletService } from '@/src/services/WalletService';
+import { RepaymentService } from '@/src/services/RepaymentService';
 import { paginationSchema } from '@/src/validation/schemas';
-import { z } from 'zod';
 import { ApiResponse } from '@/src/types';
 import { AuthUser } from '@/src/middleware/auth';
-import { PaymentMethod } from '@prisma/client';
-import { IUserService, UserService } from '../services/UserService';
-
-/**
- * Initialize Payment Schema
- */
-const initializePaymentSchema = z.object({
-  amount: z.number().positive('Amount must be positive'),
-  paymentMethod: z.enum(['BANK_TRANSFER', 'CARD_PAYMENT', 'USSD_CODE']),
-  currency: z.string().optional().default('NGN'),
-  note: z.string().optional(),
-  callbackUrl: z.string().url().optional(),
-});
+import crypto from 'crypto';
 
 /**
  * Wallet Controller
  */
 export class WalletController {
   private walletService: IWalletService;
-  private userService: IUserService
+  private repaymentService: RepaymentService;
 
-  constructor(walletService?: IWalletService, userService?: IUserService) {
+  constructor(walletService?: IWalletService, repaymentService?: RepaymentService) {
     this.walletService = walletService || new WalletService();
-    this.userService = userService || new UserService();
+    this.repaymentService = repaymentService || new RepaymentService();
   }
 
   /**
-   * Get wallet balance
+   * Get wallet balance + virtual account details
    * GET /api/wallet/balance
    */
   async getBalance(req: Request, user: AuthUser): Promise<NextResponse> {
@@ -56,6 +45,8 @@ export class WalletController {
         currency: walletDetails.currency,
         lastUpdated: new Date().toISOString(),
         autoDebitEnabled: walletDetails.autoDebitEnabled,
+        virtualAccountNumber: walletDetails.virtualAccountNumber,
+        virtualAccountBank: walletDetails.virtualAccountBank,
         upcomingRepayment,
         fundingHistory,
       },
@@ -68,131 +59,144 @@ export class WalletController {
   }
 
   /**
-   * Initialize payment
-   * POST /api/wallet/initialize-payment
-   */
-  async initializePayment(req: Request, user: AuthUser): Promise<NextResponse> {
-    const body = await req.json();
-    const validatedData = initializePaymentSchema.parse(body);
-
-    console.log({ 
-      msg: 'Initializing payment', 
-      userId: user.id, 
-      amount: validatedData.amount 
-    });
-
-    const card_map: {[key: string]: PaymentMethod} = {
-      BANK_TRANSFER: "BANK_TRANSFER",
-      CARD_PAYMENT: "CARD",
-      USSD_CODE: "USSD",
-      WALLET: "WALLET"
-    }
-
-    const userEmail = await this.userService.getUserProfile(user.id)
-
-    // Initialize payment with Paystack
-    const result = await this.walletService.initializePayment({
-      userId: user.id,
-      amount: validatedData.amount,
-      paymentMethod: card_map[validatedData.paymentMethod] as PaymentMethod,
-      currency: validatedData.currency,
-      note: validatedData.note,
-      userEmail: userEmail.email,
-      callbackUrl: validatedData.callbackUrl || `${process.env.NEXT_PUBLIC_APP_URL}/wallet/payment-callback`,
-    });
-
-    const response: ApiResponse = {
-      success: true,
-      data: {
-        paymentUrl: result.paymentUrl,
-        reference: result.reference,
-        accessCode: result.accessCode,
-        amount: validatedData.amount,
-      },
-      metadata: {
-        timestamp: new Date().toISOString(),
-      },
-    };
-
-    return NextResponse.json(response, { status: 200 });
-  }
-
-  /**
-   * Verify payment and fund wallet
-   * GET /api/wallet/verify-payment/:reference
-   */
-  async verifyPayment(_req: Request, reference: string, user: AuthUser): Promise<NextResponse> {
-    console.log({ msg: 'Verifying payment', reference, userId: user.id });
-
-    const result = await this.walletService.verifyAndFundWallet(reference, user.id);
-
-    const response: ApiResponse = {
-      success: true,
-      data: {
-        verified: true,
-        transactionId: result.transaction.id,
-        status: result.transaction.status,
-        amount: result.transaction.amount,
-        newBalance: result.wallet.balance,
-      },
-      metadata: {
-        timestamp: new Date().toISOString(),
-      },
-    };
-
-    return NextResponse.json(response, { status: 200 });
-  }
-
-  /**
-   * Paystack webhook callback
+   * Embedly unified webhook handler
    * POST /api/wallet/webhook
+   *
+   * Handles three event types:
+   *   inflow            — user's virtual account received money → credit wallet
+   *   payout.success    — repayment transfer confirmed → mark installment PAID
+   *   payout.failed     — repayment transfer failed → rollback wallet debit
    */
   async handleWebhook(req: Request): Promise<NextResponse> {
-    console.log({ msg: 'Received Paystack webhook' });
+    console.log({ msg: 'Received Embedly webhook' });
 
+    // ── Read raw body (needed for HMAC verification) ───────────────────────────
+    let rawBody: string;
     try {
-      const body = await req.json();
-      const signature = req.headers.get('x-paystack-signature');
+      rawBody = await req.text();
+    } catch {
+      return NextResponse.json({ success: false, message: 'Cannot read request body' }, { status: 400 });
+    }
 
-      // Verify webhook signature
-      const secret = process.env.PAYSTACK_SECRET_KEY || '';
-      const crypto = require('crypto');
-      const hash = crypto
-        .createHmac('sha512', secret)
-        .update(JSON.stringify(body))
+    // ── Verify HMAC signature ────────────────────────────────────────────
+    const webhookSecret = process.env.EMBEDLY_WEBHOOK_SECRET || '';
+    const signature = req.headers.get('x-embedly-signature') ?? req.headers.get('x-webhook-signature') ?? '';
+
+    if (webhookSecret) {
+      const expectedSig = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(rawBody)
         .digest('hex');
 
-      if (hash !== signature) {
-        console.warn({ msg: 'Invalid webhook signature' });
-        return NextResponse.json(
-          { success: false, message: 'Invalid signature' },
-          { status: 400 }
-        );
+      if (!crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(signature))) {
+        console.warn({ msg: 'Invalid Embedly webhook signature' });
+        return NextResponse.json({ success: false, message: 'Invalid signature' }, { status: 401 });
       }
+    } else {
+      console.warn('EMBEDLY_WEBHOOK_SECRET not set — skipping signature verification (unsafe in production)');
+    }
 
-      // Handle webhook event
-      const event = body.event;
-      const data = body.data;
+    // ── Parse body ──────────────────────────────────────────────────
+    let body: Record<string, unknown>;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json({ success: false, message: 'Invalid JSON' }, { status: 400 });
+    }
 
-      if (event === 'charge.success') {
-        const reference = data.reference;
-        const userId = data.metadata?.userId;
+    const eventType: string = (body.event ?? body.eventType ?? body.type ?? '') as string;
+    const data = (body.data ?? body) as Record<string, unknown>;
 
-        if (userId && reference) {
-          // Verify and fund wallet
-          await this.walletService.verifyAndFundWallet(reference, userId);
-          console.log({ msg: 'Webhook processed successfully', reference, userId });
-        }
+    console.log({ msg: 'Processing Embedly webhook event', eventType });
+
+    try {
+      // ── Route by event type ────────────────────────────────────────────
+      if (eventType === 'inflow' || eventType === 'wallet.inflow' || eventType === 'credit') {
+        await this.handleInflowEvent(data);
+      } else if (eventType === 'payout.success' || eventType === 'transfer.success') {
+        await this.handlePayoutSuccessEvent(data);
+      } else if (eventType === 'payout.failed' || eventType === 'transfer.failed') {
+        await this.handlePayoutFailedEvent(data);
+      } else {
+        // Unknown event — acknowledge silently (Embedly may add new events over time)
+        console.log({ msg: 'Unhandled Embedly webhook event type', eventType });
       }
 
       return NextResponse.json({ success: true }, { status: 200 });
     } catch (error) {
-      console.error('Webhook processing error:', error);
+      console.error('Embedly webhook processing error:', error);
+      // Return 200 to prevent Embedly from retrying events that are application-level errors
+      // (e.g. wallet not found). Return 500 only for unexpected infra errors.
+      const isKnownError = error instanceof Error && (
+        error.message.includes('not found') ||
+        error.message.includes('Duplicate') ||
+        error.message.includes('already')
+      );
       return NextResponse.json(
         { success: false, message: 'Webhook processing failed' },
-        { status: 500 }
+        { status: isKnownError ? 200 : 500 }
       );
     }
+  }
+
+  // ── Private webhook event handlers ─────────────────────────────────────
+
+  /** Wallet received money from a bank transfer — credit user's wallet */
+  private async handleInflowEvent(data: Record<string, unknown>): Promise<void> {
+    const accountNumber = (data.beneficiaryAccountNumber ?? data.accountNumber ?? data.virtualAccountNumber ?? '') as string;
+    const amount = Number(data.amount ?? 0);
+    const transactionReference = (data.transactionReference ?? data.reference ?? data.sessionId ?? '') as string;
+    const narration = (data.narration ?? data.remarks ?? '') as string;
+    const occurredAt = (data.transactionDate ?? data.createdAt ?? '') as string;
+
+    if (!accountNumber || !transactionReference || amount <= 0) {
+      console.warn({ msg: 'Inflow webhook missing required fields', accountNumber, transactionReference, amount });
+      return;
+    }
+
+    await this.walletService.handleInflowWebhook({
+      accountNumber,
+      amount,
+      transactionReference,
+      narration,
+      occurredAt: occurredAt || undefined,
+    });
+  }
+
+  /** Payout (repayment) confirmed successful — mark installment PAID */
+  private async handlePayoutSuccessEvent(data: Record<string, unknown>): Promise<void> {
+    const customerTransactionReference = (data.customerTransactionReference ?? data.reference ?? '') as string;
+    const gatewayReference = (data.transactionRef ?? data.transactionReference ?? '') as string;
+    const amount = Number(data.amount ?? 0);
+
+    if (!customerTransactionReference) {
+      console.warn({ msg: 'payout.success webhook missing customerTransactionReference', data });
+      return;
+    }
+
+    await this.repaymentService.confirmRepaymentSuccess({
+      customerTransactionReference,
+      gatewayReference,
+      status: 'success',
+      amount,
+    });
+  }
+
+  /** Payout (repayment) failed — rollback wallet debit */
+  private async handlePayoutFailedEvent(data: Record<string, unknown>): Promise<void> {
+    const customerTransactionReference = (data.customerTransactionReference ?? data.reference ?? '') as string;
+    const failureReason = (data.failureReason ?? data.responseDescription ?? data.message ?? 'Payout failed') as string;
+
+    if (!customerTransactionReference) {
+      console.warn({ msg: 'payout.failed webhook missing customerTransactionReference', data });
+      return;
+    }
+
+    await this.repaymentService.rollbackRepayment({
+      customerTransactionReference,
+      status: 'failed',
+      failureReason,
+    });
   }
 
   /**

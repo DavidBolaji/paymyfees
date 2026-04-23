@@ -1,33 +1,16 @@
 /**
- * Initialize Payment API Route
- * POST /api/wallet/initialize-payment
+ * Initialize Payment — REMOVED
+ * Checkout-based wallet funding replaced by Embedly virtual account bank transfers.
+ * Use GET /api/wallet/fund to retrieve virtual account details.
  */
-import { WalletController } from '@/src/controllers/WalletController';
-import { asyncHandler } from '@/src/middleware/errorHandler';
-import { lenientRateLimiter } from '@/src/middleware/rateLimiter';
-import { authMiddleware } from '@/src/middleware/authMiddleware';
-import { UserRole } from '@prisma/client';
+import { NextResponse } from 'next/server';
 
-const walletController = new WalletController();
-
-/**
- * POST /api/wallet/initialize-payment
- * Initialize payment with Paystack
- */
-export const POST = asyncHandler(async (req: Request) => {
-  // Apply lenient rate limiting
-  await lenientRateLimiter(req);
-
-  // Authenticate user
-  const authResult = await authMiddleware(req);
-  if (!authResult.success) {
-    return authResult.response!;
-  }
-
-  // Delegate to controller
-  return await walletController.initializePayment(req, {
-    id: authResult.userId!,
-    email: '',
-    role: UserRole.PARENT
-  });
-});
+export const POST = async () =>
+  NextResponse.json(
+    {
+      success: false,
+      error:
+        'This endpoint has been removed. Fund your wallet via bank transfer to your dedicated virtual account. See GET /api/wallet/fund for account details.',
+    },
+    { status: 410 }
+  );
