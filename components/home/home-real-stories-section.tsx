@@ -66,7 +66,7 @@ function getInitials(name: string) {
 
 function StoryCard({ story }: { story: Story }) {
   return (
-    <div className="inline-flex w-[calc(25vw-1.125rem)] shrink-0 flex-col justify-between gap-4 rounded-[1rem] border border-[#E5E7EB] bg-white p-5 shadow-[0px_2px_8px_0px_rgba(0,0,0,0.06)]">
+    <div className="inline-flex w-[80vw] sm:w-[45vw] lg:w-[calc(25vw-1.125rem)] shrink-0 flex-col justify-between gap-4 rounded-[1rem] border border-[#E5E7EB] bg-white p-5 shadow-[0px_2px_8px_0px_rgba(0,0,0,0.06)]">
       <p
         className="text-[0.875rem] leading-[1.4] tracking-[0] text-[#191919]"
         style={{ fontFamily: "Manrope, sans-serif" }}
@@ -100,10 +100,10 @@ function StoryCard({ story }: { story: Story }) {
 }
 
 function MarqueeRow({ stories, direction }: { stories: Story[]; direction: "left" | "right" }) {
-  // Each card is ~25vw. For seamless looping at -50%, one "half" must be ≥ 100vw.
-  // So we need at least ceil(4 / stories.length) copies per half, doubled for the loop.
+  // On mobile cards are 80vw (need 2/story), tablet 45vw (need 3/story), desktop 25vw (need 4/story).
+  // Use the largest requirement (desktop) so it's seamless at all sizes.
   const halfCopies = Math.ceil(4 / stories.length);
-  const totalCopies = halfCopies * 2;
+  const totalCopies = Math.max(halfCopies * 2, 4);
   const repeated = Array.from({ length: totalCopies }, () => stories).flat();
   return (
     <div className="marquee-track w-full overflow-hidden">
