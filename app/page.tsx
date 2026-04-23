@@ -1,22 +1,3 @@
-// import { Footer } from "@/components/layout/footer";
-// import { CTASection } from "@/components/sections/cta";
-// import { EarlyAccessSection } from "@/components/sections/early-access";
-// import { FeaturesSection } from "@/components/sections/features";
-// import { HeroSection } from "@/components/sections/hero";
-
-// export default function Home() {
-//   return (
-//     <div className="">
-      
-//         <HeroSection />
-//         <EarlyAccessSection />
-//         <FeaturesSection />
-//         <CTASection />
-      
-//       <Footer />
-//     </div>
-//   );
-// }
 import { HomeHeader } from "@/components/home/home-header";
 import { HomeHeroSection } from "@/components/home/home-hero-section";
 import { HomeMetricsSection } from "@/components/home/home-metrics-section";

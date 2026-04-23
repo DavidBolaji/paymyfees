@@ -1,7 +1,9 @@
+"use client";
 import Image from "next/image";
 import productImg1 from "@/assets/home/assets/product-img-1.jpg";
 import productImg2 from "@/assets/home/assets/product-img-2.jpg";
 import productImg3 from "@/assets/home/assets/product-img-3.jpg";
+import { useRouter } from "next/navigation";
 
 const products = [
   {
@@ -66,7 +68,12 @@ export function HomeProductsSection() {
           <button className="h-[2.875rem] w-[15rem] rounded-[0.5rem] border border-[#001D4C] bg-white px-[1.5rem] py-[0.6875rem] text-[0.9375rem] font-semibold leading-[120%] tracking-[0] text-[#001D4C]">
             Learn More
           </button>
-          <button className="h-[2.875rem] w-[15rem] rounded-[0.5rem] bg-[#001D4C] px-[1.5rem] py-[0.6875rem] text-[0.9375rem] font-semibold leading-[120%] tracking-[0] text-[#E6EAF0]">
+          <button
+            onClick={() => {
+              const router = useRouter()
+              router.push("/auth/register");
+            }}
+            className="h-[2.875rem] w-[15rem] rounded-[0.5rem] bg-[#001D4C] px-[1.5rem] py-[0.6875rem] text-[0.9375rem] font-semibold leading-[120%] tracking-[0] text-[#E6EAF0]">
             Get Started
           </button>
         </div>

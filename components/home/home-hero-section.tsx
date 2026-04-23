@@ -28,7 +28,7 @@ export function HomeHeroSection() {
               Learn More
             </a>
             <a
-              href="#cta"
+              href="/auth/register"
               className="flex h-[47px] w-full max-w-[16.125rem] items-center justify-center rounded-[8px] bg-[#002561] px-[39px] py-[15px] text-[14px] font-semibold leading-[120%] tracking-[0] text-white"
             >
               Get Started

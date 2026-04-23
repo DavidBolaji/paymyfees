@@ -1,5 +1,7 @@
+"use client";
 import { ArrowRight } from "lucide-react";
 import { HomeGradientWrapper } from "./home-gradient-wrapper";
+import { useRouter } from "next/navigation";
 
 export function HomeCtaSection() {
   return (
@@ -30,6 +32,10 @@ export function HomeCtaSection() {
                 fontFamily: "Manrope, sans-serif",
                 border: "1px solid rgba(255,255,255,0.18)",
                 // backdropFilter: "blur(6px)",
+              }}
+              onClick={() => {
+                const router = useRouter()
+                router.push("/auth/register");
               }}
             >
               Get Started

@@ -62,7 +62,7 @@ export function HomeHeader() {
             </a>
 
             <a
-              href="#apply"
+              href="/auth/register"
               className="rounded-[24px] bg-[#002561] whitespace-nowrap px-[30px] py-[11px] font-semibold text-[18px] leading-[120%] tracking-[0] text-white"
             >
               Apply Now
@@ -76,7 +76,7 @@ export function HomeHeader() {
           <Image src={WebLogo} alt="PayMyFees" width={110} height={26} priority className="h-auto w-[110px]" />
         </a>
         <a
-          href="#apply"
+          href="/auth/register"
           className="rounded-[16px] bg-[#002561] px-4 py-2 font-semibold text-[14px] leading-[120%] text-white"
         >
           Apply Now
