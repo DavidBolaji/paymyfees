@@ -27,6 +27,7 @@ const products = [
 ];
 
 export function HomeProductsSection() {
+  const router = useRouter();
   return (
     <section id="products" className="bg-white px-6 pb-14 pt-[7.5rem] md:px-10 xl:px-[11.25rem]">
       <div className="mx-auto max-w-[1512px]">
@@ -70,7 +71,6 @@ export function HomeProductsSection() {
           </button>
           <button
             onClick={() => {
-              const router = useRouter()
               router.push("/auth/register");
             }}
             className="h-[2.875rem] w-[15rem] rounded-[0.5rem] bg-[#001D4C] px-[1.5rem] py-[0.6875rem] text-[0.9375rem] font-semibold leading-[120%] tracking-[0] text-[#E6EAF0]">
