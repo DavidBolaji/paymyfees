@@ -104,6 +104,9 @@ export class DashboardService implements IDashboardService {
       wallet: {
         amount: data.wallet?.balance || 0,
         description: 'Available',
+        virtualAccountNumber: data.wallet?.virtualAccountNumber || null,
+        virtualAccountBank: data.wallet?.virtualAccountBank || null,
+        embedlyWalletId: data.wallet?.embedlyWalletId || null,
       },
       allLoans: (data.allLoans || []).map((l: any) => ({
         id: l.id,

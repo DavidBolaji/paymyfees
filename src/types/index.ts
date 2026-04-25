@@ -699,6 +699,9 @@ export interface DashboardStats {
   wallet: {
     amount: number;
     description: string;
+    virtualAccountNumber?: string | null;
+    virtualAccountBank?: string | null;
+    embedlyWalletId?: string | null;
   };
   allLoans?: DashboardLoanSummary[];
 }

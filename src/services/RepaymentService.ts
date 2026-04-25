@@ -1,15 +1,16 @@
 /**
  * Repayment Service (Embedly Integration)
- * Business logic for loan repayments via Embedly inter-bank transfer
+ * Business logic for loan repayments via Embedly wallet-to-wallet transfer
  *
- * Flow:
+ * Flow (wallet-to-wallet — instant):
  * 1. Validate installment + ordering
  * 2. Check wallet balance
- * 3. Reserve (debit) wallet balance
- * 4. Initiate Embedly inter-bank transfer (ASYNC)
- * 5. Mark installment/transaction as PROCESSING
- * 6. Webhook payout.success → mark PAID + update loan
- * 7. Webhook payout.failed  → rollback: re-credit wallet, mark FAILED
+ * 3. Debit wallet + call Embedly wallet-to-wallet (user → org wallet 9710031865)
+ * 4. On success: mark transaction COMPLETED, installment PAID, update loan
+ * 5. On failure: rollback wallet debit, mark transaction FAILED
+ *
+ * Admin payout flow (inter-bank, async — kept for future use):
+ * - confirmRepaymentSuccess / rollbackRepayment handle payout webhooks
  *
  * Rules:
  * - Full installment amounts only (no partial payments)
@@ -22,6 +23,7 @@ import { WalletRepository, IWalletRepository } from '@/src/repositories/WalletRe
 import { executeWalletOperation, prisma } from '@/src/database/prisma';
 import { ValidationError, NotFoundError, PaymentError } from '@/src/types/errors';
 import { EmbedlyPayoutService } from '@/src/services/EmbedlyPayoutService';
+import { EmbedlyService } from '@/src/services/EmbedlyService';
 
 import { 
   TransactionType, 
@@ -107,24 +109,28 @@ export interface IRepaymentService {
  */
 export class RepaymentService implements IRepaymentService {
   private walletRepository: IWalletRepository;
-  private payoutService: EmbedlyPayoutService;
+  readonly payoutService: EmbedlyPayoutService;   // kept for admin inter-bank payouts
+  private embedlyService: EmbedlyService;
 
   constructor(
     walletRepository?: IWalletRepository,
-    payoutService?: EmbedlyPayoutService
+    payoutService?: EmbedlyPayoutService,
+    embedlyService?: EmbedlyService
   ) {
     this.walletRepository = walletRepository || new WalletRepository();
     this.payoutService = payoutService || new EmbedlyPayoutService();
+    this.embedlyService = embedlyService || new EmbedlyService();
   }
 
   /**
-   * Make repayment — debits wallet and initiates inter-bank payout to paymyfees
-   * Installment is marked PROCESSING until payout webhook confirms success/failure
+   * Make repayment via Embedly wallet-to-wallet transfer (instant)
+   * Moves funds from user's virtual account → company org wallet (PMF_ORG_WALLET_ACCOUNT)
+   * Transfer is synchronous: success = funds moved, installment marked PAID immediately.
    */
   async makeRepayment(input: MakeRepaymentInput): Promise<RepaymentResult> {
     console.log({ msg: 'Making repayment', userId: input.userId, installmentId: input.installmentId });
 
-    // ── Phase 1: Validate + Reserve Balance (DB transaction) ──────────────────
+    // ── Phase 1: Validate + Debit Wallet (DB transaction) ─────────────────────
     const reservationResult = await executeWalletOperation(async (tx) => {
       const installment = await tx.installment.findUnique({
         where: { id: input.installmentId },
@@ -137,7 +143,6 @@ export class RepaymentService implements IRepaymentService {
         throw new ValidationError('Unauthorized to pay this installment');
       }
 
-      // Block already-paid or already-processing installments
       if (installment.status === 'PAID') {
         throw new ValidationError('This installment has already been paid');
       }
@@ -147,7 +152,7 @@ export class RepaymentService implements IRepaymentService {
         );
       }
 
-      // Rule 2: Must be the next due installment
+      // Must be the next due installment (pay in order)
       const nextDue = await tx.installment.findFirst({
         where: {
           loan: {
@@ -175,11 +180,9 @@ export class RepaymentService implements IRepaymentService {
         );
       }
 
-      // Rule 1: Full installment amount (including late fees)
       const amountToPay = Number(installment.amount) + Number(installment.lateFee);
       const currentBalance = Number(wallet.balance);
 
-      // Rule 3: Check balance INSIDE the transaction (prevents race conditions)
       if (currentBalance < amountToPay) {
         const shortfall = amountToPay - currentBalance;
         throw new ValidationError(
@@ -190,16 +193,15 @@ export class RepaymentService implements IRepaymentService {
       const balanceBefore = currentBalance;
       const balanceAfter = balanceBefore - amountToPay;
 
-      // Reserve the balance (debit wallet)
+      // Debit wallet
       const updatedWallet = await tx.wallet.update({
         where: { userId: input.userId },
         data: { balance: { decrement: amountToPay } },
       });
 
-      // Generate unique repayment reference
       const txReference = `RPY-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-      // Create transaction as PROCESSING (not completed yet)
+      // Create transaction as PENDING — will be updated to COMPLETED after transfer
       await tx.transaction.create({
         data: {
           transactionReference: txReference,
@@ -211,7 +213,7 @@ export class RepaymentService implements IRepaymentService {
           balanceAfter,
           description: `Loan repayment: ${installment.loan.loanNumber} — Installment #${installment.installmentNumber}`,
           category: 'LOAN_REPAYMENT',
-          status: ('PROCESSING' as any),
+          status: TransactionStatus.PENDING,
           transactionDate: new Date(),
           metadata: {
             loanId: installment.loanId,
@@ -226,7 +228,7 @@ export class RepaymentService implements IRepaymentService {
         },
       });
 
-      // Lock installment as PROCESSING
+      // Lock installment while transfer is in flight
       await tx.installment.update({
         where: { id: input.installmentId },
         data: { status: 'PROCESSING' as any },
@@ -246,73 +248,95 @@ export class RepaymentService implements IRepaymentService {
     const { txReference, amountToPay, installment, balanceAfter, virtualAccountNumber } =
       reservationResult;
 
-    // ── Phase 2: Initiate inter-bank payout (outside DB transaction) ───────────
+    // ── Phase 2: Wallet-to-wallet transfer (instant, outside DB tx) ───────────
+    const orgWallet = process.env.PMF_ORG_WALLET_ACCOUNT;
+    if (!orgWallet) {
+      await this.performRollback(input.userId, txReference, installment.id, amountToPay, 'Server misconfiguration: PMF_ORG_WALLET_ACCOUNT not set');
+      throw new PaymentError('Repayment destination wallet not configured', txReference);
+    }
+
     try {
-      const destinationBankCode = process.env.PMF_DESTINATION_BANK_CODE;
-      const destinationAccountNumber = process.env.PMF_DESTINATION_ACCOUNT_NO;
-      const destinationAccountName =
-        process.env.PMF_DESTINATION_ACCOUNT_NAME || 'PayMyFees Limited';
-
-      if (!destinationBankCode || !destinationAccountNumber) {
-        // Misconfiguration — rollback the reservation
-        await this.performRollback(input.userId, txReference, installment.id, amountToPay, 'Server misconfiguration: destination account not configured');
-        throw new PaymentError('Repayment destination account not configured', txReference);
-      }
-
-      // Build user's full name for payout
-      const dbUser = await prisma.user
-        .findUnique({ where: { id: input.userId }, select: { fullName: true } })
-        .catch(() => null);
-      const sourceAccountName = dbUser?.fullName || 'Account Holder';
-
-      const payoutResult = await this.payoutService.interBankTransfer({
-        destinationBankCode,
-        destinationAccountNumber,
-        destinationAccountName,
-        sourceAccountNumber: virtualAccountNumber,
-        sourceAccountName,
+      await this.embedlyService.walletToWalletTransfer({
+        fromAccount: virtualAccountNumber,
+        toAccount: orgWallet,
+        amount: amountToPay,
+        transactionReference: txReference,
         remarks: `Loan ${installment.loan.loanNumber} Installment #${installment.installmentNumber}`,
-        amount: amountToPay,
-        customerTransactionReference: txReference,
-        stagingStatus: process.env.EMBEDLY_ENV !== 'production' ? 'success' : undefined,
       });
 
-      // Store the gateway reference returned by Embedly
-      await prisma.transaction.updateMany({
-        where: { transactionReference: txReference, userId: input.userId },
-        data: { gatewayReference: payoutResult.transactionRef },
+      // ── Phase 3: Mark everything complete (instant transfer succeeded) ────────
+      await executeWalletOperation(async (tx) => {
+        // Mark transaction COMPLETED
+        await tx.transaction.updateMany({
+          where: { transactionReference: txReference, userId: input.userId },
+          data: { status: TransactionStatus.COMPLETED },
+        });
+
+        // Mark installment PAID
+        await tx.installment.update({
+          where: { id: installment.id },
+          data: { status: 'PAID', paidDate: new Date() },
+        });
+
+        // Update loan repayment tracking
+        await tx.loan.update({
+          where: { id: installment.loanId },
+          data: {
+            amountRepaid: { increment: amountToPay },
+            outstandingBalance: { decrement: amountToPay },
+            lastPaymentDate: new Date(),
+          },
+        });
+
+        // Create payment record
+        await tx.payment.create({
+          data: {
+            paymentReference: txReference,
+            loanId: installment.loanId,
+            installmentId: installment.id,
+            userId: input.userId,
+            amount: amountToPay,
+            paymentMethod: 'WALLET',
+            status: TransactionStatus.COMPLETED,
+            paymentDate: new Date(),
+            confirmedAt: new Date(),
+          },
+        }).catch((err: any) => console.warn('Payment record creation failed (non-fatal):', err));
+
+        // Close loan if all installments paid
+        const remaining = await tx.installment.count({
+          where: { loanId: installment.loanId, status: 'PENDING' },
+        });
+        if (remaining === 0) {
+          await tx.loan.update({
+            where: { id: installment.loanId },
+            data: { status: LoanStatus.COMPLETED, completionDate: new Date() },
+          });
+          console.log({ msg: 'Loan fully repaid', loanId: installment.loanId });
+        }
       });
 
-      console.log({
-        msg: 'Repayment payout initiated',
-        userId: input.userId,
-        txReference,
-        gatewayReference: payoutResult.transactionRef,
-        amount: amountToPay,
-      });
+      console.log({ msg: 'Repayment completed', userId: input.userId, txReference, amount: amountToPay });
 
       return {
         success: true,
         installmentId: installment.id,
         amountPaid: amountToPay,
         newWalletBalance: balanceAfter,
-        installmentStatus: 'PROCESSING' as unknown as PaymentStatus,
+        installmentStatus: 'PAID' as unknown as PaymentStatus,
         loanStatus: installment.loan.status,
         transactionReference: txReference,
-        gatewayReference: payoutResult.transactionRef,
       };
     } catch (error) {
-      // Payout API call failed — undo the wallet debit
-      if (!(error instanceof PaymentError && error.message.includes('destination account'))) {
-        console.error('Payout initiation failed, rolling back:', error);
-        await this.performRollback(
-          input.userId,
-          txReference,
-          installment.id,
-          amountToPay,
-          error instanceof Error ? error.message : 'Payout API error'
-        ).catch((rbErr) => console.error('Rollback also failed:', rbErr));
-      }
+      // Transfer failed — rollback wallet debit
+      console.error('Wallet-to-wallet transfer failed, rolling back:', error);
+      await this.performRollback(
+        input.userId,
+        txReference,
+        installment.id,
+        amountToPay,
+        error instanceof Error ? error.message : 'Transfer failed'
+      ).catch((rbErr) => console.error('Rollback also failed:', rbErr));
       throw error;
     }
   }
@@ -326,17 +350,17 @@ export class RepaymentService implements IRepaymentService {
     console.log({ msg: 'Confirming repayment success', customerTransactionReference });
 
     await executeWalletOperation(async (tx) => {
-      // Find the PROCESSING transaction by our reference
+      // Find the PENDING transaction by our reference
       const transaction = await tx.transaction.findFirst({
         where: {
           transactionReference: customerTransactionReference,
-          status: ('PROCESSING' as any),
+          status: TransactionStatus.PENDING,
         },
       });
 
       if (!transaction) {
         // Already confirmed or unknown — idempotency safe
-        console.warn({ msg: 'No PROCESSING transaction found for repayment success webhook', customerTransactionReference });
+        console.warn({ msg: 'No PENDING transaction found for repayment success webhook', customerTransactionReference });
         return;
       }
 

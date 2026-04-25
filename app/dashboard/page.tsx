@@ -35,7 +35,7 @@ export interface TransactionItem {
 export default function DashboardPage() {
   const { user } = useAuthStore();
   const router = useRouter();
-  
+
   // Use custom hooks with caching
   const {
     stats,
@@ -72,7 +72,7 @@ export default function DashboardPage() {
 
   // Determine loading state
   const isLoading = dashboardLoading || !stats;
-  
+
   // Determine if selected loan is active (ACTIVE or DISBURSED)
   const { selectedLoanId } = useDashboardStore();
   const selectedLoanSummary = selectedLoanId
@@ -92,7 +92,7 @@ export default function DashboardPage() {
         <div className="pt-6 md:pt-0">
           <h2 className='mb-2 md:mb-4 font-semibold text-[#191919] text-xl md:text-[1.6875rem]'>Dashboard</h2>
           <p className='mb-5 md:mb-[1.375rem] font-semibold text-[#5F5F5F] text-lg md:text-[1.6875rem]'>Welcome Back, {userName}</p>
-          
+
           {/* Quick Actions Card */}
           <QuickActionsCard />
 
@@ -157,17 +157,25 @@ export default function DashboardPage() {
                   value={
                     selectedLoanIsActive && stats.activePlan
                       ? (stats.wallet.amount === 0
-                          ? "₦0"
-                          : `₦${Number(stats.wallet.amount).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+                        ? "₦0"
+                        : `₦${Number(stats.wallet.amount).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
                       : "₦-"
                   }
                   subtitle={stats.wallet.amount === 0 ? "" : stats.wallet.description}
                   hideSubtitleOnMobile
                   footer={
-                    <>
-                      <span className="sm:hidden">Fund wallet to make repayment</span>
-                      <span className="hidden sm:inline">Fund wallet to make repayment automated.</span>
-                    </>
+                    stats.wallet.virtualAccountNumber ? (
+                      <div className="text-[10px] sm:text-xs">
+                        <div className="hidden sm:block">Acct: {stats.wallet.virtualAccountNumber}</div>
+                        <div className="hidden sm:block text-[9px] sm:text-[10px] opacity-80">{stats.wallet.virtualAccountBank}</div>
+                        <span className="sm:hidden">Fund wallet to make repayment</span>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="sm:hidden">Fund wallet to make repayment</span>
+                        <span className="hidden sm:inline">Fund wallet to make repayment automated.</span>
+                      </>
+                    )
                   }
                   variant="default"
                 />
@@ -190,7 +198,7 @@ export default function DashboardPage() {
                     handleLoanPageChange(page);
                   }
                 }}
-                itemsPerPage={5}
+                itemsPerPage={loanHistory?.length > 0 ? 5 : 1}
                 isLoading={loanLoading || isLoading}
                 onRowClick={(loan) => {
                   setSelectedLoan(loan);
@@ -209,6 +217,7 @@ export default function DashboardPage() {
                   title="Progress Tracker"
                   subtitle="Track the timeline of your loan and repayment"
                   steps={timelineData.detailedTimeline}
+                  actionLabel="Check Timeline"
                   onAction={() => router.push('/dashboard/timeline')}
                   className="h-auto"
                   variant="mini"
@@ -226,7 +235,7 @@ export default function DashboardPage() {
                 columns={TRANSACTION_COLUMNS}
                 data={transactions}
                 viewAllHref="/dashboard/transactions"
-                itemsPerPage={5}
+                itemsPerPage={transactions?.length > 0 ? 5 : 1}
                 isLoading={transactionLoading || isLoading}
                 paginationInfo={tpaginationInfo}
                 onPageChange={(page) => {
@@ -241,30 +250,31 @@ export default function DashboardPage() {
                 searchable={true}
               />
             </div>
-          
+
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 mt-8">
-            <div className="lg:col-span-3">
-              {isLoading ? (
-                <ChartCardSkeleton />
-              ) : (
-                <ChartCard
-                  title="Loan Borrowed Overtime"
-                  subtitle="See your loan borrowed chart on paymyfees"
-                  data={chartData}
-                  selectedYear={selectedYear}
-                  onYearChange={handleYearChange}
-                  searchPlaceholder="Search"
-                  onSearch={handleChartSearch}
-                />
-              )}
-            </div>
-            <div className='lg:col-span-1' />
-          </div>
+          {chartData && (
+            <div className="grid grid-cols-1 lg:grid-cols-4 mt-8">
+              <div className="lg:col-span-3">
+                {isLoading ? (
+                  <ChartCardSkeleton />
+                ) : (
+                  <ChartCard
+                    title="Loan Borrowed Overtime"
+                    subtitle="See your loan borrowed chart on paymyfees"
+                    data={chartData}
+                    selectedYear={selectedYear}
+                    onYearChange={handleYearChange}
+                    searchPlaceholder="Search"
+                    onSearch={handleChartSearch}
+                  />
+                )}
+              </div>
+              <div className='lg:col-span-1' />
+            </div>)}
         </div>
       </div>
-      
+
       <LoanDisbursementDrawer
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}

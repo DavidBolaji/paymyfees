@@ -57,10 +57,10 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
   if (amount <= 0) return [];
 
   const plans: RepaymentPlan[] = [];
-  const monthlyInterestRate = 0.02; // 2% per month
+  const monthlyInterestRate = 0.025; // 2.5% per month
 
   for (let months = 1; months <= 12; months++) {
-    // Calculate total interest: 2% * number of months
+    // Calculate total interest: 2.5% * number of months
     const totalInterestRate = monthlyInterestRate * months;
     const totalAmount = amount * (1 + totalInterestRate);
     const monthlyAmount = totalAmount / months;
@@ -349,7 +349,7 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
                 Upload Files
               </h3>
               <p className="mb-4 text-[#7C7C7C] text-sm">
-                Upload Bvn, Nin, Salary slips, Bank statement and other supporting docs
+                Upload Bvn, Nin, Salary slips, Bank statement, Proof of address, School fees invoice / offer letter, School fees receipts for the last two (2) terms, Recent 3 months Bank statement, Passport photograph (Parent/Guardian), Passport photograph (Student) and other supporting docs
               </p>
 
               <FileUpload

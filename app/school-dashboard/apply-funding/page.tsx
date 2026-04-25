@@ -25,7 +25,7 @@ interface RepaymentPlan {
 
 const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
   if (amount <= 0) return [];
-  const monthlyInterestRate = 0.02;
+  const monthlyInterestRate = 0.025; // 2.5% per month
   const plans: RepaymentPlan[] = [];
   for (let months = 1; months <= 12; months++) {
     const totalAmount = amount * (1 + monthlyInterestRate * months);

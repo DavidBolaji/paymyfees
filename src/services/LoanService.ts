@@ -127,7 +127,7 @@ export class LoanService implements ILoanService {
     const loanCalculation = this.calculateLoan(input.loanAmount, input.repaymentMonths);
 
     // Generate loan number
-    const loanNumber = `LOAN-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    const loanNumber = `PMF-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
 
     // Create loan with transaction
     const loan = await executeTransaction(async (tx) => {
@@ -347,7 +347,7 @@ export class LoanService implements ILoanService {
       filters.residencyStatus = residencyStatus;
     }
 
-    const { loans, total } = await this.loanRepository.findByUserId(
+    const result = await this.loanRepository.findByUserId(
       userId,
       filters,
       {
@@ -355,6 +355,9 @@ export class LoanService implements ILoanService {
         limit: pagination?.limit || 10,
       }
     );
+
+    const loans = result?.loans ?? [];
+    const total = result?.total ?? 0;
 
     return {
       loans: loans.map(loan => toLoanDTO(loan)),
@@ -401,9 +404,9 @@ export class LoanService implements ILoanService {
    * Uses 2% per month interest rate (24% per annum)
    */
   calculateLoan(loanAmount: number, repaymentMonths: number): LoanCalculation {
-    // Interest rate is 2% per month (24% per annum)
-    const monthlyInterestRate = 0.02;
-    const annualInterestRate = monthlyInterestRate * 12; // 0.24 (24%)
+    // Interest rate is 2% per month (25% per annum)
+    const monthlyInterestRate = 0.025;
+    const annualInterestRate = monthlyInterestRate * 12; // 0.25 (25%)
 
     // Calculate total interest: 2% per month * number of months
     const totalInterestRate = monthlyInterestRate * repaymentMonths;

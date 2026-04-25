@@ -96,13 +96,42 @@ export interface EmbedlyTransactionVerificationResult {
 
 // ─── Interface ────────────────────────────────────────────────────────────────
 
+// ─── Wallet-to-Wallet Types ───────────────────────────────────────────────────
+
+export interface WalletToWalletInput {
+  fromAccount: string;   // source virtual account number
+  toAccount: string;     // destination virtual account number (org wallet)
+  amount: number;        // NGN
+  transactionReference: string; // unique per transfer
+  remarks: string;
+}
+
+export interface WalletToWalletResult {
+  transactionReference: string;
+  message: string;
+}
+
+export interface WalletToWalletStatusResult {
+  status: 'success' | 'pending' | 'failed' | 'unknown';
+  amount?: number;
+  transactionReference?: string;
+  message?: string;
+}
+
+// ─── Interface ────────────────────────────────────────────────────────────────
+
 export interface IEmbedlyService {
   createCustomer(input: CreateEmbedlyCustomerInput): Promise<EmbedlyCustomerResult>;
   createWallet(input: CreateEmbedlyWalletInput): Promise<EmbedlyWalletResult>;
   verifyInflowTransaction(walletId: string, reference: string): Promise<EmbedlyTransactionVerificationResult>;
+  walletToWalletTransfer(input: WalletToWalletInput): Promise<WalletToWalletResult>;
+  getWalletToWalletStatus(transactionReference: string): Promise<WalletToWalletStatusResult>;
   getDefaultCurrencyId(): string;
   getDefaultCustomerTypeId(): string;
   getDefaultCountryId(): string;
+  fetchCurrencyId(): Promise<string>;
+  fetchCustomerTypeId(): Promise<string>;
+  fetchCountryId(): Promise<string>;
 }
 
 // ─── Implementation ───────────────────────────────────────────────────────────
@@ -142,6 +171,54 @@ export class EmbedlyService implements IEmbedlyService {
 
   getDefaultCountryId(): string {
     return this.country_id;
+  }
+
+  /**
+   * Fetch currency ID dynamically from Embedly API
+   * Falls back to env var or hardcoded value on failure
+   */
+  async fetchCurrencyId(): Promise<string> {
+    if (this.ngn_currency_id) return this.ngn_currency_id;
+    try {
+      const res = await this.request<{ data: { id: string; code: string }[] }>('GET', '/currencies');
+      const ngn = res.data?.find((c) => c.code === 'NGN');
+      if (ngn) return ngn.id;
+    } catch (e) {
+      console.warn('Failed to fetch currency ID, using fallback', e);
+    }
+    return 'fd5e474d-bb42-4db1-ab74-e8d2a01047e9'; // fallback
+  }
+
+  /**
+   * Fetch customer type ID dynamically from Embedly API
+   * Falls back to env var or hardcoded value on failure
+   */
+  async fetchCustomerTypeId(): Promise<string> {
+    if (this.customer_type_id) return this.customer_type_id;
+    try {
+      const res = await this.request<{ data: { id: string; name: string }[] }>('GET', '/customer-types');
+      const retail = res.data?.find((c) => c.name?.toLowerCase().includes('retail'));
+      if (retail) return retail.id;
+    } catch (e) {
+      console.warn('Failed to fetch customer type ID, using fallback', e);
+    }
+    return 'f671da57-e281-4b40-965f-a96f4205405e'; // fallback
+  }
+
+  /**
+   * Fetch country ID dynamically from Embedly API
+   * Falls back to env var or hardcoded value on failure
+   */
+  async fetchCountryId(): Promise<string> {
+    if (this.country_id) return this.country_id;
+    try {
+      const res = await this.request<{ data: { id: string; name: string }[] }>('GET', '/countries');
+      const nigeria = res.data?.find((c) => c.name === 'Nigeria');
+      if (nigeria) return nigeria.id;
+    } catch (e) {
+      console.warn('Failed to fetch country ID, using fallback', e);
+    }
+    return 'c15ad9ae-c4d7-4342-b70f-de5508627e3b'; // fallback
   }
 
   /**
@@ -293,6 +370,93 @@ export class EmbedlyService implements IEmbedlyService {
       // Non-fatal: history verification is best-effort
       console.error('Embedly history verification failed (non-fatal):', error);
       return { found: false, status: 'pending', amount: 0, reference };
+    }
+  }
+
+  /**
+   * Wallet-to-wallet transfer (instant, intra-org)
+   * Used for loan repayments: user's virtual account → company org wallet
+   * Transfer is synchronous — success response means funds moved immediately.
+   */
+  async walletToWalletTransfer(input: WalletToWalletInput): Promise<WalletToWalletResult> {
+    this.assertConfigured();
+    console.log({
+      msg: 'Initiating wallet-to-wallet transfer',
+      from: input.fromAccount,
+      to: input.toAccount,
+      amount: input.amount,
+      ref: input.transactionReference,
+    });
+
+    try {
+      const data = await this.request<any>(
+        'PUT',
+        '/wallets/wallet/transaction/v2/wallet-to-wallet',
+        {
+          fromAccount: input.fromAccount,
+          toAccount: input.toAccount,
+          amount: input.amount,
+          transactionReference: input.transactionReference,
+          remarks: input.remarks,
+        }
+      );
+
+      const success: boolean = data?.success === true || data?.code === '00' || data?.succeeded === true;
+      if (!success) {
+        throw new ExternalServiceError('Embedly', `Wallet-to-wallet transfer failed: ${data?.message ?? 'Unknown error'}`);
+      }
+
+      console.log({ msg: 'Wallet-to-wallet transfer completed', ref: input.transactionReference });
+      return {
+        transactionReference: input.transactionReference,
+        message: data?.message ?? 'Transfer successful',
+      };
+    } catch (error) {
+      if (error instanceof ExternalServiceError) throw error;
+      console.error('Embedly walletToWalletTransfer error:', error);
+      throw new ExternalServiceError(
+        'Embedly',
+        `Wallet-to-wallet transfer failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Requery a wallet-to-wallet transfer by our transaction reference
+   */
+  async getWalletToWalletStatus(transactionReference: string): Promise<WalletToWalletStatusResult> {
+    console.log({ msg: 'Requeyring wallet-to-wallet status', ref: transactionReference });
+
+    try {
+      const data = await this.request<any>(
+        'GET',
+        `/wallets/wallet/transaction/wallet-to-wallet/status/${encodeURIComponent(transactionReference)}`
+      );
+
+      const success: boolean = data?.success === true || data?.code === '00' || data?.succeeded === true;
+      if (!success) {
+        return { status: 'unknown', message: data?.message };
+      }
+
+      const rawStatus: string = (data?.data?.status ?? '').toLowerCase();
+      const statusMap: Record<string, WalletToWalletStatusResult['status']> = {
+        success: 'success',
+        successful: 'success',
+        '00': 'success',
+        failed: 'failed',
+        fail: 'failed',
+        pending: 'pending',
+      };
+
+      return {
+        status: statusMap[rawStatus] ?? 'unknown',
+        amount: data?.data?.amount,
+        transactionReference: data?.data?.transactionReference ?? transactionReference,
+        message: data?.data?.message ?? data?.message,
+      };
+    } catch (error) {
+      console.error('Embedly walletToWalletStatus error:', error);
+      return { status: 'unknown', message: 'Requery failed' };
     }
   }
 

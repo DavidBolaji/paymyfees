@@ -8,6 +8,8 @@ export interface WalletBalance {
   balance: number;
   currency: string;
   lastUpdated: string;
+  virtualAccountNumber: string | null;
+  virtualAccountBank: string | null;
 }
 
 export interface WalletTransaction {
@@ -137,7 +139,9 @@ const useWalletStore = create<WalletState>()(
               balance: {
                 balance: data.data.balance,
                 currency: data.data.currency,
-                lastUpdated: data.data.lastUpdated
+                lastUpdated: data.data.lastUpdated,
+                virtualAccountNumber: data.data.virtualAccountNumber ?? null,
+                virtualAccountBank: data.data.virtualAccountBank ?? null,
               },
               stats: {
                 walletBalance: data.data.balance,

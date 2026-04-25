@@ -24,11 +24,34 @@ export function ProgressTracker({
   showAction = true,
   variant = 'mini'
 }: ProgressTrackerProps) {
+  const isEmpty = !steps || steps.length === 0;
+
+  // Empty state — matches the design: title, subtitle, button only
+  if (isEmpty) {
+    return (
+      <div className={cn("bg-white shadow-sm px-3 py-4 border border-gray-200 rounded-xl h-full flex flex-col", className)}>
+        <div className="mb-6">
+          <h2 className="mb-1 font-semibold text-gray-900 text-lg">{title}</h2>
+          <p className="text-gray-600 text-sm">See full timeline of your loan and repayment</p>
+        </div>
+        <div className="flex-1" />
+        {showAction && onAction && (
+          <button
+            onClick={onAction}
+            className="flex justify-center items-center gap-2 bg-[#00296B] hover:bg-[#002561] px-4 py-2.5 rounded-lg w-full font-medium text-white transition-colors"
+          >
+            <Check className="w-4 h-4" />
+            {actionLabel}
+          </button>
+        )}
+      </div>
+    );
+  }
+
   // Ensure minimum of 5 steps by adding dummy steps if needed
   const MIN_STEPS = 5;
   let displaySteps = variant === 'mini' ? steps.slice(0, 5) : steps;
-  
-  // Add dummy steps if fewer than minimum
+
   if (displaySteps.length < MIN_STEPS) {
     const dummySteps: ProgressStep[] = Array.from(
       { length: MIN_STEPS - displaySteps.length },
@@ -40,7 +63,7 @@ export function ProgressTracker({
     );
     displaySteps = [...displaySteps, ...dummySteps];
   }
-  
+
   const hasMoreSteps = variant === 'max' && steps.length > 9;
 
   return (
@@ -49,8 +72,7 @@ export function ProgressTracker({
         <h2 className="mb-1 font-semibold text-gray-900 text-lg">{title}</h2>
         {subtitle && <p className="text-gray-600 text-sm">{subtitle}</p>}
       </div>
-      
-      {/* Steps Container with conditional scrolling for max variant */}
+
       <div className={cn(
         "mb-4 flex-1",
         hasMoreSteps && "overflow-y-auto scrollbar-hide max-h-[500px]"
@@ -58,7 +80,6 @@ export function ProgressTracker({
         <div className="space-y-2">
           {displaySteps.map((step, index) => (
             <div key={step.id} className="flex items-start gap-3">
-              {/* Step Indicator */}
               <div className="flex flex-col items-center">
                 <div className={cn(
                   "flex justify-center items-center rounded-full w-[25px] h-[25px] flex-shrink-0",
@@ -69,8 +90,7 @@ export function ProgressTracker({
                     <Check className="w-3 h-3 text-white" />
                   ) : null}
                 </div>
-                
-                {/* Connector Line */}
+
                 {index < displaySteps.length - 1 && (
                   <div className={cn(
                     "mt-2.5 w-px h-7",
@@ -78,7 +98,6 @@ export function ProgressTracker({
                   )} />
                 )}
               </div>
-              {/* Step Content */}
               <div className="flex-1 pt-0.5">
                 <p className={cn(
                   "font-medium text-sm",
@@ -95,7 +114,7 @@ export function ProgressTracker({
           ))}
         </div>
       </div>
-      
+
       {showAction && onAction && (
         <button
           onClick={onAction}

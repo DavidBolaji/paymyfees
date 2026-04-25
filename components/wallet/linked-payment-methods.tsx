@@ -135,7 +135,7 @@ export function LinkedPaymentMethods({
           {isSubmitting ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Redirecting to Paystack...
+              Opening secure card form...
             </>
           ) : (
             <>
@@ -147,23 +147,12 @@ export function LinkedPaymentMethods({
       </div>
 
       {/* Info */}
-      <div className="mt-4 space-y-2">
+      <div className="mt-4">
         <div className="p-3 bg-blue-50 rounded-lg">
           <p className="text-xs text-gray-600">
-            You&apos;ll be redirected to Paystack to securely enter your card details. A verification amount of ₦50 will be charged and immediately added to your wallet. Your card will be saved for quick future payments.
+            You&apos;ll be redirected to a secure card entry form. A small verification charge of ₦50 will be made and refunded to your wallet. Your card is saved for quick future top-ups — no need to re-enter details.
           </p>
         </div>
-        
-        {typeof window !== 'undefined' && window.location.hostname === 'localhost' && (
-          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-xs font-semibold text-yellow-800 mb-1">⚠️ Test Mode - Use Test Cards Only</p>
-            <div className="text-xs text-yellow-700 space-y-1">
-              <p className="font-medium">Visa: 4084084084084081</p>
-              <p className="font-medium">Verve: 5060666666666666666</p>
-              <p>CVV: 408 | Expiry: any future date | PIN: 0000 | OTP: 123456</p>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

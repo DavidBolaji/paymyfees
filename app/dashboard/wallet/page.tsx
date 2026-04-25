@@ -293,6 +293,8 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
                 <WalletCard
                   balance={balance?.balance || 0}
                   currency={balance?.currency || "NGN"}
+                  virtualAccountNumber={balance?.virtualAccountNumber}
+                  virtualAccountBank={balance?.virtualAccountBank}
                 />
               )}
             </div>
@@ -355,7 +357,7 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
           {/* Bottom Section */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Funding vs Repayment Chart */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-3">
               <RechartsFundingChart
                 data={chartData}
                 isLoading={isChartLoading}
@@ -363,7 +365,7 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
             </div>
 
             {/* Linked Payment Methods */}
-            <div className="lg:col-span-1">
+            {/* <div className="lg:col-span-1">
               <LinkedPaymentMethods
                 paymentMethods={paymentMethods}
                 isLoading={isLoadingPaymentMethods}
@@ -371,7 +373,7 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
                 onRemoveCard={handleRemoveCard}
                 onCardClick={handleCardClick}
               />
-            </div>
+            </div> */}
           </div>
 
           {/* Footer Actions */}
@@ -399,6 +401,8 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
       <FundWalletModal
         isOpen={isFundModalOpen}
         onClose={() => setIsFundModalOpen(false)}
+        virtualAccountNumber={balance?.virtualAccountNumber}
+        virtualAccountBank={balance?.virtualAccountBank}
       />
 
       <MakeRepaymentModal

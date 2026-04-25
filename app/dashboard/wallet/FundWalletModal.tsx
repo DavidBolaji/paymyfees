@@ -1,79 +1,46 @@
 'use client';
 
 import { useState } from 'react';
-import { X, CheckCircle2, Loader2 } from 'lucide-react';
-import { CustomInput } from '@/components/ui/custom-input';
-import { api } from '@/src/lib/api';
+import { X, Copy, CheckCircle2, Building2 } from 'lucide-react';
 
 interface FundWalletModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  virtualAccountNumber?: string | null;
+  virtualAccountBank?: string | null;
 }
 
-export default function FundWalletModal({ isOpen, onClose}: FundWalletModalProps) {
-  const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState('NGN');
-  const [paymentMethod, setPaymentMethod] = useState('');
-  const [note, setNote] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export default function FundWalletModal({
+  isOpen,
+  onClose,
+  virtualAccountNumber,
+  virtualAccountBank,
+}: FundWalletModalProps) {
+  const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
+    if (e.target === e.currentTarget) onClose();
   };
 
-  const handleFundWallet = async () => {
-    // Validate inputs
-    if (!amount || parseFloat(amount) <= 0) {
-      setError('Please enter a valid amount');
-      return;
-    }
-
-    if (!paymentMethod) {
-      setError('Please select a payment method');
-      return;
-    }
-
-    setError(null);
-    setIsLoading(true);
-
+  const handleCopy = async () => {
+    if (!virtualAccountNumber) return;
     try {
-      // Step 1: Initialize payment with backend
-      const response = await api.post('/api/wallet/initialize-payment', {
-          amount: parseFloat(amount),
-          paymentMethod: paymentMethod.toUpperCase().replace(/ /g, '_'), // Convert to enum format
-          currency,
-          note: note || undefined,
-          callbackUrl: `${window.location.origin}/wallet/payment-callback`,
-        });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to initialize payment');
-      }
-
-      const data = await response.json();
-
-      if (!data.success || !data.data.paymentUrl) {
-        throw new Error('Invalid response from server');
-      }
-
-      // Step 2: Store reference in session storage for callback verification
-      sessionStorage.setItem('pending_payment_reference', data.data.reference);
-      sessionStorage.setItem('pending_payment_amount', amount);
-
-      // Step 3: Redirect to Paystack payment page
-      window.location.href = data.data.paymentUrl;
-
-    } catch (err) {
-      console.error('Payment initialization error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to initialize payment');
-      setIsLoading(false);
+      await navigator.clipboard.writeText(virtualAccountNumber);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback for older browsers
+      const el = document.createElement('textarea');
+      el.value = virtualAccountNumber;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -82,144 +49,108 @@ export default function FundWalletModal({ isOpen, onClose}: FundWalletModalProps
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
       onClick={handleOverlayClick}
     >
-      <div 
+      <div
         className="bg-white rounded-2xl shadow-2xl border border-[#F2F2F2]"
-        style={{
-          width: '644px',
-          maxWidth: '90vw',
-          padding: '23px 15px',
-        }}
+        style={{ width: '520px', maxWidth: '90vw', padding: '28px 24px' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-semibold text-[#191919]">Add Funds</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold text-[#191919]">Fund Wallet</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
             aria-label="Close modal"
-            disabled={isLoading}
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-5 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-600">{error}</p>
+        {virtualAccountNumber ? (
+          <>
+            {/* Instruction */}
+            <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+              Transfer any amount to the account number below from any Nigerian bank. Your wallet
+              will be credited automatically once the transfer is confirmed.
+            </p>
+
+            {/* Account Card */}
+            <div className="rounded-xl border-2 border-[#00296B]/20 bg-[#F0F4FF] p-5 mb-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-[#00296B] flex items-center justify-center flex-shrink-0">
+                  <Building2 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Bank Name</p>
+                  <p className="text-base font-semibold text-[#191919]">{virtualAccountBank || '—'}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Account Number</p>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl font-bold tracking-widest text-[#00296B]">
+                    {virtualAccountNumber}
+                  </span>
+                  <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-lg bg-[#00296B] text-white hover:bg-[#003D82] transition-colors"
+                  >
+                    {copied ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        Copy
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Steps */}
+            <div className="space-y-2 mb-6">
+              {[
+                'Open your bank app or USSD',
+                `Transfer any amount to the account number above (${virtualAccountBank})`,
+                'Your wallet balance updates automatically within minutes',
+              ].map((step, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <span className="w-5 h-5 rounded-full bg-[#00296B] text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5 font-semibold">
+                    {i + 1}
+                  </span>
+                  <p className="text-sm text-gray-700">{step}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Info banner */}
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 mb-5">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className="flex-shrink-0 mt-0.5">
+                <circle cx="8" cy="8" r="7" stroke="#D97706" strokeWidth="1.5" />
+                <path d="M8 4.5V5.5M8 7.5V11.5" stroke="#D97706" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              <p className="text-xs text-amber-800 leading-relaxed">
+                This is a dedicated account assigned only to you. Transfers from any bank are accepted. Keep this number safe — do not share it.
+              </p>
+            </div>
+          </>
+        ) : (
+          <div className="py-8 text-center">
+            <p className="text-gray-500 text-sm mb-1">Virtual account not set up yet.</p>
+            <p className="text-gray-400 text-xs">Please contact support or try refreshing the page.</p>
           </div>
         )}
 
-        {/* Content */}
-        <div className="space-y-5">
-          {/* Amount and Payment Method Row */}
-          <div className="grid grid-cols-2 gap-5">
-            <CustomInput
-              label="Amount to Add"
-              type="number"
-              value={amount}
-              onChange={setAmount}
-              placeholder="Enter Amount"
-              // price={true}
-              
-              // disabled={isLoading}
-            />
-            
-            <CustomInput
-              label="Payment Method"
-              type="select"
-              value={paymentMethod}
-              onChange={setPaymentMethod}
-              options={[
-                { value: 'Card Payment', label: 'Card Payment' },
-                { value: 'Bank Transfer', label: 'Bank Transfer' },
-                { value: 'USSD Code', label: 'USSD Code' },
-              ]}
-              // disabled={isLoading}
-            />
-          </div>
-
-          {/* Select Currency */}
-          <CustomInput
-            label="Select Currency"
-            type="select"
-            value={currency}
-            onChange={setCurrency}
-            options={[
-              { value: 'NGN', label: 'NGN (₦)' },
-              { value: 'USD', label: 'USD ($)' },
-              { value: 'GBP', label: 'GBP (£)' },
-              { value: 'EUR', label: 'EUR (€)' },
-            ]}
-            // disabled={isLoading}
-          />
-
-          {/* Note (Optional) */}
-          <div className="flex flex-col space-y-1">
-            <label className="font-semibold text-[#292929]">Note (Optional)</label>
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Add any reference or note for your top-up"
-              className="w-full h-20 px-3 py-2 rounded-lg border border-[#d1d1d1] bg-[#f5f5f5] focus:outline-none text-[#292929] placeholder:text-gray-400 resize-none disabled:opacity-50"
-              disabled={isLoading}
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <button
-              onClick={onClose}
-              className="h-12 rounded-lg border-2 border-[#00296B] bg-white text-[#00296B] font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading}
-            >
-              <X className="w-5 h-5" />
-              Cancel
-            </button>
-            <button
-              onClick={handleFundWallet}
-              className="h-12 rounded-lg bg-[#00296B] text-white font-semibold hover:bg-[#003D82] transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-5 h-5" />
-                  Fund Wallet Now
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Info Text */}
-          <div className="flex items-start gap-2 pt-2">
-            <div className="w-4 h-4 mt-0.5 flex-shrink-0">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <circle cx="8" cy="8" r="7" stroke="#00296B" strokeWidth="1.5" />
-                <path
-                  d="M8 4.5V5.5M8 7.5V11.5"
-                  stroke="#00296B"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-            <p className="text-xs text-gray-600 leading-relaxed">
-              You will be redirected to a secure payment page. After successful payment, your wallet will be credited automatically.
-              Wallet funds are automatically applied to upcoming repayments.
-            </p>
-          </div>
-        </div>
+        <button
+          onClick={onClose}
+          className="w-full h-11 rounded-lg border-2 border-[#00296B] bg-white text-[#00296B] font-semibold hover:bg-gray-50 transition-colors"
+        >
+          Close
+        </button>
       </div>
     </div>
   );

@@ -68,72 +68,137 @@ export class WalletController {
    *   payout.failed     — repayment transfer failed → rollback wallet debit
    */
   async handleWebhook(req: Request): Promise<NextResponse> {
-    console.log({ msg: 'Received Embedly webhook' });
+    const requestId = `wh-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    console.log({ msg: '[webhook] Received Embedly webhook', requestId });
 
     // ── Read raw body (needed for HMAC verification) ───────────────────────────
     let rawBody: string;
     try {
       rawBody = await req.text();
-    } catch {
+    } catch (err) {
+      console.error({ msg: '[webhook] Failed to read request body', requestId, error: String(err) });
       return NextResponse.json({ success: false, message: 'Cannot read request body' }, { status: 400 });
     }
 
-    // ── Verify HMAC signature ────────────────────────────────────────────
-    const webhookSecret = process.env.EMBEDLY_WEBHOOK_SECRET || '';
-    const signature = req.headers.get('x-embedly-signature') ?? req.headers.get('x-webhook-signature') ?? '';
+    console.log({ msg: '[webhook] Raw body received', requestId, bodyLength: rawBody.length, bodyPreview: rawBody.slice(0, 300) });
 
-    if (webhookSecret) {
+    // ── Log all headers to identify the exact signature header name ────────────
+    const allHeaders: Record<string, string> = {};
+    req.headers.forEach((value, key) => { allHeaders[key] = key.toLowerCase().includes('sig') || key.toLowerCase().includes('auth') || key.toLowerCase().includes('hash') ? value : value.slice(0, 30); });
+    console.log({ msg: '[webhook] Incoming headers', requestId, headers: allHeaders });
+
+    // ── Verify HMAC signature ────────────────────────────────────────────
+    // Embedly signs with: HMAC-SHA512(rawBody, apiKey)
+    // Header: x-embedly-signature
+    // Secret: the API key (no separate webhook secret)
+    const apiKey = process.env.EMBEDLY_API_KEY || '';
+    const signature = req.headers.get('x-embedly-signature') ?? '';
+
+    console.log({
+      msg: '[webhook] Signature check',
+      requestId,
+      hasApiKey: !!apiKey,
+      signatureHeader: signature ? `${signature.slice(0, 8)}…` : '(none)',
+      signatureLength: signature.length,
+    });
+
+    const skipSigVerification = process.env.EMBEDLY_SKIP_SIG_VERIFICATION === 'true';
+
+    if (skipSigVerification) {
+      console.warn({ msg: '[webhook] Signature verification SKIPPED (EMBEDLY_SKIP_SIG_VERIFICATION=true) — remove before production', requestId });
+    } else if (apiKey) {
       const expectedSig = crypto
-        .createHmac('sha256', webhookSecret)
-        .update(rawBody)
+        .createHmac('sha512', apiKey)
+        .update(rawBody, 'utf8')
         .digest('hex');
 
-      if (!crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(signature))) {
-        console.warn({ msg: 'Invalid Embedly webhook signature' });
+      console.log({ msg: '[webhook] Computed HMAC', requestId, computedSigPreview: `${expectedSig.slice(0, 16)}…`, computedLength: expectedSig.length });
+
+      const sigValid =
+        signature.length === expectedSig.length &&
+        crypto.timingSafeEqual(Buffer.from(expectedSig), Buffer.from(signature));
+
+      if (!sigValid) {
+        console.warn({
+          msg: '[webhook] Invalid HMAC signature — rejecting',
+          requestId,
+          expectedLength: expectedSig.length,
+          receivedLength: signature.length,
+        });
         return NextResponse.json({ success: false, message: 'Invalid signature' }, { status: 401 });
       }
+
+      console.log({ msg: '[webhook] Signature verified OK', requestId });
     } else {
-      console.warn('EMBEDLY_WEBHOOK_SECRET not set — skipping signature verification (unsafe in production)');
+      console.warn({ msg: '[webhook] EMBEDLY_API_KEY not set — skipping signature verification', requestId });
     }
 
     // ── Parse body ──────────────────────────────────────────────────
     let body: Record<string, unknown>;
     try {
       body = JSON.parse(rawBody);
-    } catch {
+    } catch (err) {
+      console.error({ msg: '[webhook] Failed to parse JSON body', requestId, error: String(err), rawBody: rawBody.slice(0, 500) });
       return NextResponse.json({ success: false, message: 'Invalid JSON' }, { status: 400 });
     }
 
     const eventType: string = (body.event ?? body.eventType ?? body.type ?? '') as string;
     const data = (body.data ?? body) as Record<string, unknown>;
 
-    console.log({ msg: 'Processing Embedly webhook event', eventType });
+    console.log({
+      msg: '[webhook] Routing event',
+      requestId,
+      eventType,
+      dataKeys: Object.keys(data),
+      // Log key inflow fields for diagnostics
+      accountNumber: data.beneficiaryAccountNumber ?? data.accountNumber ?? data.virtualAccountNumber ?? '(none)',
+      amount: data.amount ?? '(none)',
+      reference: data.transactionReference ?? data.reference ?? data.sessionId ?? '(none)',
+    });
 
     try {
       // ── Route by event type ────────────────────────────────────────────
-      if (eventType === 'inflow' || eventType === 'wallet.inflow' || eventType === 'credit') {
+      if (eventType === 'inflow' || eventType === 'wallet.inflow' || eventType === 'credit' || eventType === 'nip') {
+        console.log({ msg: '[webhook] Handling inflow event', requestId });
         await this.handleInflowEvent(data);
+        console.log({ msg: '[webhook] Inflow event processed successfully', requestId });
       } else if (eventType === 'payout.success' || eventType === 'transfer.success') {
+        console.log({ msg: '[webhook] Handling payout.success event', requestId });
         await this.handlePayoutSuccessEvent(data);
+        console.log({ msg: '[webhook] Payout success event processed', requestId });
       } else if (eventType === 'payout.failed' || eventType === 'transfer.failed') {
+        console.log({ msg: '[webhook] Handling payout.failed event', requestId });
         await this.handlePayoutFailedEvent(data);
+        console.log({ msg: '[webhook] Payout failed event processed', requestId });
       } else {
-        // Unknown event — acknowledge silently (Embedly may add new events over time)
-        console.log({ msg: 'Unhandled Embedly webhook event type', eventType });
+        console.warn({ msg: '[webhook] Unhandled event type — acknowledging silently', requestId, eventType, fullBody: body });
       }
 
       return NextResponse.json({ success: true }, { status: 200 });
     } catch (error) {
-      console.error('Embedly webhook processing error:', error);
-      // Return 200 to prevent Embedly from retrying events that are application-level errors
-      // (e.g. wallet not found). Return 500 only for unexpected infra errors.
-      const isKnownError = error instanceof Error && (
-        error.message.includes('not found') ||
-        error.message.includes('Duplicate') ||
-        error.message.includes('already')
-      );
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+
+      // Known application-level errors (wallet not found, duplicates) — return 200 so Embedly
+      // does not retry. These require manual investigation, not automatic retry.
+      const isKnownError =
+        errorMsg.includes('not found') ||
+        errorMsg.includes('Duplicate') ||
+        errorMsg.includes('already') ||
+        errorMsg.includes('Invalid inflow amount');
+
+      console.error({
+        msg: '[webhook] Event processing failed',
+        requestId,
+        eventType,
+        isKnownError,
+        error: errorMsg,
+        stack: errorStack,
+        data,
+      });
+
       return NextResponse.json(
-        { success: false, message: 'Webhook processing failed' },
+        { success: false, message: 'Webhook processing failed', error: errorMsg },
         { status: isKnownError ? 200 : 500 }
       );
     }

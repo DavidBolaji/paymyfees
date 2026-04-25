@@ -69,8 +69,11 @@ export class EmbedlyCardsService implements IEmbedlyCardsService {
 
   constructor() {
     const env = process.env.EMBEDLY_ENV === 'production' ? 'prod' : 'staging';
-    this.baseUrl = `https://waas-card-middleware-api-${env}.embedly.ng`;
+    // Override via EMBEDLY_CARDS_BASE_URL env var if the guessed URL is wrong
+    this.baseUrl = process.env.EMBEDLY_CARDS_BASE_URL || `https://waas-card-middleware-api-${env}.embedly.ng`;
     this.apiKey = process.env.EMBEDLY_API_KEY || '';
+
+    console.log({ msg: 'EmbedlyCardsService init', baseUrl: this.baseUrl });
 
     if (!this.apiKey) {
       console.warn('⚠️  EMBEDLY_API_KEY is not set for EmbedlyCardsService');
