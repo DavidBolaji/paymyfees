@@ -456,7 +456,7 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
             { value: "PARENT", label: "Parent" },
             { value: "SCHOOL", label: "School" },
             { value: "STUDENT", label: "Student" },
-            { value: "TEACHER", label: "Teacher (Coming soon)", disabled: true },
+            { value: "TEACHER", label: "Teacher" },
           ]}
         />
         <AnimatePresence>

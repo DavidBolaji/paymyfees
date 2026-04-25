@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ResidencyModal } from '@/components/dashboard/residency-modal';
 
 
 import { StatCard } from '@/components/dashboard/stat-card';
@@ -86,8 +87,12 @@ export default function DashboardPage() {
   // Ensure we have a valid user object even during loading
   const userName = user?.fullName?.split(" ")[0] || "User";
 
+  // Show residency modal for students on first login
+  const showResidencyModal = user?.role === 'STUDENT' && user?.isFirstTime === true;
+
   return (
     <>
+      <ResidencyModal isOpen={showResidencyModal} />
       <div className="">
         <div className="pt-6 md:pt-0">
           <h2 className='mb-2 md:mb-4 font-semibold text-[#191919] text-xl md:text-[1.6875rem]'>Dashboard</h2>

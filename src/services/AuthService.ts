@@ -114,6 +114,12 @@ export class AuthService implements IAuthService {
             isPrimary: true,
           },
         });
+      } else if (input.role === UserRole.TEACHER) {
+        await tx.teacherProfile.create({
+          data: {
+            userId: newUser.id,
+          },
+        });
       }
 
       return newUser;

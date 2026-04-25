@@ -12,11 +12,11 @@ import useWalletStore from '@/src/stores/walletStore';
 import { WalletCardSkeleton } from '@/components/wallet/wallet-card-skeleton';
 import { WalletStatCards } from '@/components/wallet/wallet-stat-cards';
 import { RechartsFundingChart } from '@/components/wallet/recharts-funding-chart';
-import { LinkedPaymentMethods, PaymentMethodData } from '@/components/wallet/linked-payment-methods';
+import { PaymentMethodData } from '@/components/wallet/linked-payment-methods';
 import { ChargeCardModal } from '@/components/wallet/charge-card-modal';
 import MakeRepaymentModal from '@/components/dashboard/make-repayment-modal';
 import ContactSupportModal from '@/app/dashboard/school-verification/ContactSupportModal';
-import { getPaymentMethods, initializeCardAddition, deletePaymentMethod, chargeSavedCard } from '@/src/utils/payment-method-api';
+import { getPaymentMethods, chargeSavedCard } from '@/src/utils/payment-method-api';
 import { GradientSendIcon } from '@/assets/icons/GredientSendIcon';
 import { GradientWalletIcon } from '@/assets/icons/GradientWalletIcon';
 import { NetworkIcon } from '@/assets/icons/NetworkIcon';
@@ -31,8 +31,8 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
   const [isMakePaymentModalOpen, setIsMakePaymentModalOpen] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodData[]>([]);
-  const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false);
+  const [, setPaymentMethods] = useState<PaymentMethodData[]>([]);
+  const [, setIsLoadingPaymentMethods] = useState(false);
   const [selectedCard, setSelectedCard] = useState<PaymentMethodData | null>(null);
   const [isChargeModalOpen, setIsChargeModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
@@ -172,52 +172,6 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
     setTimeout(() => {
       setShowSuccessMessage(false);
     }, 5000);
-  };
-
-  // Handle add card - redirect to Paystack
-  const handleAddCard = async () => {
-    try {
-      // Initialize card addition which will redirect to Paystack
-      const result = await initializeCardAddition(50); // 50 NGN verification amount
-      if (result.success && result.data) {
-        // Redirect to Paystack - they will collect card details
-        window.location.href = result.data.paymentUrl;
-      } else {
-        setSuccessMessage(result.error || 'Failed to initialize card addition');
-        setShowSuccessMessage(true);
-      }
-    } catch (error) {
-      console.error('Error adding card:', error);
-      setSuccessMessage('Failed to add card. Please try again.');
-      setShowSuccessMessage(true);
-    }
-  };
-
-  // Handle remove card
-  const handleRemoveCard = async (id: string) => {
-    try {
-      const result = await deletePaymentMethod(id);
-      if (result.success) {
-        // Reload payment methods
-        await loadPaymentMethods();
-        setSuccessMessage('Card removed successfully');
-        setShowSuccessMessage(true);
-        setTimeout(() => setShowSuccessMessage(false), 3000);
-      } else {
-        setSuccessMessage(result.error || 'Failed to remove card');
-        setShowSuccessMessage(true);
-      }
-    } catch (error) {
-      console.error('Error removing card:', error);
-      setSuccessMessage('Failed to remove card. Please try again.');
-      setShowSuccessMessage(true);
-    }
-  };
-
-  // Handle card click to charge
-  const handleCardClick = (card: PaymentMethodData) => {
-    setSelectedCard(card);
-    setIsChargeModalOpen(true);
   };
 
   // Handle charge card

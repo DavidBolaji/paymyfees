@@ -82,9 +82,10 @@ const adminNavigationGroups: NavGroup[] = [
     ]
   },
   {
-    title: 'STUDENTS',
+    title: 'USERS',
     items: [
-      { icon: Users, label: 'Student Directory', href: '/admin/students' },
+      { icon: Users, label: 'Students', href: '/admin/students' },
+      { icon: Users, label: 'Parents', href: '/admin/parents' },
       { icon: Building2, label: 'School Verification', href: '/admin/schools' },
     ]
   },

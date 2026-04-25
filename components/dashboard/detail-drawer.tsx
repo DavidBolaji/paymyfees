@@ -153,6 +153,7 @@ interface LoanDisbursementDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   loan: any;
+  basePath?: string;
   // The loan object may include these properties from dashboard stats
   // but we don't require them to be present
 }
@@ -160,7 +161,8 @@ interface LoanDisbursementDrawerProps {
 export function LoanDisbursementDrawer({
   isOpen,
   onClose,
-  loan
+  loan,
+  basePath = '/dashboard'
 }: LoanDisbursementDrawerProps) {
   if (!loan) return null;
 
@@ -265,7 +267,7 @@ export function LoanDisbursementDrawer({
       label: 'View',
       onClick: () => {
         onClose();
-        window.location.href = `/dashboard/loans/${loan.loanId || 'PMF-2024-0021'}`;
+        window.location.href = `${basePath}/loans/${loan.loanId || 'PMF-2024-0021'}`;
       },
       variant: 'primary',
       icon: <CheckSquareIcon className="w-4 h-4" />
