@@ -27,6 +27,7 @@ import { prisma } from '@/src/database/prisma';
 import { UserRole } from '@prisma/client';
 import { MailService, IMailService } from '@/src/services/MailService';
 import { createVerification, getUserByToken, verifyToken, createPasswordResetToken, verifyPasswordResetToken } from '@/src/utils/verification';
+import { EmbedlyService } from '@/src/services/EmbedlyService';
 
 /**
  * Auth Service Interface
@@ -113,19 +114,29 @@ export class AuthService implements IAuthService {
             isPrimary: true,
           },
         });
+      } else if (input.role === UserRole.TEACHER) {
+        await tx.teacherProfile.create({
+          data: {
+            userId: newUser.id,
+          },
+        });
       }
 
       return newUser;
     });
 
-    try {
-      console.log({
-        message: 'User registered successfully',
-        userId: user.id
+    // ── Provision Embedly customer + wallet (non-blocking) ─────────────────────
+    // If Embedly is unavailable, registration still succeeds.
+    // A retry mechanism (cron / manual trigger) can re-provision later.
+    this.provisionEmbedly(user).catch((err) => {
+      console.error({
+        message: 'Embedly provisioning failed (non-blocking)',
+        userId: user.id,
+        error: err instanceof Error ? err.message : String(err),
       });
-    } catch (loggingError) {
-      console.info(`User registered successfully with ID ${user.id}`);
-    }
+    });
+
+    console.info(`User registered successfully with ID ${user.id}`);
 
     // Generate verification token or OTP based on mode
     try {
@@ -528,6 +539,74 @@ export class AuthService implements IAuthService {
   private async hashPassword(password: string): Promise<string> {
     const saltRounds = 10;
     return await bcrypt.hash(password, saltRounds);
+  }
+
+  /**
+   * Provision Embedly customer + virtual wallet for a newly registered user
+   * Called non-blocking after DB user+wallet creation.
+   * Safe to retry if it fails — idempotency is handled via embedlyCustomerId check.
+   */
+  private async provisionEmbedly(user: { id: string; email: string; fullName: string; phone: string | null }): Promise<void> {
+    // Skip if already provisioned (e.g. retry scenario)
+    const existing = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { embedlyCustomerId: true } as any,
+    });
+    if ((existing as any)?.embedlyCustomerId) {
+      console.log({ message: 'Embedly already provisioned for user', userId: user.id });
+      return;
+    }
+
+    const embedlyService = new EmbedlyService();
+
+    // Split full name into first / last
+    const nameParts = user.fullName.trim().split(' ');
+    const firstName = nameParts[0] ?? user.fullName;
+    const lastName = nameParts.slice(1).join(' ') || firstName;
+
+    // Create Embedly customer
+    const { embedlyCustomerId } = await embedlyService.createCustomer({
+      firstName,
+      lastName,
+      emailAddress: user.email,
+      mobileNumber: user.phone ?? '08000000000',
+      dob: '1990-01-01', // Default — update when KYC is collected
+      customerTypeId: embedlyService.getDefaultCustomerTypeId(),
+      address: 'Nigeria',
+      city: 'Lagos',
+      countryId: embedlyService.getDefaultCountryId(),
+    });
+
+    // Update user with embedlyCustomerId
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { embedlyCustomerId } as any,
+    });
+
+    // Create Embedly wallet + virtual account
+    const { embedlyWalletId, virtualAccountNumber, virtualAccountBank } =
+      await embedlyService.createWallet({
+        customerId: embedlyCustomerId,
+        currencyId: embedlyService.getDefaultCurrencyId(),
+        name: `${user.fullName} Wallet`,
+      });
+
+    // Update DB wallet with Embedly details
+    await prisma.wallet.update({
+      where: { userId: user.id },
+      data: {
+        embedlyWalletId,
+        virtualAccountNumber,
+        virtualAccountBank,
+      } as any,
+    });
+
+    console.log({
+      message: 'Embedly provisioning complete',
+      userId: user.id,
+      embedlyCustomerId,
+      virtualAccountNumber,
+    });
   }
 
   /**

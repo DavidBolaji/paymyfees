@@ -61,10 +61,18 @@ export class DashboardRepository implements IDashboardRepository {
         },
       });
       
-      // Get wallet balance
+      // Get wallet balance and virtual account details
       const wallet = await prisma.wallet.findUnique({
         where: {
           userId,
+        },
+        select: {
+          balance: true,
+          currency: true,
+          autoDebitEnabled: true,
+          virtualAccountNumber: true,
+          virtualAccountBank: true,
+          embedlyWalletId: true,
         },
       });
       

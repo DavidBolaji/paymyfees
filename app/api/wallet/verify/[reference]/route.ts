@@ -1,65 +1,14 @@
 /**
- * Wallet Payment Verification API Route
- * GET /api/wallet/verify/:reference
+ * Wallet Payment Verification — REMOVED
+ * Payment verification is now handled automatically via Embedly webhooks.
  */
-
 import { NextResponse } from 'next/server';
-import { WalletController } from '@/src/controllers/WalletController';
-import { asyncHandler } from '@/src/middleware/errorHandler';
-import { lenientRateLimiter } from '@/src/middleware/rateLimiter';
-import { studentAuthMiddleware } from '@/src/middleware/authMiddleware';
-import { UserRole } from '@prisma/client';
 
-const walletController = new WalletController();
-
-/**
- * GET /api/wallet/verify/:reference
- * Verify a payment reference
- */
-export const GET = asyncHandler(async (req: Request, context?: { params: Promise<{ reference: string }> }) => {
-  // Apply lenient rate limiting for payment verification
-  await lenientRateLimiter(req);
-
-  // Authenticate user
-  const authResult = await studentAuthMiddleware(req);
-  if (!authResult.success) {
-    return authResult.response!;
-  }
-
-  // Ensure context and params exist
-  if (!context || !context.params) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Missing reference parameter',
-        metadata: {
-          timestamp: new Date().toISOString(),
-        },
-      },
-      { status: 400 }
-    );
-  }
-
-  // Await params (Next.js 15 requirement)
-  const params = await context.params;
-
-  if (!params.reference) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Missing reference parameter',
-        metadata: {
-          timestamp: new Date().toISOString(),
-        },
-      },
-      { status: 400 }
-    );
-  }
-
-  // Delegate to controller
-  return await walletController.verifyPayment(req, params.reference, {
-    id: authResult.userId!,
-    email: '',
-    role: authResult.role as UserRole
-  });
-});
+export const GET = async () =>
+  NextResponse.json(
+    {
+      success: false,
+      error: 'This endpoint has been removed. Wallet funding is confirmed automatically via Embedly webhook.',
+    },
+    { status: 410 }
+  );

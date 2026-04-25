@@ -1,17 +1,29 @@
 /**
- * Repayment Service (FIXED)
- * Business logic for loan repayments from wallet
- * 
+ * Repayment Service (Embedly Integration)
+ * Business logic for loan repayments via Embedly wallet-to-wallet transfer
+ *
+ * Flow (wallet-to-wallet — instant):
+ * 1. Validate installment + ordering
+ * 2. Check wallet balance
+ * 3. Debit wallet + call Embedly wallet-to-wallet (user → org wallet 9710031865)
+ * 4. On success: mark transaction COMPLETED, installment PAID, update loan
+ * 5. On failure: rollback wallet debit, mark transaction FAILED
+ *
+ * Admin payout flow (inter-bank, async — kept for future use):
+ * - confirmRepaymentSuccess / rollbackRepayment handle payout webhooks
+ *
  * Rules:
- * 1. Full installment amounts only (no partial payments)
- * 2. Always pay the next due installment
- * 3. If insufficient balance, tell user to top up
- * 4. Confirmation modal before deduction (handled in UI)
+ * - Full installment amounts only (no partial payments)
+ * - Always pay the next due installment in order
+ * - If insufficient balance, tell user to top up
+ * - No double-submission: PROCESSING installment is locked
  */
 import { WalletRepository, IWalletRepository } from '@/src/repositories/WalletRepository';
 
 import { executeWalletOperation, prisma } from '@/src/database/prisma';
-import { ValidationError, NotFoundError } from '@/src/types/errors';
+import { ValidationError, NotFoundError, PaymentError } from '@/src/types/errors';
+import { EmbedlyPayoutService } from '@/src/services/EmbedlyPayoutService';
+import { EmbedlyService } from '@/src/services/EmbedlyService';
 
 import { 
   TransactionType, 
@@ -39,6 +51,21 @@ export interface RepaymentResult {
   installmentStatus: PaymentStatus;
   loanStatus: LoanStatus;
   transactionReference: string;
+  gatewayReference?: string;
+}
+
+/**
+ * Payout Webhook Completion Input
+ * Used by WalletController when payout.success / payout.failed arrives
+ */
+export interface PayoutWebhookInput {
+  /** Our internal reference (customerTransactionReference) */
+  customerTransactionReference: string;
+  /** Embedly's transaction ref stored as gatewayReference */
+  gatewayReference?: string;
+  status: 'success' | 'failed';
+  amount?: number;
+  failureReason?: string;
 }
 
 /**
@@ -72,6 +99,8 @@ export interface UserInstallmentsSummary {
  */
 export interface IRepaymentService {
   makeRepayment(input: MakeRepaymentInput): Promise<RepaymentResult>;
+  confirmRepaymentSuccess(input: PayoutWebhookInput): Promise<void>;
+  rollbackRepayment(input: PayoutWebhookInput): Promise<void>;
   getNextDueInstallment(userId: string, loanId?: string): Promise<UserInstallmentsSummary>;
 }
 
@@ -80,96 +109,99 @@ export interface IRepaymentService {
  */
 export class RepaymentService implements IRepaymentService {
   private walletRepository: IWalletRepository;
+  readonly payoutService: EmbedlyPayoutService;   // kept for admin inter-bank payouts
+  private embedlyService: EmbedlyService;
 
   constructor(
-    walletRepository?: IWalletRepository
+    walletRepository?: IWalletRepository,
+    payoutService?: EmbedlyPayoutService,
+    embedlyService?: EmbedlyService
   ) {
     this.walletRepository = walletRepository || new WalletRepository();
+    this.payoutService = payoutService || new EmbedlyPayoutService();
+    this.embedlyService = embedlyService || new EmbedlyService();
   }
 
   /**
-   * Make repayment from wallet
-   * Rule 1: Full installment amount only
-   * Rule 2: Must be the next due installment
+   * Make repayment via Embedly wallet-to-wallet transfer (instant)
+   * Moves funds from user's virtual account → company org wallet (PMF_ORG_WALLET_ACCOUNT)
+   * Transfer is synchronous: success = funds moved, installment marked PAID immediately.
    */
   async makeRepayment(input: MakeRepaymentInput): Promise<RepaymentResult> {
     console.log({ msg: 'Making repayment', userId: input.userId, installmentId: input.installmentId });
 
-    // Execute in transaction to ensure atomicity
-    const result = await executeWalletOperation(async (tx) => {
-      // Get installment with loan details
+    // ── Phase 1: Validate + Debit Wallet (DB transaction) ─────────────────────
+    const reservationResult = await executeWalletOperation(async (tx) => {
       const installment = await tx.installment.findUnique({
         where: { id: input.installmentId },
         include: { loan: true },
       });
 
-      if (!installment) {
-        throw new NotFoundError('Installment not found');
-      }
+      if (!installment) throw new NotFoundError('Installment not found');
 
-      // Verify installment belongs to user
       if (installment.loan.userId !== input.userId) {
         throw new ValidationError('Unauthorized to pay this installment');
       }
 
-      // Check if already paid
       if (installment.status === 'PAID') {
         throw new ValidationError('This installment has already been paid');
       }
+      if ((installment.status as string) === 'PROCESSING') {
+        throw new ValidationError(
+          'A repayment for this installment is already being processed. Please wait for confirmation.'
+        );
+      }
 
-      // Rule 2: Verify this is the next due installment
+      // Must be the next due installment (pay in order)
       const nextDue = await tx.installment.findFirst({
         where: {
           loan: {
             userId: input.userId,
             status: { in: ['ACTIVE', 'DISBURSED'] },
           },
-          status: 'PENDING',
+          status: { in: ['PENDING', 'OVERDUE'] },
         },
         orderBy: { dueDate: 'asc' },
       });
 
       if (!nextDue || nextDue.id !== input.installmentId) {
-        throw new ValidationError('You can only pay the next due installment. Please pay installments in order.');
-      }
-
-      // Get wallet
-      const wallet = await tx.wallet.findUnique({
-        where: { userId: input.userId },
-      });
-
-      if (!wallet) {
-        throw new NotFoundError('Wallet not found');
-      }
-
-      // Rule 1: Full installment amount (including late fees)
-      const amountToPay = Number(installment.amount) + Number(installment.lateFee);
-
-      // Rule 3: Check wallet balance
-      const currentBalance = Number(wallet.balance);
-      if (currentBalance < amountToPay) {
-        const shortfall = amountToPay - currentBalance;
         throw new ValidationError(
-          `Insufficient wallet balance. Please top up your wallet with at least ₦${shortfall.toLocaleString()} to make this payment. Required: ₦${amountToPay.toLocaleString()}, Available: ₦${currentBalance.toLocaleString()}`
+          'You can only pay the next due installment. Please pay installments in order.'
         );
       }
 
-      // Calculate new balance
+      const wallet = await tx.wallet.findUnique({ where: { userId: input.userId } });
+      if (!wallet) throw new NotFoundError('Wallet not found');
+
+      const virtualAccountNumber: string | null = (wallet as any).virtualAccountNumber ?? null;
+      if (!virtualAccountNumber) {
+        throw new ValidationError(
+          'Your virtual account is not set up yet. Please contact support to complete account setup.'
+        );
+      }
+
+      const amountToPay = Number(installment.amount) + Number(installment.lateFee);
+      const currentBalance = Number(wallet.balance);
+
+      if (currentBalance < amountToPay) {
+        const shortfall = amountToPay - currentBalance;
+        throw new ValidationError(
+          `Insufficient wallet balance. Please top up at least ₦${shortfall.toLocaleString()}. Required: ₦${amountToPay.toLocaleString()}, Available: ₦${currentBalance.toLocaleString()}`
+        );
+      }
+
       const balanceBefore = currentBalance;
       const balanceAfter = balanceBefore - amountToPay;
 
-      // Update wallet balance
+      // Debit wallet
       const updatedWallet = await tx.wallet.update({
         where: { userId: input.userId },
-        data: {
-          balance: { decrement: amountToPay },
-        },
+        data: { balance: { decrement: amountToPay } },
       });
 
-      // Generate transaction reference
       const txReference = `RPY-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-      // Create transaction record
+      // Create transaction as PENDING — will be updated to COMPLETED after transfer
       await tx.transaction.create({
         data: {
           transactionReference: txReference,
@@ -179,9 +211,9 @@ export class RepaymentService implements IRepaymentService {
           amount: amountToPay,
           balanceBefore,
           balanceAfter,
-          description: `Loan repayment for ${installment.loan.loanNumber} - Installment #${installment.installmentNumber}`,
+          description: `Loan repayment: ${installment.loan.loanNumber} — Installment #${installment.installmentNumber}`,
           category: 'LOAN_REPAYMENT',
-          status: TransactionStatus.COMPLETED,
+          status: TransactionStatus.PENDING,
           transactionDate: new Date(),
           metadata: {
             loanId: installment.loanId,
@@ -191,86 +223,301 @@ export class RepaymentService implements IRepaymentService {
             baseAmount: Number(installment.amount),
             lateFee: Number(installment.lateFee),
             totalAmount: amountToPay,
+            virtualAccountNumber,
           },
         },
       });
 
-      // Update installment status (always PAID for full payment)
+      // Lock installment while transfer is in flight
       await tx.installment.update({
         where: { id: input.installmentId },
-        data: {
-          status: 'PAID',
-          paidDate: new Date(),
-        },
+        data: { status: 'PROCESSING' as any },
       });
 
-      // Update loan repayment tracking
-      const updatedLoan = await tx.loan.update({
-        where: { id: installment.loanId },
-        data: {
-          amountRepaid: { increment: amountToPay },
-          outstandingBalance: { decrement: amountToPay },
-          lastPaymentDate: new Date(),
-        },
+      return {
+        txReference,
+        amountToPay,
+        balanceBefore,
+        balanceAfter: Number(updatedWallet.balance),
+        virtualAccountNumber,
+        installment,
+        wallet,
+      };
+    });
+
+    const { txReference, amountToPay, installment, balanceAfter, virtualAccountNumber } =
+      reservationResult;
+
+    // ── Phase 2: Wallet-to-wallet transfer (instant, outside DB tx) ───────────
+    const orgWallet = process.env.PMF_ORG_WALLET_ACCOUNT;
+    if (!orgWallet) {
+      await this.performRollback(input.userId, txReference, installment.id, amountToPay, 'Server misconfiguration: PMF_ORG_WALLET_ACCOUNT not set');
+      throw new PaymentError('Repayment destination wallet not configured', txReference);
+    }
+
+    try {
+      await this.embedlyService.walletToWalletTransfer({
+        fromAccount: virtualAccountNumber,
+        toAccount: orgWallet,
+        amount: amountToPay,
+        transactionReference: txReference,
+        remarks: `Loan ${installment.loan.loanNumber} Installment #${installment.installmentNumber}`,
       });
 
-      // Check if all installments are paid
-      const remainingInstallments = await tx.installment.count({
-        where: {
-          loanId: installment.loanId,
-          status: 'PENDING',
-        },
-      });
+      // ── Phase 3: Mark everything complete (instant transfer succeeded) ────────
+      await executeWalletOperation(async (tx) => {
+        // Mark transaction COMPLETED
+        await tx.transaction.updateMany({
+          where: { transactionReference: txReference, userId: input.userId },
+          data: { status: TransactionStatus.COMPLETED },
+        });
 
-      // If no more pending installments, mark loan as completed
-      let finalLoanStatus = updatedLoan.status;
-      if (remainingInstallments === 0) {
-        const completedLoan = await tx.loan.update({
+        // Mark installment PAID
+        await tx.installment.update({
+          where: { id: installment.id },
+          data: { status: 'PAID', paidDate: new Date() },
+        });
+
+        // Update loan repayment tracking
+        await tx.loan.update({
           where: { id: installment.loanId },
           data: {
-            status: LoanStatus.COMPLETED,
-            completionDate: new Date(),
+            amountRepaid: { increment: amountToPay },
+            outstandingBalance: { decrement: amountToPay },
+            lastPaymentDate: new Date(),
           },
         });
-        finalLoanStatus = completedLoan.status;
 
-        console.log({ msg: 'Loan fully repaid', loanId: installment.loanId });
-      }
+        // Create payment record
+        await tx.payment.create({
+          data: {
+            paymentReference: txReference,
+            loanId: installment.loanId,
+            installmentId: installment.id,
+            userId: input.userId,
+            amount: amountToPay,
+            paymentMethod: 'WALLET',
+            status: TransactionStatus.COMPLETED,
+            paymentDate: new Date(),
+            confirmedAt: new Date(),
+          },
+        }).catch((err: any) => console.warn('Payment record creation failed (non-fatal):', err));
 
-      // Create payment record
-      await tx.payment.create({
-        data: {
-          paymentReference: txReference,
-          loanId: installment.loanId,
-          installmentId: installment.id,
-          userId: input.userId,
-          amount: amountToPay,
-          paymentMethod: 'WALLET',
-          status: TransactionStatus.COMPLETED,
-          paymentDate: new Date(),
-          confirmedAt: new Date(),
-        },
+        // Close loan if all installments paid
+        const remaining = await tx.installment.count({
+          where: { loanId: installment.loanId, status: 'PENDING' },
+        });
+        if (remaining === 0) {
+          await tx.loan.update({
+            where: { id: installment.loanId },
+            data: { status: LoanStatus.COMPLETED, completionDate: new Date() },
+          });
+          console.log({ msg: 'Loan fully repaid', loanId: installment.loanId });
+        }
       });
+
+      console.log({ msg: 'Repayment completed', userId: input.userId, txReference, amount: amountToPay });
 
       return {
         success: true,
         installmentId: installment.id,
         amountPaid: amountToPay,
-        newWalletBalance: Number(updatedWallet.balance),
-        installmentStatus: 'PAID' as PaymentStatus,
-        loanStatus: finalLoanStatus,
+        newWalletBalance: balanceAfter,
+        installmentStatus: 'PAID' as unknown as PaymentStatus,
+        loanStatus: installment.loan.status,
         transactionReference: txReference,
       };
+    } catch (error) {
+      // Transfer failed — rollback wallet debit
+      console.error('Wallet-to-wallet transfer failed, rolling back:', error);
+      await this.performRollback(
+        input.userId,
+        txReference,
+        installment.id,
+        amountToPay,
+        error instanceof Error ? error.message : 'Transfer failed'
+      ).catch((rbErr) => console.error('Rollback also failed:', rbErr));
+      throw error;
+    }
+  }
+
+  /**
+   * Confirm repayment success (called from payout.success webhook)
+   * Marks transaction COMPLETED, installment PAID, updates loan
+   */
+  async confirmRepaymentSuccess(input: PayoutWebhookInput): Promise<void> {
+    const { customerTransactionReference, gatewayReference } = input;
+    console.log({ msg: 'Confirming repayment success', customerTransactionReference });
+
+    await executeWalletOperation(async (tx) => {
+      // Find the PENDING transaction by our reference
+      const transaction = await tx.transaction.findFirst({
+        where: {
+          transactionReference: customerTransactionReference,
+          status: TransactionStatus.PENDING,
+        },
+      });
+
+      if (!transaction) {
+        // Already confirmed or unknown — idempotency safe
+        console.warn({ msg: 'No PENDING transaction found for repayment success webhook', customerTransactionReference });
+        return;
+      }
+
+      const meta = (transaction.metadata as any) ?? {};
+      const installmentId: string = meta.installmentId;
+      const loanId: string = meta.loanId;
+      const amountPaid: number = Number(transaction.amount);
+
+      // Mark transaction COMPLETED
+      await tx.transaction.update({
+        where: { id: transaction.id },
+        data: {
+          status: TransactionStatus.COMPLETED,
+          gatewayReference: gatewayReference ?? transaction.gatewayReference,
+        },
+      });
+
+      // Mark installment PAID
+      await tx.installment.update({
+        where: { id: installmentId },
+        data: { status: 'PAID', paidDate: new Date() },
+      });
+
+      // Update loan repayment tracking
+      await tx.loan.update({
+        where: { id: loanId },
+        data: {
+          amountRepaid: { increment: amountPaid },
+          outstandingBalance: { decrement: amountPaid },
+          lastPaymentDate: new Date(),
+        },
+      });
+
+      // Create payment record
+      await tx.payment.create({
+        data: {
+          paymentReference: customerTransactionReference,
+          loanId,
+          installmentId,
+          userId: transaction.userId,
+          amount: amountPaid,
+          paymentMethod: 'WALLET',
+          status: TransactionStatus.COMPLETED,
+          paymentDate: new Date(),
+          confirmedAt: new Date(),
+        },
+      }).catch((err) => console.warn('Payment record creation failed (non-fatal):', err));
+
+      // Check if all installments paid → close loan
+      const remaining = await tx.installment.count({
+        where: { loanId, status: 'PENDING' },
+      });
+
+      if (remaining === 0) {
+        await tx.loan.update({
+          where: { id: loanId },
+          data: { status: LoanStatus.COMPLETED, completionDate: new Date() },
+        });
+        console.log({ msg: 'Loan fully repaid', loanId });
+      }
     });
 
-    console.log({ 
-      msg: 'Repayment completed successfully', 
-      userId: input.userId,
-      amount: result.amountPaid,
-      reference: result.transactionReference
+    console.log({ msg: 'Repayment confirmed', customerTransactionReference });
+  }
+
+  /**
+   * Rollback repayment on payout failure (called from payout.failed webhook)
+   * Re-credits wallet, marks transaction FAILED, marks installment PENDING
+   */
+  async rollbackRepayment(input: PayoutWebhookInput): Promise<void> {
+    const { customerTransactionReference, failureReason } = input;
+    console.log({ msg: 'Rolling back repayment', customerTransactionReference, failureReason });
+
+    const transaction = await prisma.transaction.findFirst({
+      where: { transactionReference: customerTransactionReference },
     });
 
-    return result;
+    if (!transaction) {
+      console.warn({ msg: 'No transaction found for rollback', customerTransactionReference });
+      return;
+    }
+
+    if (transaction.status === TransactionStatus.FAILED) {
+      // Already rolled back — idempotency safe
+      console.warn({ msg: 'Transaction already FAILED (duplicate webhook?)', customerTransactionReference });
+      return;
+    }
+
+    const amountToRefund = Number(transaction.amount);
+    const meta = (transaction.metadata as any) ?? {};
+    const installmentId: string = meta.installmentId;
+
+    await executeWalletOperation(async (tx) => {
+      // Re-credit wallet
+      await tx.wallet.update({
+        where: { userId: transaction.userId },
+        data: { balance: { increment: amountToRefund } },
+      });
+
+      // Mark transaction FAILED
+      await tx.transaction.update({
+        where: { id: transaction.id },
+        data: {
+          status: TransactionStatus.FAILED,
+          metadata: {
+            ...(meta as object),
+            rollbackReason: failureReason ?? 'Payout failed',
+            rolledBackAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      // Revert installment back to PENDING
+      await tx.installment.update({
+        where: { id: installmentId },
+        data: { status: 'PENDING' },
+      });
+    });
+
+    console.log({
+      msg: 'Repayment rolled back',
+      customerTransactionReference,
+      amountRefunded: amountToRefund,
+    });
+  }
+
+  // ── Private Helpers ──────────────────────────────────────────────────────────
+
+  /** Undo a wallet debit reservation when payout initiation fails */
+  private async performRollback(
+    userId: string,
+    txReference: string,
+    installmentId: string,
+    amount: number,
+    reason: string
+  ): Promise<void> {
+    console.warn({ msg: 'Performing repayment rollback', txReference, reason });
+
+    await executeWalletOperation(async (tx) => {
+      // Re-credit wallet
+      await tx.wallet.update({
+        where: { userId },
+        data: { balance: { increment: amount } },
+      });
+
+      // Mark transaction FAILED
+      await tx.transaction.updateMany({
+        where: { transactionReference: txReference, userId },
+        data: { status: TransactionStatus.FAILED },
+      });
+
+      // Revert installment to PENDING
+      await tx.installment.update({
+        where: { id: installmentId },
+        data: { status: 'PENDING' },
+      });
+    });
   }
 
   /**

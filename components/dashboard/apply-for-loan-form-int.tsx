@@ -479,7 +479,7 @@ export function ApplyForLoanFormInt() {
               Upload Files
             </h3>
             <p className="mb-4 text-[#7C7C7C] text-sm">
-              Upload Bvn, Nin, Salary slips, Bank statement and other supporting docs
+              Upload Bvn, Nin, Salary slips, Bank statement, Proof of address, School fees invoice / offer letter, School fees receipts for the last two (2) terms, Recent 3 months Bank statement, Passport photograph (Parent/Guardian), Passport photograph (Student) and other supporting docs
             </p>
 
             <FileUpload

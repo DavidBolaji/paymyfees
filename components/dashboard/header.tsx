@@ -7,6 +7,7 @@ import Logo from "@/assets/images/logo/logo.png";
 import { MenuIcon } from '@/assets/icons/MenuIcon';
 import useAuthStore from '@/src/authStore';
 import useDashboardStore from '@/src/stores/dashboardStore';
+import { api } from '@/src/lib/api';
 import { useRef, useState, useEffect } from 'react';
 import { StatusBadge } from '@/components/dashboard/status-badge';
 import { NotificationsPanel } from '@/components/dashboard/notifications-panel';
@@ -58,7 +59,7 @@ export function Header({ className, onMenuToggle }: HeaderProps) {
 
   // Fetch unread notification count on mount so the badge shows without opening the panel
   useEffect(() => {
-    fetch('/api/notifications')
+    api.get('/api/notifications')
       .then(r => r.json())
       .then((d: any) => {
         if (d.success && Array.isArray(d.data)) {
