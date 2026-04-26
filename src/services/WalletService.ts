@@ -113,7 +113,12 @@ export class WalletService implements IWalletService {
    */
   async getBalance(userId: string): Promise<number> {
     console.log({ msg: 'Getting wallet balance', userId });
-    return await this.walletRepository.getBalance(userId);
+    const wallet = await prisma.wallet.upsert({
+      where: { userId },
+      create: { userId, balance: 0, currency: 'NGN' },
+      update: {},
+    });
+    return Number(wallet.balance);
   }
 
   /**
@@ -128,14 +133,13 @@ export class WalletService implements IWalletService {
     embedlyWalletId: string | null;
   }> {
     console.log({ msg: 'Getting wallet details', userId });
-    
-    const wallet = await prisma.wallet.findUnique({
-      where: { userId }
+
+    // Auto-create wallet if missing (safety net for accounts created before wallet creation was enforced)
+    const wallet = await prisma.wallet.upsert({
+      where: { userId },
+      create: { userId, balance: 0, currency: 'NGN' },
+      update: {},
     });
-    
-    if (!wallet) {
-      throw new NotFoundError('Wallet not found');
-    }
     
     return {
       balance: Number(wallet.balance),
@@ -404,11 +408,11 @@ export class WalletService implements IWalletService {
   async getTransactions(userId: string, pagination: PaginationParams): Promise<{ transactions: TransactionDTO[]; total: number; page: number; limit: number }> {
     console.log({ msg: 'Getting wallet transactions', userId });
 
-    const wallet = await this.walletRepository.findByUserId(userId);
-
-    if (!wallet) {
-      throw new NotFoundError('Wallet not found');
-    }
+    const wallet = await prisma.wallet.upsert({
+      where: { userId },
+      create: { userId, balance: 0, currency: 'NGN' },
+      update: {},
+    });
 
     const { transactions, total } = await this.transactionRepository.findByWalletId(
       wallet.id,

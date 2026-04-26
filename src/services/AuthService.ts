@@ -283,19 +283,49 @@ export class AuthService implements IAuthService {
     await this.userRepository.updateLastLogin(user.id);
     console.log('User logged in successfully', { userId: user.id });
 
-    // Auto-repair: ensure wallet and role-specific profile exist (in case they were missing)
+    // Auto-repair: ensure wallet, role-specific profile, and Embedly provisioning are complete
     const existingUserDTO = await this.userRepository.getUserById(user.id);
+
+    // Ensure local wallet exists
     if (!existingUserDTO?.wallet) {
-      await prisma.wallet.create({ data: { userId: user.id } }).catch(() => {/* already exists */});
+      await prisma.wallet.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, balance: 0, currency: 'NGN' },
+        update: {},
+      }).catch(() => {});
     }
+
+    // Ensure school profile exists for school accounts
     if (user.role === UserRole.SCHOOL) {
       const hasSchoolProfile = existingUserDTO?.schoolProfile != null;
       if (!hasSchoolProfile) {
         await prisma.schoolProfile.create({
           data: { userId: user.id, schoolName: user.fullName, isPrimary: true },
-        }).catch(() => {/* already exists */});
+        }).catch(() => {});
       }
     }
+
+    // Ensure teacher profile exists for teacher accounts
+    if (user.role === UserRole.TEACHER) {
+      const hasTeacherProfile = await prisma.teacherProfile.findUnique({ where: { userId: user.id } });
+      if (!hasTeacherProfile) {
+        await prisma.teacherProfile.create({ data: { userId: user.id } }).catch(() => {});
+      }
+    }
+
+    // Re-trigger Embedly provisioning if customer or virtual account is missing (non-blocking)
+    this.provisionEmbedly({
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      phone: user.phone,
+    }).catch((err) => {
+      console.error({
+        message: 'Embedly re-provisioning on login failed (non-blocking)',
+        userId: user.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
 
     // Generate tokens
     const authUser: AuthUser = {
@@ -542,18 +572,29 @@ export class AuthService implements IAuthService {
   }
 
   /**
-   * Provision Embedly customer + virtual wallet for a newly registered user
-   * Called non-blocking after DB user+wallet creation.
-   * Safe to retry if it fails — idempotency is handled via embedlyCustomerId check.
+   * Provision Embedly customer + virtual wallet for a user.
+   * Safe to call multiple times — handles partial provisioning:
+   *   - No customer yet         → create customer + wallet
+   *   - Customer exists, no VA  → create wallet only (skips customer step)
+   *   - Both exist              → no-op
    */
-  private async provisionEmbedly(user: { id: string; email: string; fullName: string; phone: string | null }): Promise<void> {
-    // Skip if already provisioned (e.g. retry scenario)
+  async provisionEmbedly(user: { id: string; email: string; fullName: string; phone: string | null }): Promise<void> {
+    // Read current state from DB
     const existing = await prisma.user.findUnique({
       where: { id: user.id },
       select: { embedlyCustomerId: true } as any,
     });
-    if ((existing as any)?.embedlyCustomerId) {
-      console.log({ message: 'Embedly already provisioned for user', userId: user.id });
+    const existingWallet = await prisma.wallet.findUnique({
+      where: { userId: user.id },
+      select: { virtualAccountNumber: true } as any,
+    });
+
+    const embedlyCustomerId: string | null = (existing as any)?.embedlyCustomerId ?? null;
+    const hasVirtualAccount: boolean = !!((existingWallet as any)?.virtualAccountNumber);
+
+    // Fully provisioned — nothing to do
+    if (embedlyCustomerId && hasVirtualAccount) {
+      console.log({ message: 'Embedly already fully provisioned', userId: user.id });
       return;
     }
 
@@ -564,49 +605,58 @@ export class AuthService implements IAuthService {
     const firstName = nameParts[0] ?? user.fullName;
     const lastName = nameParts.slice(1).join(' ') || firstName;
 
-    // Create Embedly customer
-    const { embedlyCustomerId } = await embedlyService.createCustomer({
-      firstName,
-      lastName,
-      emailAddress: user.email,
-      mobileNumber: user.phone ?? '08000000000',
-      dob: '1990-01-01', // Default — update when KYC is collected
-      customerTypeId: embedlyService.getDefaultCustomerTypeId(),
-      address: 'Nigeria',
-      city: 'Lagos',
-      countryId: embedlyService.getDefaultCountryId(),
-    });
+    // Step 1: Create Embedly customer if missing
+    let customerId = embedlyCustomerId;
+    if (!customerId) {
+      const result = await embedlyService.createCustomer({
+        firstName,
+        lastName,
+        emailAddress: user.email,
+        mobileNumber: user.phone ?? '08000000000',
+        dob: '1990-01-01',
+        customerTypeId: embedlyService.getDefaultCustomerTypeId(),
+        address: 'Nigeria',
+        city: 'Lagos',
+        countryId: embedlyService.getDefaultCountryId(),
+      });
+      customerId = result.embedlyCustomerId;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { embedlyCustomerId: customerId } as any,
+      });
+      console.log({ message: 'Embedly customer created', userId: user.id, customerId });
+    } else {
+      console.log({ message: 'Embedly customer already exists, skipping customer creation', userId: user.id, customerId });
+    }
 
-    // Update user with embedlyCustomerId
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { embedlyCustomerId } as any,
-    });
-
-    // Create Embedly wallet + virtual account
-    const { embedlyWalletId, virtualAccountNumber, virtualAccountBank } =
-      await embedlyService.createWallet({
-        customerId: embedlyCustomerId,
-        currencyId: embedlyService.getDefaultCurrencyId(),
-        name: `${user.fullName} Wallet`,
+    // Step 2: Create Embedly wallet + virtual account if missing
+    if (!hasVirtualAccount) {
+      // Ensure local wallet record exists before updating it
+      await prisma.wallet.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, balance: 0, currency: 'NGN' },
+        update: {},
       });
 
-    // Update DB wallet with Embedly details
-    await prisma.wallet.update({
-      where: { userId: user.id },
-      data: {
-        embedlyWalletId,
-        virtualAccountNumber,
-        virtualAccountBank,
-      } as any,
-    });
+      const { embedlyWalletId, virtualAccountNumber, virtualAccountBank } =
+        await embedlyService.createWallet({
+          customerId,
+          currencyId: embedlyService.getDefaultCurrencyId(),
+          name: `${user.fullName} Wallet`,
+        });
 
-    console.log({
-      message: 'Embedly provisioning complete',
-      userId: user.id,
-      embedlyCustomerId,
-      virtualAccountNumber,
-    });
+      await prisma.wallet.update({
+        where: { userId: user.id },
+        data: { embedlyWalletId, virtualAccountNumber, virtualAccountBank } as any,
+      });
+
+      console.log({
+        message: 'Embedly wallet provisioned',
+        userId: user.id,
+        customerId,
+        virtualAccountNumber,
+      });
+    }
   }
 
   /**

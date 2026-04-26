@@ -76,24 +76,24 @@ export async function studentAuthMiddleware(req: Request): Promise<AuthMiddlewar
     console.warn({ msg: 'Student authentication failed', error: (error as Error).message });
     
     const status = error instanceof UnauthorizedError ? 401 : 403;
-    const message = error instanceof UnauthorizedError 
-      ? 'Authentication required' 
-      : 'Parent access required';
-    
+    const message = error instanceof UnauthorizedError
+      ? 'Authentication required'
+      : 'Access denied';
+
     const response = NextResponse.json(
       {
         success: false,
         error: message,
-        message: error instanceof UnauthorizedError 
-          ? 'Please log in to access this resource' 
-          : 'This resource is only accessible to parents',
+        message: error instanceof UnauthorizedError
+          ? 'Please log in to access this resource'
+          : 'You do not have permission to access this resource',
         metadata: {
           timestamp: new Date().toISOString(),
         },
       },
       { status }
     );
-    
+
     return {
       success: false,
       response
