@@ -616,31 +616,52 @@ export class AuthService implements IAuthService {
     const firstName = nameParts[0] ?? user.fullName;
     const lastName = nameParts.slice(1).join(' ') || firstName;
 
-    // Step 1: Create Embedly customer if missing
+    // ── Step 1: Resolve Embedly customer ID ────────────────────────────────────
     let customerId = embedlyCustomerId;
     if (!customerId) {
-      const result = await embedlyService.createCustomer({
-        firstName,
-        lastName,
-        emailAddress: user.email,
-        mobileNumber: user.phone ?? '08000000000',
-        dob: '1990-01-01',
-        customerTypeId: embedlyService.getDefaultCustomerTypeId(),
-        address: 'Nigeria',
-        city: 'Lagos',
-        countryId: embedlyService.getDefaultCountryId(),
-      });
-      customerId = result.embedlyCustomerId;
+      try {
+        const result = await embedlyService.createCustomer({
+          firstName,
+          lastName,
+          emailAddress: user.email,
+          mobileNumber: user.phone ?? '08000000000',
+          dob: '1990-01-01',
+          customerTypeId: embedlyService.getDefaultCustomerTypeId(),
+          address: 'Nigeria',
+          city: 'Lagos',
+          countryId: embedlyService.getDefaultCountryId(),
+        });
+        customerId = result.embedlyCustomerId;
+        console.log({ message: 'Embedly customer created', userId: user.id, customerId });
+      } catch (err: any) {
+        // createCustomer already tries findCustomerByEmail internally.
+        // If it still throws (lookup exhausted), try one more direct lookup
+        // before giving up — so we never surface a 502 to the user.
+        console.warn({ message: 'createCustomer threw, attempting direct email lookup', userId: user.id, error: err?.message });
+        customerId = await embedlyService.findCustomerByEmail(user.email).catch(() => null);
+        if (!customerId) {
+          // Customer exists on Embedly but we cannot resolve the ID right now.
+          // Log and exit gracefully — provisioning will be retried on next login
+          // or via /api/wallet/provision once Embedly is accessible.
+          console.warn({
+            message: 'Embedly customer ID unresolvable — provisioning deferred',
+            userId: user.id,
+            email: user.email,
+          });
+          return;
+        }
+      }
+
+      // Persist the resolved customer ID
       await prisma.user.update({
         where: { id: user.id },
         data: { embedlyCustomerId: customerId } as any,
       });
-      console.log({ message: 'Embedly customer created', userId: user.id, customerId });
     } else {
-      console.log({ message: 'Embedly customer already exists, skipping customer creation', userId: user.id, customerId });
+      console.log({ message: 'Embedly customer already in DB, skipping creation', userId: user.id, customerId });
     }
 
-    // Step 2: Create Embedly wallet + virtual account if missing
+    // ── Step 2: Create Embedly wallet + virtual account if missing ─────────────
     if (!hasVirtualAccount) {
       // Ensure local wallet record exists before updating it
       await prisma.wallet.upsert({
@@ -649,24 +670,45 @@ export class AuthService implements IAuthService {
         update: {},
       });
 
-      const { embedlyWalletId, virtualAccountNumber, virtualAccountBank } =
-        await embedlyService.createWallet({
-          customerId,
-          currencyId: embedlyService.getDefaultCurrencyId(),
-          name: `${user.fullName} Wallet`,
+      try {
+        const { embedlyWalletId, virtualAccountNumber, virtualAccountBank } =
+          await embedlyService.createWallet({
+            customerId,
+            currencyId: embedlyService.getDefaultCurrencyId(),
+            name: `${user.fullName} Wallet`,
+          });
+
+        await prisma.wallet.update({
+          where: { userId: user.id },
+          data: { embedlyWalletId, virtualAccountNumber, virtualAccountBank } as any,
         });
 
-      await prisma.wallet.update({
-        where: { userId: user.id },
-        data: { embedlyWalletId, virtualAccountNumber, virtualAccountBank } as any,
-      });
-
-      console.log({
-        message: 'Embedly wallet provisioned',
-        userId: user.id,
-        customerId,
-        virtualAccountNumber,
-      });
+        console.log({
+          message: 'Embedly wallet provisioned',
+          userId: user.id,
+          customerId,
+          virtualAccountNumber,
+        });
+      } catch (err: any) {
+        // createWallet already tries findWalletByCustomerId internally.
+        // If it still throws, attempt one last direct wallet lookup.
+        console.warn({ message: 'createWallet threw, attempting direct wallet lookup', userId: user.id, error: err?.message });
+        const existing = await embedlyService.findWalletByCustomerId(customerId).catch(() => null);
+        if (existing) {
+          await prisma.wallet.update({
+            where: { userId: user.id },
+            data: {
+              embedlyWalletId: existing.embedlyWalletId,
+              virtualAccountNumber: existing.virtualAccountNumber,
+              virtualAccountBank: existing.virtualAccountBank,
+            } as any,
+          });
+          console.log({ message: 'Embedly wallet recovered via direct lookup', userId: user.id, virtualAccountNumber: existing.virtualAccountNumber });
+        } else {
+          // Wallet unresolvable right now — exit gracefully, retry later
+          console.warn({ message: 'Embedly wallet unresolvable — provisioning deferred', userId: user.id });
+        }
+      }
     }
   }
 

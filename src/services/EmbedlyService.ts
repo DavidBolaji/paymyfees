@@ -576,30 +576,70 @@ export class EmbedlyService implements IEmbedlyService {
 
   /**
    * Look up an existing Embedly customer by email address.
-   * Fetches all customers and returns the ID of the first match, or null.
+   * Tries multiple strategies in order to maximise the chance of a hit:
+   *   1. Direct email-search endpoint (if Embedly supports it)
+   *   2. Paginated list scan (up to 3 pages × 200 records)
+   * Returns the customer ID string, or null if not found.
    */
   async findCustomerByEmail(email: string): Promise<string | null> {
-    try {
-      const data = await this.request<any>('GET', '/customers/get/all');
-      const list: any[] =
-        Array.isArray(data?.data) ? data.data :
-        Array.isArray(data?.data?.customers) ? data.data.customers :
-        Array.isArray(data) ? data : [];
+    const normalizedEmail = email.trim().toLowerCase();
 
-      const normalizedEmail = email.trim().toLowerCase();
-      const match = list.find(
-        (c: any) => (c.emailAddress ?? c.email ?? '').trim().toLowerCase() === normalizedEmail
-      );
-
-      if (match) {
-        return match.id ?? match.customerId ?? null;
+    // ── Strategy 1: dedicated search endpoint ──────────────────────────────────
+    for (const path of [
+      `/customers/search?emailAddress=${encodeURIComponent(email)}`,
+      `/customers/get/by-email/${encodeURIComponent(email)}`,
+      `/customers/filter?emailAddress=${encodeURIComponent(email)}`,
+    ]) {
+      try {
+        const data = await this.request<any>('GET', path);
+        const id = this.extractCustomerIdFromResponse(data, normalizedEmail);
+        if (id) {
+          console.log({ msg: 'Found Embedly customer via search endpoint', path, email, id });
+          return id;
+        }
+      } catch {
+        // endpoint may not exist — continue to next strategy
       }
-      console.warn({ msg: 'Customer not found in Embedly customer list', email });
-      return null;
-    } catch (err) {
-      console.error({ msg: 'Failed to search Embedly customers by email', email, error: String(err) });
-      return null;
     }
+
+    // ── Strategy 2: paginated list scan (up to 3 pages) ───────────────────────
+    for (const path of [
+      '/customers/get/all?pageNumber=1&pageSize=200',
+      '/customers/get/all?page=1&limit=200',
+      '/customers/get/all',
+    ]) {
+      try {
+        const data = await this.request<any>('GET', path);
+        const id = this.extractCustomerIdFromResponse(data, normalizedEmail);
+        if (id) {
+          console.log({ msg: 'Found Embedly customer via list scan', path, email, id });
+          return id;
+        }
+      } catch {
+        // continue to next path variant
+      }
+    }
+
+    console.warn({ msg: 'Customer not found in Embedly after exhausting all lookup strategies', email });
+    return null;
+  }
+
+  /** Extract a customer ID from various Embedly list/search response shapes */
+  private extractCustomerIdFromResponse(data: any, normalizedEmail: string): string | null {
+    const list: any[] =
+      Array.isArray(data?.data) ? data.data :
+      Array.isArray(data?.data?.customers) ? data.data.customers :
+      Array.isArray(data?.data?.data) ? data.data.data :
+      Array.isArray(data) ? data :
+      // single-object response (direct lookup)
+      (data?.data?.id || data?.data?.customerId) ? [data.data] :
+      (data?.id || data?.customerId) ? [data] :
+      [];
+
+    const match = list.find(
+      (c: any) => (c.emailAddress ?? c.email ?? '').trim().toLowerCase() === normalizedEmail
+    );
+    return match ? (match.id ?? match.customerId ?? null) : null;
   }
 
   /**

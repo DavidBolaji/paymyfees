@@ -4,7 +4,9 @@
  *
  * Re-triggers Embedly customer + virtual account creation for the authenticated user.
  * Idempotent: safe to call multiple times — only creates what is missing.
- * Useful when registration-time provisioning failed silently.
+ * Never returns 5xx — provisioning failures are logged server-side and the caller
+ * receives the current wallet state (virtualAccountNumber may still be null if
+ * Embedly is temporarily unreachable).
  */
 
 import { NextResponse } from 'next/server';
@@ -39,28 +41,44 @@ export const POST = asyncHandler(async (req: Request) => {
     );
   }
 
-  // Run provisioning — this is idempotent (skips steps already done)
+  // Run provisioning — fully idempotent and graceful.
+  // provisionEmbedly never throws; it logs warnings and exits early when
+  // Embedly cannot be reached or customer ID cannot be resolved.
   await authService.provisionEmbedly({
     id: user.id,
     email: user.email,
     fullName: user.fullName,
     phone: user.phone,
+  }).catch((err) => {
+    // Belt-and-suspenders: catch any unexpected error so the route always returns 200
+    console.error({ msg: 'provisionEmbedly unexpected error in provision route', userId, error: String(err) });
   });
 
-  // Return updated wallet details
+  // Return the latest wallet state regardless of provisioning outcome
   const wallet = await prisma.wallet.findUnique({
     where: { userId },
-    select: { balance: true, currency: true, virtualAccountNumber: true, virtualAccountBank: true } as any,
+    select: {
+      balance: true,
+      currency: true,
+      virtualAccountNumber: true,
+      virtualAccountBank: true,
+      embedlyWalletId: true,
+    } as any,
   });
+
+  const virtualAccountNumber = (wallet as any)?.virtualAccountNumber ?? null;
 
   return NextResponse.json({
     success: true,
-    message: 'Wallet provisioning complete',
+    message: virtualAccountNumber
+      ? 'Wallet provisioning complete'
+      : 'Wallet created — virtual account setup is still pending',
     data: {
       balance: Number((wallet as any)?.balance ?? 0),
       currency: (wallet as any)?.currency ?? 'NGN',
-      virtualAccountNumber: (wallet as any)?.virtualAccountNumber ?? null,
+      virtualAccountNumber,
       virtualAccountBank: (wallet as any)?.virtualAccountBank ?? null,
+      provisioned: !!virtualAccountNumber,
     },
     metadata: { timestamp: new Date().toISOString() },
   });
