@@ -140,6 +140,7 @@ export class EmbedlyService implements IEmbedlyService {
   private readonly apiKey: string;
   private readonly orgId: string;
   private readonly baseUrl: string;
+  private readonly waasBaseUrl: string;
   private readonly ngn_currency_id: string;
   private readonly customer_type_id: string;
   private readonly country_id: string;
@@ -147,6 +148,7 @@ export class EmbedlyService implements IEmbedlyService {
   constructor() {
     const env = process.env.EMBEDLY_ENV === 'production' ? 'prod' : 'staging';
     this.baseUrl = `https://waas-${env}.embedly.ng/api/v1`;
+    this.waasBaseUrl = `https://waas-${env}.embedly.ng/WaasCore/api/v1`;
     this.apiKey = process.env.EMBEDLY_API_KEY || '';
     this.orgId = process.env.EMBEDLY_ORG_ID || '';
     this.ngn_currency_id = process.env.EMBEDLY_NGN_CURRENCY_ID || 'fd5e474d-bb42-4db1-ab74-e8d2a01047e9';
@@ -222,8 +224,9 @@ export class EmbedlyService implements IEmbedlyService {
   }
 
   /**
-   * Create a customer in Embedly
-   * Must be called during user registration before wallet creation
+   * Create a customer in Embedly.
+   * If Embedly responds that the customer already exists, looks up and returns
+   * their existing ID instead of throwing — making this call fully idempotent.
    */
   async createCustomer(input: CreateEmbedlyCustomerInput): Promise<EmbedlyCustomerResult> {
     this.assertConfigured();
@@ -251,13 +254,33 @@ export class EmbedlyService implements IEmbedlyService {
       );
 
       if (!data.success || !data.data?.id) {
+        // Embedly returns success:false with "already exist" instead of an HTTP error
+        if (this.isAlreadyExistsMessage(data.message)) {
+          console.log({ msg: 'Customer already exists on Embedly, looking up existing ID', email: input.emailAddress });
+          const existingId = await this.findCustomerByEmail(input.emailAddress);
+          if (existingId) {
+            console.log({ msg: 'Found existing Embedly customer', email: input.emailAddress, embedlyCustomerId: existingId });
+            return { embedlyCustomerId: existingId };
+          }
+        }
         throw new ExternalServiceError('Embedly', `Failed to create customer: ${data.message}`);
       }
 
       console.log({ msg: 'Embedly customer created', embedlyCustomerId: data.data.id });
       return { embedlyCustomerId: data.data.id };
     } catch (error) {
-      if (error instanceof ExternalServiceError) throw error;
+      if (error instanceof ExternalServiceError) {
+        // If the error message indicates the customer already exists, look them up
+        if (this.isAlreadyExistsMessage(error.message)) {
+          console.log({ msg: 'Customer already exists on Embedly (error path), looking up existing ID', email: input.emailAddress });
+          const existingId = await this.findCustomerByEmail(input.emailAddress);
+          if (existingId) {
+            console.log({ msg: 'Found existing Embedly customer', email: input.emailAddress, embedlyCustomerId: existingId });
+            return { embedlyCustomerId: existingId };
+          }
+        }
+        throw error;
+      }
       console.error('Error creating Embedly customer:', error);
       throw new ExternalServiceError(
         'Embedly',
@@ -267,8 +290,9 @@ export class EmbedlyService implements IEmbedlyService {
   }
 
   /**
-   * Create a wallet for an Embedly customer
-   * Returns virtual account details (permanent bank account number for deposits)
+   * Create a wallet for an Embedly customer.
+   * If a wallet already exists for the customer, looks it up and returns it
+   * instead of throwing — making this call fully idempotent.
    */
   async createWallet(input: CreateEmbedlyWalletInput): Promise<EmbedlyWalletResult> {
     this.assertConfigured();
@@ -281,7 +305,7 @@ export class EmbedlyService implements IEmbedlyService {
     };
 
     try {
-      const data = await this.request<EmbedlyWalletData & { message: string }>(
+      const data = await this.request<EmbedlyWalletData & { message: string; success?: boolean }>(
         'POST',
         '/wallets/add',
         payload
@@ -292,6 +316,15 @@ export class EmbedlyService implements IEmbedlyService {
         (data as any).virtualAccount ?? (data as any).data?.virtualAccount;
 
       if (!walletId || !virtualAccount?.accountNumber) {
+        // Wallet may already exist — try looking it up before giving up
+        if (this.isAlreadyExistsMessage((data as any).message ?? '')) {
+          console.log({ msg: 'Wallet already exists on Embedly, looking up existing wallet', customerId: input.customerId });
+          const existing = await this.findWalletByCustomerId(input.customerId);
+          if (existing) {
+            console.log({ msg: 'Found existing Embedly wallet', customerId: input.customerId, walletId: existing.embedlyWalletId });
+            return existing;
+          }
+        }
         console.error('Unexpected Embedly wallet response:', data);
         throw new ExternalServiceError('Embedly', 'Wallet creation response missing walletId or virtualAccount');
       }
@@ -310,7 +343,18 @@ export class EmbedlyService implements IEmbedlyService {
         virtualAccountBankCode: virtualAccount.bankCode,
       };
     } catch (error) {
-      if (error instanceof ExternalServiceError) throw error;
+      if (error instanceof ExternalServiceError) {
+        // If the error message indicates the wallet already exists, look it up
+        if (this.isAlreadyExistsMessage(error.message)) {
+          console.log({ msg: 'Wallet already exists on Embedly (error path), looking up existing wallet', customerId: input.customerId });
+          const existing = await this.findWalletByCustomerId(input.customerId);
+          if (existing) {
+            console.log({ msg: 'Found existing Embedly wallet', customerId: input.customerId, walletId: existing.embedlyWalletId });
+            return existing;
+          }
+        }
+        throw error;
+      }
       console.error('Error creating Embedly wallet:', error);
       throw new ExternalServiceError(
         'Embedly',
@@ -514,5 +558,96 @@ export class EmbedlyService implements IEmbedlyService {
     const stripped = phone.replace(/^\+?234/, '');
     // Ensure leading 0
     return stripped.startsWith('0') ? stripped : `0${stripped}`;
+  }
+
+  /**
+   * Check if an Embedly error / response message indicates the resource already exists.
+   * Embedly uses several phrasings — match case-insensitively.
+   */
+  private isAlreadyExistsMessage(message: string): boolean {
+    const lower = (message ?? '').toLowerCase();
+    return (
+      lower.includes('already exist') ||
+      lower.includes('already exists') ||
+      lower.includes('duplicate') ||
+      lower.includes('already been created')
+    );
+  }
+
+  /**
+   * Look up an existing Embedly customer by email address.
+   * Fetches all customers and returns the ID of the first match, or null.
+   */
+  async findCustomerByEmail(email: string): Promise<string | null> {
+    try {
+      const data = await this.request<any>('GET', '/customers/get/all');
+      const list: any[] =
+        Array.isArray(data?.data) ? data.data :
+        Array.isArray(data?.data?.customers) ? data.data.customers :
+        Array.isArray(data) ? data : [];
+
+      const normalizedEmail = email.trim().toLowerCase();
+      const match = list.find(
+        (c: any) => (c.emailAddress ?? c.email ?? '').trim().toLowerCase() === normalizedEmail
+      );
+
+      if (match) {
+        return match.id ?? match.customerId ?? null;
+      }
+      console.warn({ msg: 'Customer not found in Embedly customer list', email });
+      return null;
+    } catch (err) {
+      console.error({ msg: 'Failed to search Embedly customers by email', email, error: String(err) });
+      return null;
+    }
+  }
+
+  /**
+   * Look up an existing Embedly wallet for a customer via the WaasCore API.
+   * Returns the first wallet's details, or null if none found.
+   */
+  async findWalletByCustomerId(customerId: string): Promise<EmbedlyWalletResult | null> {
+    try {
+      const url = `${this.waasBaseUrl}/wallets/get/list/${customerId}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': this.apiKey },
+      });
+      const text = await response.text();
+      let data: any;
+      try { data = JSON.parse(text); } catch { return null; }
+
+      const list: any[] =
+        Array.isArray(data?.data) ? data.data :
+        Array.isArray(data?.data?.wallets) ? data.data.wallets :
+        Array.isArray(data) ? data : [];
+
+      const wallet = list[0];
+      if (!wallet) {
+        console.warn({ msg: 'No wallet found for Embedly customer', customerId });
+        return null;
+      }
+
+      const walletId: string = wallet.walletId ?? wallet.id;
+      const va = wallet.virtualAccount ?? wallet.virtualAccountDetails ?? wallet;
+      const accountNumber: string = va?.accountNumber ?? wallet.accountNumber;
+      const bankName: string = va?.bankName ?? wallet.bankName ?? '';
+      const bankCode: string = va?.bankCode ?? wallet.bankCode ?? '';
+
+      if (!walletId || !accountNumber) {
+        console.warn({ msg: 'Embedly wallet missing walletId or accountNumber', customerId, wallet });
+        return null;
+      }
+
+      return {
+        embedlyWalletId: walletId,
+        virtualAccountNumber: accountNumber,
+        virtualAccountBank: bankName,
+        virtualAccountBankCode: bankCode,
+      };
+    } catch (err) {
+      console.error({ msg: 'Failed to look up Embedly wallet', customerId, error: String(err) });
+      return null;
+    }
   }
 }

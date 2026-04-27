@@ -92,12 +92,14 @@ export class AuthService implements IAuthService {
         },
       });
 
-      // Create wallet for all users
-      await tx.wallet.create({
-        data: {
-          userId: newUser.id,
-        },
-      });
+      // Create wallet for all non-ADMIN users
+      if (input.role !== UserRole.ADMIN) {
+        await tx.wallet.create({
+          data: {
+            userId: newUser.id,
+          },
+        });
+      }
 
       // Create role-specific profile
       if (input.role === UserRole.PARENT) {
@@ -125,16 +127,18 @@ export class AuthService implements IAuthService {
       return newUser;
     });
 
-    // ── Provision Embedly customer + wallet (non-blocking) ─────────────────────
+    // ── Provision Embedly customer + wallet (non-blocking, non-ADMIN only) ───────
     // If Embedly is unavailable, registration still succeeds.
-    // A retry mechanism (cron / manual trigger) can re-provision later.
-    this.provisionEmbedly(user).catch((err) => {
-      console.error({
-        message: 'Embedly provisioning failed (non-blocking)',
-        userId: user.id,
-        error: err instanceof Error ? err.message : String(err),
+    // A retry mechanism (login-time re-provision / /api/wallet/provision) handles retries.
+    if (user.role !== UserRole.ADMIN) {
+      this.provisionEmbedly(user).catch((err) => {
+        console.error({
+          message: 'Embedly provisioning failed (non-blocking)',
+          userId: user.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
       });
-    });
+    }
 
     console.info(`User registered successfully with ID ${user.id}`);
 
@@ -286,13 +290,15 @@ export class AuthService implements IAuthService {
     // Auto-repair: ensure wallet, role-specific profile, and Embedly provisioning are complete
     const existingUserDTO = await this.userRepository.getUserById(user.id);
 
-    // Ensure local wallet exists
-    if (!existingUserDTO?.wallet) {
+    // Ensure local wallet exists for all non-ADMIN roles
+    const needsWallet = user.role !== UserRole.ADMIN;
+    if (needsWallet && !existingUserDTO?.wallet) {
       await prisma.wallet.upsert({
         where: { userId: user.id },
         create: { userId: user.id, balance: 0, currency: 'NGN' },
         update: {},
       }).catch(() => {});
+      console.log({ message: 'Auto-created missing wallet on login', userId: user.id, role: user.role });
     }
 
     // Ensure school profile exists for school accounts
@@ -313,19 +319,24 @@ export class AuthService implements IAuthService {
       }
     }
 
-    // Re-trigger Embedly provisioning if customer or virtual account is missing (non-blocking)
-    this.provisionEmbedly({
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      phone: user.phone,
-    }).catch((err) => {
-      console.error({
-        message: 'Embedly re-provisioning on login failed (non-blocking)',
-        userId: user.id,
-        error: err instanceof Error ? err.message : String(err),
+    // Re-trigger Embedly provisioning for all non-ADMIN users whenever customer or
+    // virtual account details are missing. provisionEmbedly is fully idempotent:
+    // it reads current DB state before making any Embedly calls.
+    if (needsWallet) {
+      this.provisionEmbedly({
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        phone: user.phone,
+      }).catch((err) => {
+        console.error({
+          message: 'Embedly re-provisioning on login failed (non-blocking)',
+          userId: user.id,
+          role: user.role,
+          error: err instanceof Error ? err.message : String(err),
+        });
       });
-    });
+    }
 
     // Generate tokens
     const authUser: AuthUser = {
