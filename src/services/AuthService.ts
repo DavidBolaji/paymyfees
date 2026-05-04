@@ -319,10 +319,11 @@ export class AuthService implements IAuthService {
       }
     }
 
-    // Re-trigger Embedly provisioning for all non-ADMIN users whenever customer or
-    // virtual account details are missing. provisionEmbedly is fully idempotent:
-    // it reads current DB state before making any Embedly calls.
-    if (needsWallet) {
+    // Re-trigger Embedly provisioning only when the virtual account is still missing.
+    // provisionEmbedly is idempotent but skipping the call on already-provisioned
+    // users avoids two unnecessary DB reads on every login.
+    const hasVirtualAccount = !!(existingUserDTO?.wallet as any)?.virtualAccountNumber;
+    if (needsWallet && !hasVirtualAccount) {
       this.provisionEmbedly({
         id: user.id,
         email: user.email,
@@ -593,15 +594,15 @@ export class AuthService implements IAuthService {
     // Read current state from DB
     const existing = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { embedlyCustomerId: true } as any,
+      select: { embedlyCustomerId: true },
     });
     const existingWallet = await prisma.wallet.findUnique({
       where: { userId: user.id },
-      select: { virtualAccountNumber: true } as any,
+      select: { virtualAccountNumber: true },
     });
 
     const embedlyCustomerId: string | null = (existing as any)?.embedlyCustomerId ?? null;
-    const hasVirtualAccount: boolean = !!((existingWallet as any)?.virtualAccountNumber);
+    const hasVirtualAccount: boolean = !!existingWallet?.virtualAccountNumber;
 
     // Fully provisioned — nothing to do
     if (embedlyCustomerId && hasVirtualAccount) {
@@ -616,6 +617,13 @@ export class AuthService implements IAuthService {
     const firstName = nameParts[0] ?? user.fullName;
     const lastName = nameParts.slice(1).join(' ') || firstName;
 
+    // Resolve lookup IDs dynamically so staging/prod IDs are always correct
+    const [customerTypeId, countryId, currencyId] = await Promise.all([
+      embedlyService.fetchCustomerTypeId(),
+      embedlyService.fetchCountryId(),
+      embedlyService.fetchCurrencyId(),
+    ]);
+
     // ── Step 1: Resolve Embedly customer ID ────────────────────────────────────
     let customerId = embedlyCustomerId;
     if (!customerId) {
@@ -626,10 +634,10 @@ export class AuthService implements IAuthService {
           emailAddress: user.email,
           mobileNumber: user.phone ?? '08000000000',
           dob: '1990-01-01',
-          customerTypeId: embedlyService.getDefaultCustomerTypeId(),
+          customerTypeId,
           address: 'Nigeria',
           city: 'Lagos',
-          countryId: embedlyService.getDefaultCountryId(),
+          countryId,
         });
         customerId = result.embedlyCustomerId;
         console.log({ message: 'Embedly customer created', userId: user.id, customerId });
@@ -655,7 +663,7 @@ export class AuthService implements IAuthService {
       // Persist the resolved customer ID
       await prisma.user.update({
         where: { id: user.id },
-        data: { embedlyCustomerId: customerId } as any,
+        data: { embedlyCustomerId: customerId },
       });
     } else {
       console.log({ message: 'Embedly customer already in DB, skipping creation', userId: user.id, customerId });
@@ -674,7 +682,7 @@ export class AuthService implements IAuthService {
         const { embedlyWalletId, virtualAccountNumber, virtualAccountBank } =
           await embedlyService.createWallet({
             customerId,
-            currencyId: embedlyService.getDefaultCurrencyId(),
+            currencyId,
             name: `${user.fullName} Wallet`,
           });
 

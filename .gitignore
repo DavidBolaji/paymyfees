@@ -47,3 +47,5 @@ docs
 
 # VSCode MCP config (may contain secrets)
 .vscode/mcp.json
+
+ignore

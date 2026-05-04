@@ -51,8 +51,8 @@ export default function RegisterPage() {
       const data = await response.json();
       
       if (data.success) {
-        // Use Zustand to store user data
-        login(data.data.user);
+        // Use Zustand to store user data (token required for subsequent API calls)
+        login(data.data.user, data.data.token, data.data.refreshToken);
         
         // Redirect to appropriate verification page based on mode
         if (formData.verificationMode === 'link') {

@@ -151,9 +151,11 @@ export class EmbedlyService implements IEmbedlyService {
     this.waasBaseUrl = `https://waas-${env}.embedly.ng/WaasCore/api/v1`;
     this.apiKey = process.env.EMBEDLY_API_KEY || '';
     this.orgId = process.env.EMBEDLY_ORG_ID || '';
-    this.ngn_currency_id = process.env.EMBEDLY_NGN_CURRENCY_ID || 'fd5e474d-bb42-4db1-ab74-e8d2a01047e9';
-    this.customer_type_id = process.env.EMBEDLY_CUSTOMER_TYPE_ID || 'f671da57-e281-4b40-965f-a96f4205405e';
-    this.country_id = process.env.EMBEDLY_COUNTRY_ID || 'c15ad9ae-c4d7-4342-b70f-de5508627e3b';
+    // Only use env var if it's a non-empty string — empty string means "not configured",
+    // so fetchX() methods will call the Embedly API instead of using a wrong cached value.
+    this.ngn_currency_id = process.env.EMBEDLY_NGN_CURRENCY_ID?.trim() || '';
+    this.customer_type_id = process.env.EMBEDLY_CUSTOMER_TYPE_ID?.trim() || '';
+    this.country_id = process.env.EMBEDLY_COUNTRY_ID?.trim() || '';
 
     if (!this.apiKey) {
       console.warn('⚠️  EMBEDLY_API_KEY is not set in environment variables');
@@ -182,13 +184,17 @@ export class EmbedlyService implements IEmbedlyService {
   async fetchCurrencyId(): Promise<string> {
     if (this.ngn_currency_id) return this.ngn_currency_id;
     try {
-      const res = await this.request<{ data: { id: string; code: string }[] }>('GET', '/currencies');
-      const ngn = res.data?.find((c) => c.code === 'NGN');
-      if (ngn) return ngn.id;
+      const res = await this.request<any>('GET', '/currencies');
+      const list: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      const ngn = list.find((c: any) => c.code === 'NGN' || c.currencyCode === 'NGN');
+      if (ngn?.id) {
+        console.log({ msg: 'Fetched NGN currency ID from Embedly', id: ngn.id });
+        return ngn.id;
+      }
     } catch (e) {
-      console.warn('Failed to fetch currency ID, using fallback', e);
+      console.warn('Failed to fetch NGN currency ID from Embedly', e);
     }
-    return 'fd5e474d-bb42-4db1-ab74-e8d2a01047e9'; // fallback
+    return 'fd5e474d-bb42-4db1-ab74-e8d2a01047e9'; // last-resort fallback
   }
 
   /**
@@ -198,13 +204,19 @@ export class EmbedlyService implements IEmbedlyService {
   async fetchCustomerTypeId(): Promise<string> {
     if (this.customer_type_id) return this.customer_type_id;
     try {
-      const res = await this.request<{ data: { id: string; name: string }[] }>('GET', '/customer-types');
-      const retail = res.data?.find((c) => c.name?.toLowerCase().includes('retail'));
-      if (retail) return retail.id;
+      const res = await this.request<any>('GET', '/customer-types');
+      const list: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      const retail = list.find((c: any) => c.name?.toLowerCase().includes('retail') || c.name?.toLowerCase().includes('individual'));
+      const first = list[0];
+      const match = retail ?? first;
+      if (match?.id) {
+        console.log({ msg: 'Fetched customer type ID from Embedly', id: match.id, name: match.name });
+        return match.id;
+      }
     } catch (e) {
-      console.warn('Failed to fetch customer type ID, using fallback', e);
+      console.warn('Failed to fetch customer type ID from Embedly', e);
     }
-    return 'f671da57-e281-4b40-965f-a96f4205405e'; // fallback
+    return 'f671da57-e281-4b40-965f-a96f4205405e'; // last-resort fallback
   }
 
   /**
@@ -214,13 +226,17 @@ export class EmbedlyService implements IEmbedlyService {
   async fetchCountryId(): Promise<string> {
     if (this.country_id) return this.country_id;
     try {
-      const res = await this.request<{ data: { id: string; name: string }[] }>('GET', '/countries');
-      const nigeria = res.data?.find((c) => c.name === 'Nigeria');
-      if (nigeria) return nigeria.id;
+      const res = await this.request<any>('GET', '/countries');
+      const list: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+      const nigeria = list.find((c: any) => c.name === 'Nigeria' || c.name?.toLowerCase().includes('nigeria'));
+      if (nigeria?.id) {
+        console.log({ msg: 'Fetched Nigeria country ID from Embedly', id: nigeria.id });
+        return nigeria.id;
+      }
     } catch (e) {
-      console.warn('Failed to fetch country ID, using fallback', e);
+      console.warn('Failed to fetch Nigeria country ID from Embedly', e);
     }
-    return 'c15ad9ae-c4d7-4342-b70f-de5508627e3b'; // fallback
+    return 'c15ad9ae-c4d7-4342-b70f-de5508627e3b'; // last-resort fallback
   }
 
   /**

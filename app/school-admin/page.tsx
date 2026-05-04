@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, BookOpen, CheckCircle, Clock } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { StatCardSkeleton } from '@/components/dashboard/stat-card-skeleton';
 import { DataTable } from '@/components/dashboard/data-table';
@@ -76,10 +75,10 @@ export default function SchoolAdminDashboard() {
           Array(4).fill(0).map((_, i) => <StatCardSkeleton key={i} />)
         ) : (
           <>
-            <StatCard title="Total Teachers" value={stats?.totalTeachers ?? 0} icon={<Users className="w-5 h-5" />} />
-            <StatCard title="Active Loans" value={stats?.activeLoans ?? 0} icon={<BookOpen className="w-5 h-5" />} />
-            <StatCard title="Pending Loans" value={stats?.pendingLoans ?? 0} icon={<Clock className="w-5 h-5" />} />
-            <StatCard title="Approved Loans" value={stats?.approvedLoans ?? 0} icon={<CheckCircle className="w-5 h-5" />} />
+            <StatCard title="Total Teachers" value={stats?.totalTeachers ?? 0} />
+            <StatCard title="Active Loans" value={stats?.activeLoans ?? 0} />
+            <StatCard title="Pending Loans" value={stats?.pendingLoans ?? 0} />
+            <StatCard title="Approved Loans" value={stats?.approvedLoans ?? 0} />
           </>
         )}
       </div>

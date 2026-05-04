@@ -22,7 +22,7 @@ export default function TeacherDashboardPage() {
   const router = useRouter();
   const { stats, timelineData, loading: dashboardLoading } = useDashboard();
   const { loanHistory, paginationInfo, loading: loanLoading, handlePageChange } = useLoan();
-  const { selectedLoanId } = useDashboardStore();
+  useDashboardStore();
   const [selectedLoan, setSelectedLoan] = useState<any>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
