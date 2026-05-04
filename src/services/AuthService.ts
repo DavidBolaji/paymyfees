@@ -576,6 +576,18 @@ export class AuthService implements IAuthService {
   }
 
   /**
+   * Generate a unique placeholder Nigerian phone number from a user ID.
+   * Used when the user has no phone — avoids Embedly "already exists" collisions
+   * that happen when every phoneless user shares the same fallback number.
+   */
+  private placeholderPhone(userId: string): string {
+    // Take 8 digits from the UUID (strip hyphens, use last 8 hex chars → decimal)
+    const hex = userId.replace(/-/g, '').slice(-8);
+    const num = parseInt(hex, 16) % 100_000_000; // 8-digit number
+    return `080${String(num).padStart(8, '0')}`;  // e.g. 08012345678
+  }
+
+  /**
    * Hash password using bcrypt
    */
   private async hashPassword(password: string): Promise<string> {
@@ -612,10 +624,20 @@ export class AuthService implements IAuthService {
 
     const embedlyService = new EmbedlyService();
 
-    // Split full name into first / last
-    const nameParts = user.fullName.trim().split(' ');
-    const firstName = nameParts[0] ?? user.fullName;
-    const lastName = nameParts.slice(1).join(' ') || firstName;
+    // Split full name into first / last, sanitized for Embedly's validation rules:
+    // - letters only (no digits, no special chars)
+    // - minimum 2 characters
+    const sanitizeName = (raw: string): string =>
+      raw.replace(/[^a-zA-Z\s-]/g, '').trim().slice(0, 50) || 'User';
+
+    const rawParts = user.fullName.trim().split(/\s+/);
+    const firstName = sanitizeName(rawParts[0] ?? '').length >= 2
+      ? sanitizeName(rawParts[0])
+      : 'User';
+    const rawLast = rawParts.slice(1).join(' ');
+    const lastName = sanitizeName(rawLast).length >= 2
+      ? sanitizeName(rawLast)
+      : firstName;
 
     // Resolve lookup IDs dynamically so staging/prod IDs are always correct
     const [customerTypeId, countryId, currencyId] = await Promise.all([
@@ -632,7 +654,7 @@ export class AuthService implements IAuthService {
           firstName,
           lastName,
           emailAddress: user.email,
-          mobileNumber: user.phone ?? '08000000000',
+          mobileNumber: user.phone ?? this.placeholderPhone(user.id),
           dob: '1990-01-01',
           customerTypeId,
           address: 'Nigeria',

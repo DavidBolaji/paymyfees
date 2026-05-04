@@ -600,10 +600,12 @@ export class EmbedlyService implements IEmbedlyService {
   async findCustomerByEmail(email: string): Promise<string | null> {
     const normalizedEmail = email.trim().toLowerCase();
 
-    // ── Strategy 1: dedicated search endpoint ──────────────────────────────────
+    // ── Strategy 1: dedicated search endpoints (with and without orgId) ────────
     for (const path of [
+      `/customers/search?emailAddress=${encodeURIComponent(email)}&organizationId=${this.orgId}`,
       `/customers/search?emailAddress=${encodeURIComponent(email)}`,
       `/customers/get/by-email/${encodeURIComponent(email)}`,
+      `/customers/filter?emailAddress=${encodeURIComponent(email)}&organizationId=${this.orgId}`,
       `/customers/filter?emailAddress=${encodeURIComponent(email)}`,
     ]) {
       try {
@@ -618,8 +620,11 @@ export class EmbedlyService implements IEmbedlyService {
       }
     }
 
-    // ── Strategy 2: paginated list scan (up to 3 pages) ───────────────────────
+    // ── Strategy 2: org-filtered list scan (org filter is critical for staging) ─
     for (const path of [
+      `/customers/get/all?organizationId=${this.orgId}&pageNumber=1&pageSize=200`,
+      `/customers/get/all?organizationId=${this.orgId}&page=1&limit=200`,
+      `/customers/get/all?organizationId=${this.orgId}`,
       '/customers/get/all?pageNumber=1&pageSize=200',
       '/customers/get/all?page=1&limit=200',
       '/customers/get/all',
@@ -631,8 +636,34 @@ export class EmbedlyService implements IEmbedlyService {
           console.log({ msg: 'Found Embedly customer via list scan', path, email, id });
           return id;
         }
-      } catch {
+      } catch (e) {
+        console.warn({ msg: 'Embedly customer list endpoint failed', path, err: (e as any)?.message });
         // continue to next path variant
+      }
+    }
+
+    // ── Strategy 3: WaasCore base URL variants ─────────────────────────────────
+    for (const path of [
+      `/customers/get/all?organizationId=${this.orgId}&pageNumber=1&pageSize=200`,
+      `/customers/get/all?organizationId=${this.orgId}`,
+      `/customers/search?emailAddress=${encodeURIComponent(email)}&organizationId=${this.orgId}`,
+    ]) {
+      try {
+        const url = `${this.waasBaseUrl}${path}`;
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': this.apiKey },
+        });
+        const text = await response.text();
+        let data: any;
+        try { data = JSON.parse(text); } catch { continue; }
+        const id = this.extractCustomerIdFromResponse(data, normalizedEmail);
+        if (id) {
+          console.log({ msg: 'Found Embedly customer via WaasCore endpoint', path, email, id });
+          return id;
+        }
+      } catch {
+        // continue
       }
     }
 
@@ -645,17 +676,24 @@ export class EmbedlyService implements IEmbedlyService {
     const list: any[] =
       Array.isArray(data?.data) ? data.data :
       Array.isArray(data?.data?.customers) ? data.data.customers :
+      Array.isArray(data?.data?.items) ? data.data.items :
       Array.isArray(data?.data?.data) ? data.data.data :
+      Array.isArray(data?.items) ? data.items :
+      Array.isArray(data?.customers) ? data.customers :
       Array.isArray(data) ? data :
       // single-object response (direct lookup)
       (data?.data?.id || data?.data?.customerId) ? [data.data] :
       (data?.id || data?.customerId) ? [data] :
       [];
 
+    if (list.length > 0) {
+      console.log({ msg: 'Scanning Embedly customer list', count: list.length, email: normalizedEmail });
+    }
+
     const match = list.find(
-      (c: any) => (c.emailAddress ?? c.email ?? '').trim().toLowerCase() === normalizedEmail
+      (c: any) => (c.emailAddress ?? c.email ?? c.emailaddress ?? '').trim().toLowerCase() === normalizedEmail
     );
-    return match ? (match.id ?? match.customerId ?? null) : null;
+    return match ? (match.id ?? match.customerId ?? match.Id ?? null) : null;
   }
 
   /**
