@@ -32,7 +32,7 @@ export default function SchoolAdminLayout({ children }: { children: React.ReactN
       <SchoolAdminGuard>
         <div className="flex h-screen bg-gray-50">
           <Sidebar
-            isAdmin={true}
+            isSchoolAdmin={true}
             isOpen={sidebarOpen}
             onClose={() => setSidebarOpen(false)}
           />

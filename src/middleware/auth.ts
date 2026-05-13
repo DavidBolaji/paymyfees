@@ -185,6 +185,11 @@ export const requireAdmin = requireRole(UserRole.ADMIN);
 export const requireTeacherAdmin = requireRole(UserRole.TEACHER_ADMIN);
 
 /**
+ * Middleware for school admin routes
+ */
+export const requireSchoolAdmin = requireRole(UserRole.SCHOOL_ADMIN);
+
+/**
  * Middleware for admin or teacher admin routes
  */
 export const requireAdminOrTeacherAdmin = requireRole(UserRole.ADMIN, UserRole.TEACHER_ADMIN);

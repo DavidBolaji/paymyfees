@@ -1,60 +1,71 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { StatCardSkeleton } from '@/components/dashboard/stat-card-skeleton';
 import { DataTable } from '@/components/dashboard/data-table';
+import { LoanDetailDrawer } from '@/components/dashboard/loan-detail-drawer';
+import { SchoolVerifyDrawer } from '@/components/admin/school-verify-drawer';
 import { api } from '@/src/lib/api';
 
 const LOAN_COLUMNS = [
-  { key: 'teacherName', label: 'Teacher Name' },
-  { key: 'loanAmount', label: 'Loan Amount' },
+  { key: 'userName', label: 'Student Name' },
   { key: 'schoolName', label: 'School' },
+  { key: 'loanNumber', label: 'Application ID' },
   { key: 'status', label: 'Status' },
-  { key: 'createdAt', label: 'Date Applied' },
+  { key: 'loanAmount', label: 'Amount' },
+  { key: 'applicationDate', label: 'Date' },
 ];
 
-const TEACHER_COLUMNS = [
-  { key: 'fullName', label: 'Name' },
-  { key: 'email', label: 'Email' },
-  { key: 'staffId', label: 'Staff ID' },
-  { key: 'subject', label: 'Subject' },
-  { key: 'createdAt', label: 'Joined' },
+const SCHOOL_COLUMNS = [
+  { key: 'schoolName', label: 'School Name' },
+  { key: 'location', label: 'Location' },
+  { key: 'dateSubmitted', label: 'Date Submitted' },
+  { key: 'status', label: 'Status' },
 ];
+
+function fmt(d: any) {
+  return d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
+}
 
 export default function SchoolAdminDashboard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [recentLoans, setRecentLoans] = useState<any[]>([]);
-  const [recentTeachers, setRecentTeachers] = useState<any[]>([]);
+  const [recentSchools, setRecentSchools] = useState<any[]>([]);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  const [selectedLoan, setSelectedLoan] = useState<any>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedSchool, setSelectedSchool] = useState<any>(null);
+  const [schoolDrawerOpen, setSchoolDrawerOpen] = useState(false);
+
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [loansRes, teachersRes] = await Promise.all([
-        api.get('/api/admin/loans?page=1&limit=5&role=TEACHER'),
-        api.get('/api/admin/students?page=1&limit=5&role=TEACHER'),
+      const [statsRes, loansRes, schoolsRes] = await Promise.all([
+        api.get('/api/school-admin/dashboard'),
+        api.get('/api/school-admin/loans?page=1&limit=5'),
+        api.get('/api/school-admin/schools?page=1&limit=5'),
       ]);
-      const [loansData, teachersData] = await Promise.all([
-        loansRes.json(),
-        teachersRes.json(),
+      const [statsData, loansData, schoolsData] = await Promise.all([
+        statsRes.json(), loansRes.json(), schoolsRes.json(),
       ]);
-
-      const loans = loansData.data?.loans ?? loansData.data ?? [];
-      const teachers = teachersData.data?.users ?? teachersData.data ?? [];
-
-      setRecentLoans(loans);
-      setRecentTeachers(teachers);
-      setStats({
-        totalTeachers: teachersData.data?.total ?? teachers.length,
-        activeLoans: loans.filter((l: any) => l.status === 'ACTIVE' || l.status === 'DISBURSED').length,
-        pendingLoans: loans.filter((l: any) => l.status === 'PENDING').length,
-        approvedLoans: loans.filter((l: any) => l.status === 'APPROVED').length,
-      });
+      if (statsData.success) setStats(statsData.data);
+      setRecentLoans((loansData.data || []).map((l: any) => ({
+        ...l,
+        loanAmount: `₦${Number(l.loanAmount || 0).toLocaleString()}`,
+        applicationDate: fmt(l.applicationDate),
+      })));
+      setRecentSchools((schoolsData.data || []).map((s: any) => ({
+        ...s,
+        location: [s.city, s.country].filter(Boolean).join(', ') || 'N/A',
+        dateSubmitted: fmt(s.createdAt),
+        status: s.isVerified ? 'Verified' : 'Pending',
+      })));
     } catch (err) {
       console.error('School admin dashboard error:', err);
     } finally {
@@ -63,42 +74,86 @@ export default function SchoolAdminDashboard() {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">School Admin Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">Manage teachers and their loan applications at your school.</p>
+    <div className="p-4 sm:p-6 md:p-8">
+      <div className="mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-[#191919]">School Admin Dashboard</h1>
+        <p className="text-gray-500 mt-1">Manage schools, students and loan applications.</p>
       </div>
 
-      {/* Stats */}
+      {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {loading ? (
-          Array(4).fill(0).map((_, i) => <StatCardSkeleton key={i} />)
+          Array(4).fill(null).map((_, i) => <StatCardSkeleton key={i} />)
         ) : (
           <>
-            <StatCard title="Total Teachers" value={stats?.totalTeachers ?? 0} />
-            <StatCard title="Active Loans" value={stats?.activeLoans ?? 0} />
-            <StatCard title="Pending Loans" value={stats?.pendingLoans ?? 0} />
-            <StatCard title="Approved Loans" value={stats?.approvedLoans ?? 0} />
+            <StatCard
+              title="Total Schools"
+              value={stats?.totalSchoolsCount?.toString() ?? '0'}
+              subtitle="Registered schools"
+              footer="Schools on the platform"
+              variant="primary"
+            />
+            <StatCard
+              title="Pending Verification"
+              value={stats?.pendingSchoolsCount?.toString() ?? '0'}
+              subtitle="Awaiting review"
+              footer="Schools pending approval"
+            />
+            <StatCard
+              title="Verified Schools"
+              value={stats?.verifiedSchoolsCount?.toString() ?? '0'}
+              subtitle="Approved schools"
+              footer="Verified institutions"
+            />
+            <StatCard
+              title="Total Loan Applications"
+              value={stats?.loans?.total?.toString() ?? '0'}
+              subtitle="All applications"
+              footer="Across all schools"
+            />
           </>
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Recent Loans */}
+      <div className="mb-8">
         <DataTable
           title="Recent Loan Applications"
           columns={LOAN_COLUMNS}
           data={recentLoans}
           isLoading={loading}
           itemsPerPage={5}
-        />
-        <DataTable
-          title="Recent Teachers"
-          columns={TEACHER_COLUMNS}
-          data={recentTeachers}
-          isLoading={loading}
-          itemsPerPage={5}
+          viewAllHref="/school-admin/loans"
+          onRowClick={row => { setSelectedLoan(row); setDrawerOpen(true); }}
         />
       </div>
+
+      {/* Recent Schools */}
+      <div className="mb-8">
+        <DataTable
+          title="Recently Registered Schools"
+          columns={SCHOOL_COLUMNS}
+          data={recentSchools}
+          isLoading={loading}
+          itemsPerPage={5}
+          viewAllHref="/school-admin/schools"
+          onRowClick={row => { setSelectedSchool(row); setSchoolDrawerOpen(true); }}
+        />
+      </div>
+
+      <LoanDetailDrawer
+        isOpen={drawerOpen}
+        onClose={() => { setDrawerOpen(false); setSelectedLoan(null); }}
+        loan={selectedLoan}
+        onRefresh={fetchData}
+      />
+
+      <SchoolVerifyDrawer
+        isOpen={schoolDrawerOpen}
+        onClose={() => setSchoolDrawerOpen(false)}
+        school={selectedSchool}
+        onApproved={fetchData}
+      />
     </div>
   );
 }
