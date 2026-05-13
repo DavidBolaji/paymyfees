@@ -9,6 +9,7 @@ import { BackNavigation } from '@/components/dashboard/back-navigation';
 import { InfoCard } from '@/components/dashboard/info-card';
 import { StatusBadge } from '@/components/dashboard/status-badge';
 import ContactSupportModal from '@/app/dashboard/school-verification/ContactSupportModal';
+import ContactSuccessModal from '@/app/dashboard/school-verification/ContactSuccessModal';
 
 import { fetchLoanDetails, DetailedLoanData } from '@/src/utils/loan-api';
 import { InfoCardSkeleton } from '@/app/dashboard/loans/[loanId]/InfoCardSkeleton';
@@ -20,6 +21,7 @@ export default function TeacherFullLoanInformationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isContactSupportOpen, setIsContactSupportOpen] = useState(false);
+  const [showContactSuccess, setShowContactSuccess] = useState(false);
 
   useEffect(() => {
     const loadLoanDetails = async () => {
@@ -257,7 +259,12 @@ export default function TeacherFullLoanInformationPage() {
         </div>
       </div>
 
-      <ContactSupportModal isOpen={isContactSupportOpen} onClose={() => setIsContactSupportOpen(false)} />
+      <ContactSupportModal
+        isOpen={isContactSupportOpen}
+        onClose={() => setIsContactSupportOpen(false)}
+        onSuccess={() => { setIsContactSupportOpen(false); setShowContactSuccess(true); }}
+      />
+      <ContactSuccessModal isOpen={showContactSuccess} onClose={() => setShowContactSuccess(false)} />
     </div>
   );
 }

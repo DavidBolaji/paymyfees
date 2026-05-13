@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { DataTable, PaginationInfo } from '@/components/dashboard/data-table';
+import { StatCard } from '@/components/dashboard/stat-card';
 import { TicketDrawer } from '@/components/admin/ticket-drawer';
 import { StatusBadge } from '@/components/dashboard/status-badge';
 import { api } from '@/src/lib/api';
@@ -35,6 +36,7 @@ function formatTickets(raw: any[]) {
 }
 
 export default function TeacherAdminSupportPage() {
+  const [stats, setStats] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<TabId>('all');
   const [loaded, setLoaded] = useState<Partial<Record<TabId, boolean>>>({});
   const [tickets, setTickets] = useState<Partial<Record<TabId, any[]>>>({});
@@ -42,6 +44,13 @@ export default function TeacherAdminSupportPage() {
   const [loading, setLoading] = useState<Partial<Record<TabId, boolean>>>({});
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    api.get('/api/admin/dashboard')
+      .then(r => r.json())
+      .then(d => { if (d.success) setStats(d.data); })
+      .catch(console.error);
+  }, []);
 
   const fetchTab = useCallback(async (tab: TabId, page = 1) => {
     setLoading(prev => ({ ...prev, [tab]: true }));
@@ -65,6 +74,13 @@ export default function TeacherAdminSupportPage() {
     if (!loaded[activeTab]) fetchTab(activeTab);
   }, [activeTab, loaded, fetchTab]);
 
+  const avgDisplay = () => {
+    const mins = stats?.tickets?.avgFirstResponseMins ?? 0;
+    if (!mins) return '—';
+    if (mins < 60) return `${mins}m`;
+    return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+  };
+
   return (
     <div className="p-4 md:p-6">
       <div className="mb-6">
@@ -72,6 +88,34 @@ export default function TeacherAdminSupportPage() {
         <p className="text-[#5F5F5F] text-sm md:text-base mt-1">
           View and respond to support requests from teachers.
         </p>
+      </div>
+
+      {/* Stat Cards */}
+      <div className="gap-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 mb-6">
+        <StatCard
+          title="Total Tickets Today"
+          value={stats?.tickets?.totalToday ?? '—'}
+          subtitle=""
+          footer="+12% from yesterday"
+        />
+        <StatCard
+          title="Open Tickets"
+          value={stats?.tickets?.open ?? '—'}
+          subtitle=""
+          footer="Require attention"
+        />
+        <StatCard
+          title="Avg. First Response Time"
+          value={avgDisplay()}
+          subtitle=""
+          footer="Average support response time"
+        />
+        <StatCard
+          title="Total Platform Tickets"
+          value={stats?.tickets?.total ?? '—'}
+          subtitle=""
+          footer="Total platform tickets"
+        />
       </div>
 
       {/* Tabs */}

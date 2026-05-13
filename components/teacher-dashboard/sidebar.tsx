@@ -106,7 +106,7 @@ export function Sidebar({ className, isOpen = false, onClose }: SidebarProps) {
               {group.items.map((item) => {
                 const isActive = item.href
                   ? item.href === '/teacher-dashboard'
-                    ? pathname === item.href
+                    ? pathname === item.href || pathname.startsWith('/teacher-dashboard/loans/')
                     : pathname.startsWith(item.href)
                   : false;
                 return (
