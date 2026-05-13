@@ -31,7 +31,7 @@ export const POST = asyncHandler(async (req: Request) => {
   // Fetch minimal user data needed for Embedly provisioning
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, fullName: true, phone: true },
+    select: { id: true, email: true, fullName: true, firstName: true, lastName: true, middleName: true, phone: true, dob: true, address: true, city: true } as any,
   });
 
   if (!user) {
@@ -41,14 +41,20 @@ export const POST = asyncHandler(async (req: Request) => {
     );
   }
 
+  const fullName: string = (user as any).fullName as string;
+  const nameParts = fullName.trim().split(/\s+/);
+
   // Run provisioning — fully idempotent and graceful.
-  // provisionEmbedly never throws; it logs warnings and exits early when
-  // Embedly cannot be reached or customer ID cannot be resolved.
   await authService.provisionEmbedly({
-    id: user.id,
-    email: user.email,
-    fullName: user.fullName,
-    phone: user.phone,
+    id: (user as any).id,
+    email: (user as any).email,
+    firstName: (user as any).firstName || nameParts[0] || 'User',
+    lastName: (user as any).lastName || nameParts.slice(1).join(' ') || nameParts[0] || 'User',
+    middleName: (user as any).middleName ?? undefined,
+    phone: (user as any).phone,
+    dob: (user as any).dob ? new Date((user as any).dob).toISOString().split('T')[0] : undefined,
+    address: (user as any).address ?? undefined,
+    city: (user as any).city ?? undefined,
   }).catch((err) => {
     // Belt-and-suspenders: catch any unexpected error so the route always returns 200
     console.error({ msg: 'provisionEmbedly unexpected error in provision route', userId, error: String(err) });

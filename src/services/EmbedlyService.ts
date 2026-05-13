@@ -120,8 +120,29 @@ export interface WalletToWalletStatusResult {
 
 // ─── Interface ────────────────────────────────────────────────────────────────
 
+export interface UpgradeKycNinInput {
+  customerId: string;
+  nin: string;
+  firstname: string;
+  lastname: string;
+  dob: string; // YYYY-MM-DD or ISO
+}
+
+export interface UpgradeKycBvnInput {
+  customerId: string;
+  bvn: string;
+}
+
+export interface EmbedlyKycResult {
+  success: boolean;
+  status?: string;
+  message?: string;
+}
+
 export interface IEmbedlyService {
   createCustomer(input: CreateEmbedlyCustomerInput): Promise<EmbedlyCustomerResult>;
+  upgradeKycNin(input: UpgradeKycNinInput): Promise<EmbedlyKycResult>;
+  upgradeKycBvn(input: UpgradeKycBvnInput): Promise<EmbedlyKycResult>;
   createWallet(input: CreateEmbedlyWalletInput): Promise<EmbedlyWalletResult>;
   verifyInflowTransaction(walletId: string, reference: string): Promise<EmbedlyTransactionVerificationResult>;
   walletToWalletTransfer(input: WalletToWalletInput): Promise<WalletToWalletResult>;
@@ -302,6 +323,66 @@ export class EmbedlyService implements IEmbedlyService {
         'Embedly',
         `Customer creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
+    }
+  }
+
+  /**
+   * Upgrade customer KYC using NIN.
+   * Query params: customerId, nin, verify=1
+   * Body: firstname, lastname, dob
+   * Returns success/failure — does NOT throw on verification mismatch so the
+   * caller can decide whether to continue or abort.
+   */
+  async upgradeKycNin(input: UpgradeKycNinInput): Promise<EmbedlyKycResult> {
+    this.assertConfigured();
+    console.log({ msg: 'Upgrading NIN KYC', customerId: input.customerId });
+
+    const params = new URLSearchParams({
+      customerId: input.customerId,
+      nin: input.nin,
+      verify: '1',
+    });
+
+    try {
+      const data = await this.request<any>(
+        'POST',
+        `/customers/kyc/customer/nin?${params.toString()}`,
+        { firstname: input.firstname, lastname: input.lastname, dob: input.dob }
+      );
+
+      const success = data?.success === true || data?.code === '00';
+      const status: string = data?.data?.status?.state ?? data?.data?.status ?? '';
+      console.log({ msg: 'NIN KYC result', customerId: input.customerId, success, status });
+      return { success, status, message: data?.message };
+    } catch (err: any) {
+      console.warn({ msg: 'NIN KYC request failed', customerId: input.customerId, error: err?.message });
+      return { success: false, message: err?.message ?? 'NIN verification failed' };
+    }
+  }
+
+  /**
+   * Upgrade customer KYC using BVN.
+   * Query params: verify=1
+   * Body: customerId, bvn
+   */
+  async upgradeKycBvn(input: UpgradeKycBvnInput): Promise<EmbedlyKycResult> {
+    this.assertConfigured();
+    console.log({ msg: 'Upgrading BVN KYC', customerId: input.customerId });
+
+    try {
+      const data = await this.request<any>(
+        'POST',
+        '/customers/kyc/premium-kyc?verify=1',
+        { customerId: input.customerId, bvn: input.bvn }
+      );
+
+      const success = data?.success === true || data?.code === '00';
+      const status: string = data?.data?.status?.state ?? data?.data?.status ?? '';
+      console.log({ msg: 'BVN KYC result', customerId: input.customerId, success, status });
+      return { success, status, message: data?.message };
+    } catch (err: any) {
+      console.warn({ msg: 'BVN KYC request failed', customerId: input.customerId, error: err?.message });
+      return { success: false, message: err?.message ?? 'BVN verification failed' };
     }
   }
 

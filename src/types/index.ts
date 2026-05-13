@@ -81,14 +81,21 @@ export interface UserDTO {
 
 export interface CreateUserInput {
   email: string;
-  //phone: string;
+  phone: string;
   country: string;
   password: string;
   role: UserRole;
-  fullName: string;
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+  dob: string;       // YYYY-MM-DD
+  address: string;
+  city: string;
   profileImage?: string;
-  mode: 'otp' | 'link'; // Verification mode: OTP or link
+  mode: 'otp' | 'link';
   schoolName?: string;  // Required when role is SCHOOL
+  // Derived — populated by the service layer for backward compat
+  fullName?: string;
 }
 
 export interface UpdateUserInput {

@@ -77,15 +77,16 @@ const studentNavigationGroups: NavGroup[] = [
 
 const adminNavigationGroups: NavGroup[] = [
   {
+     title: 'OVERVIEW',
     items: [
       { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' }
     ]
   },
   {
-    title: 'USERS',
+    title: 'STUDENTS',
     items: [
-      { icon: Users, label: 'Students', href: '/admin/students' },
-      { icon: Users, label: 'Parents', href: '/admin/parents' },
+      { icon: GraduationCap, label: 'Students Directory', href: '/admin/students' },
+      { icon: Users, label: 'Parents Directory', href: '/admin/parents' },
       { icon: Building2, label: 'School Verification', href: '/admin/schools' },
     ]
   },
@@ -201,7 +202,7 @@ export function Sidebar({ className, isAdmin = false, isOpen = false, onClose }:
                           ['recently-active', 'all-active-students', 'all-overdue-students', 'all-completed-students', 'student-profile'].some(sub => pathname.startsWith('/admin/students/' + sub)))
                       : item.href === '/admin/schools'
                         ? pathname === '/admin/schools' ||
-                          ['all-active-schools', 'all-pending-schools', 'all-verified-schools'].some(sub => pathname.startsWith('/admin/schools/' + sub))
+                          pathname.startsWith('/admin/schools/')
                         : item.href === '/admin/loans'
                           ? pathname === '/admin/loans' ||
                             ['all-loans', 'all-pending-loans', 'all-approved-loan', 'all-rejected-loan'].some(sub => pathname.startsWith('/admin/loans/' + sub))

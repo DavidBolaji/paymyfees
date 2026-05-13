@@ -57,6 +57,18 @@ export class LoanController {
     const body = await req.json();
     const validatedData = createLoanSchema.parse(body);
 
+    // Log agreement metadata for legal records
+    if (validatedData.agreementMeta) {
+      console.info('[LoanAgreement] User accepted agreement', {
+        userId: user.id,
+        agreementVersion: validatedData.agreementMeta.agreementVersion,
+        acceptedAt: validatedData.agreementMeta.acceptedAt,
+        ip: req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown',
+        userAgent: validatedData.agreementMeta.userAgent,
+        consentItems: validatedData.agreementMeta.consentLog.length,
+      });
+    }
+
     // Determine loan type
     const isInternational = validatedData.residencyStatus === ResidencyStatus.INTERNATIONAL;
 

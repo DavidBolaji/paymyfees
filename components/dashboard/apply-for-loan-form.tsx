@@ -19,6 +19,7 @@ import { useLoanApplicationStore } from '@/src/stores/loanApplicationStore';
 import useDashboardStore from '@/src/stores/dashboardStore';
 import { fetchDashboardStats } from '@/src/utils/dashboard-api';
 import { CheckSquareIcon } from '@/assets/icons/CheckSquareIcon';
+import { LoanAgreementModal, type AgreementMeta, type LoanAgreementSummary } from './loan-agreement-modal';
 
 interface RepaymentPlan {
   months: number;
@@ -51,6 +52,7 @@ export function ApplyForLoanForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [successModal, setSuccessModal] = useState({ open: false, title: '', message: '' });
+  const [agreementSummary, setAgreementSummary] = useState<LoanAgreementSummary | null>(null);
 
   // Calculate repayment plans
 const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
@@ -151,59 +153,63 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
     return true;
   };
 
+  // Opens the agreement modal after validating the form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm()) {
+    if (!validateForm()) return;
+    if (!selectedPlanData) {
+      setErrors((prev) => ({ ...prev, selectedPlan: 'Please choose a repayment plan' }));
       return;
     }
 
+    setAgreementSummary({
+      borrowerName: user?.fullName ?? 'Applicant',
+      studentName: user?.fullName ?? 'Applicant',
+      institutionName: formData.schoolName ?? '',
+      loanAmount: formData.loanAmount ?? 0,
+      loanTenure: formData.selectedPlan ?? 1,
+      monthlyRepayment: selectedPlanData.monthlyAmount,
+      totalRepayment: selectedPlanData.totalAmount,
+    });
+  };
+
+  // Called by the agreement modal after the user accepts
+  const executeSubmit = async (meta: AgreementMeta) => {
     setIsSubmitting(true);
     let cloudinaryResults: CloudinaryUploadResult[];
 
     try {
-
       // Step 1: Handle file uploads
       if (formData.uploadedFiles && formData.uploadedFiles.length > 0) {
-        // Check if files are already uploaded to Cloudinary
         const uploadedFiles = formData.uploadedFiles.filter(
-          (f): f is UploadedFile & { cloudinaryResult: CloudinaryUploadResult } => 
+          (f): f is UploadedFile & { cloudinaryResult: CloudinaryUploadResult } =>
             f.uploaded === true && f.cloudinaryResult !== undefined
         );
 
         if (uploadedFiles.length === formData.uploadedFiles.length) {
-          // All files already uploaded (auto-upload was enabled)
           cloudinaryResults = uploadedFiles.map(f => f.cloudinaryResult);
         } else {
-          // Need to manually trigger upload
           if (fileUploadRef.current?.uploadAllFiles) {
             cloudinaryResults = await fileUploadRef.current.uploadAllFiles();
           } else {
-            // Fallback: use already uploaded files
             cloudinaryResults = uploadedFiles.map(f => f.cloudinaryResult);
           }
         }
 
-        // Validate that we have results
         if (!cloudinaryResults || cloudinaryResults.length === 0) {
-          alert('Please wait for all files to finish uploading');
-          setIsSubmitting(false);
-          return;
+          throw new Error('Please wait for all files to finish uploading.');
         }
       } else {
-        alert('Please upload at least one document');
-        setIsSubmitting(false);
-        return;
+        throw new Error('Please upload at least one document.');
       }
 
-      // Step 2: Normalize files for API
+      // Step 2: Normalize + submit
       const normalizedFiles = cloudinaryResults.map((result) => ({
         url: result.secure_url || result.url,
         name: result.original_filename || result.public_id,
         size: result.bytes,
-        type: result.format || result.resource_type
+        type: result.format || result.resource_type,
       }));
-
 
       const payload = {
         ...formData,
@@ -211,34 +217,27 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
         repaymentMonths: formData.selectedPlan,
         uploadedFiles: normalizedFiles,
         residencyStatus: ResidencyStatus.LOCAL,
+        agreementMeta: meta,
       };
 
       const result = await applyForLoan(payload);
 
       if (!result.success) {
-        setSuccessModal({ open: true, title: 'Submission Failed', message: result.error || 'Failed to submit application. Please try again.' });
-        return;
+        throw new Error(result.error || 'Failed to submit application. Please try again.');
       }
 
-      console.log(result.data);
+      setAgreementSummary(null);
       setSuccessModal({ open: true, title: 'Application Submitted!', message: 'Your loan application has been submitted successfully.' });
 
-      // Invalidate dashboard cache and refresh so header dropdown shows the new loan
       clearCache();
       fetchDashboardStats().then((data) => {
-        if (data) {
-          setStats(data);
-          setLastFetched(Date.now());
-        }
+        if (data) { setStats(data); setLastFetched(Date.now()); }
       });
 
-      // Reset form
       resetForm();
-
     } catch (error: any) {
       console.error('Submission error:', error);
-      const errorMessage = error.message || 'Failed to submit application. Please try again.';
-      setSuccessModal({ open: true, title: 'Submission Failed', message: errorMessage });
+      throw error;
     } finally {
       setIsSubmitting(false);
     }
@@ -257,6 +256,8 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
       formData.term &&
       formData.loanAmount &&
       formData.loanAmount > 0 &&
+      formData.selectedPlan &&
+      formData.selectedPlan > 0 &&
       formData.uploadedFiles &&
       formData.uploadedFiles.length > 0 &&
       formData.consents?.schoolDetails &&
@@ -359,6 +360,7 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
                 maxFileSize={10}
                 maxFiles={4}
                 autoUpload={true}
+                initialFiles={formData.uploadedFiles}
               />
 
               {errors.uploadedFiles && (
@@ -501,12 +503,22 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
             ) : (
               <>
                 <CheckSquareIcon />
-                Submit
+                Review
               </>
             )}
           </button>
         </div>
       </form>
+      <LoanAgreementModal
+        isOpen={!!agreementSummary}
+        onClose={() => setAgreementSummary(null)}
+        onAccept={executeSubmit}
+        summary={agreementSummary ?? {
+          borrowerName: '', studentName: '', institutionName: '',
+          loanAmount: 0, loanTenure: 1, monthlyRepayment: 0, totalRepayment: 0,
+        }}
+        isSubmitting={isSubmitting}
+      />
       <RegistrationModal
         isOpen={showRegisterModal}
         onClose={() => setShowRegisterModal(false)}

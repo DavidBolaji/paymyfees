@@ -28,6 +28,7 @@ interface FileUploadProps {
   className?: string;
   folder?: string; // Cloudinary folder
   autoUpload?: boolean; // Auto upload to Cloudinary on file select
+  initialFiles?: UploadedFile[]; // Pre-populate from cached store state
 }
 
 export interface FileUploadRef {
@@ -44,9 +45,10 @@ export const FileUpload = forwardRef<FileUploadRef, FileUploadProps>(({
   maxFiles = 10,
   className,
   folder = 'school-documents',
-  autoUpload = false
+  autoUpload = false,
+  initialFiles,
 }, ref) => {
-  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [files, setFiles] = useState<UploadedFile[]>(initialFiles ?? []);
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);

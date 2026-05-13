@@ -20,7 +20,7 @@ interface Country {
 
 interface CustomInputProps {
   label: string;
-  type?: "text" | "email" | "number" | "select" | "phone" | "password";
+  type?: "text" | "email" | "number" | "select" | "phone" | "password" | "date";
   value?: string;
   placeholder?: string;
   onChange?: (value: string) => void;
@@ -30,6 +30,7 @@ interface CustomInputProps {
   price?: boolean;
   white?: boolean;
   error?: boolean;
+  disabled?: boolean;
 }
 
 // Comprehensive country list with SVG flags and dial codes
@@ -93,6 +94,7 @@ export function CustomInput({
   price = false,
   white,
   error = false,
+  disabled = false,
 }: CustomInputProps) {
   const [selectedCountry, setSelectedCountry] = useState<Country | undefined>(countries[0]);
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -401,12 +403,14 @@ export function CustomInput({
         </div>
       )}
 
-      {/* TEXT / EMAIL / NUMBER */}
-      {(type === "text" || type === "email" || type === "number") && (
+      {/* TEXT / EMAIL / NUMBER / DATE */}
+      {(type === "text" || type === "email" || type === "number" || type === "date") && (
         <input
           type={type}
           value={value}
+          disabled={disabled}
           onChange={(e) => {
+            if (disabled) return;
             if (price) return handlePriceChange(e.target.value);
             onChange?.(e.target.value);
           }}
@@ -415,7 +419,8 @@ export function CustomInput({
           placeholder={placeholder}
           className={cn(
             "w-full h-12 px-3 rounded-lg border bg-[#f5f5f5] focus:outline-none text-[#292929] relative z-0 placeholder:text-gray-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none",
-            error ? "border-red-500" : "border-[#d1d1d1]"
+            error ? "border-red-500" : "border-[#d1d1d1]",
+            disabled && "opacity-60 cursor-not-allowed"
           )}
         />
       )}

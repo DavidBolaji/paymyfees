@@ -48,10 +48,18 @@ export const passwordSchema = z
 
 export const registerSchema = z.object({
   role: z.nativeEnum(UserRole),
-  fullName: z.string().min(2, 'Full name must be at least 2 characters').max(100),
+  firstName: z.string().min(2, 'First name must be at least 2 characters').max(50),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters').max(50),
+  middleName: z.string().max(50).optional(),
   email: emailSchema,
-//phone: phoneSchema,
-  country: z.string().min(2, 'Country field must be provided'),
+  phone: z.string().regex(/^(\+?234|0)[789]\d{9}$/, 'Invalid Nigerian phone number').transform(p => {
+    const stripped = p.replace(/^\+?234/, '');
+    return stripped.startsWith('0') ? stripped : `0${stripped}`;
+  }),
+  dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date of birth must be in YYYY-MM-DD format'),
+  address: z.string().min(5, 'Address must be at least 5 characters').max(200),
+  city: z.string().min(2, 'City must be at least 2 characters').max(100),
+  country: z.string().default('Nigeria'),
   password: passwordSchema,
   confirmPassword: z.string(),
   mode: z.enum(['otp', 'link'], {
@@ -139,7 +147,19 @@ const baseLoanSchema = z.object({
     schoolDetails: z.boolean().refine(val => val === true, 'You must confirm school details'),
     directPayment: z.boolean().refine(val => val === true, 'You must agree to direct payment'),
     terms: z.boolean().refine(val => val === true, 'You must accept terms and conditions')
-  })
+  }),
+  agreementMeta: z.object({
+    agreementVersion: z.string(),
+    acceptedAt: z.string(),
+    userAgent: z.string(),
+    platform: z.string(),
+    language: z.string(),
+    screenResolution: z.string(),
+    consentLog: z.array(z.object({
+      item: z.string(),
+      acceptedAt: z.string(),
+    })),
+  }).optional(),
 });
 
 /**

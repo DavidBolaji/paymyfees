@@ -10,6 +10,7 @@ import { FormInput, FormSelect } from '@/components/ui/form-input';
 import { applyForLoan } from '@/src/utils/loan-api';
 import { SchoolSelector } from '@/components/dashboard/school-selector';
 import { SuccessModal } from '@/components/ui/success-modal';
+import { LoanAgreementModal, type AgreementMeta, type LoanAgreementSummary } from '@/components/dashboard/loan-agreement-modal';
 import { ResidencyStatus } from '@prisma/client';
 import useAuthStore from '@/src/authStore';
 import { CloudinaryUploadResult } from '@/src/utils/cloudinary-api';
@@ -95,6 +96,7 @@ export function TeacherApplyForLoanForm() {
   const [errors, setErrors] = useState<Partial<Record<keyof TeacherLoanFormData | 'consents.schoolDetails' | 'consents.directPayment' | 'consents.terms', string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successModal, setSuccessModal] = useState({ open: false, title: '', message: '' });
+  const [agreementSummary, setAgreementSummary] = useState<LoanAgreementSummary | null>(null);
 
   const monthlyInterestRate = 0.025;
 
@@ -172,7 +174,23 @@ export function TeacherApplyForLoanForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+    if (!selectedPlanData) {
+      setErrors((prev) => ({ ...prev, selectedPlan: 'Please choose a repayment plan' }));
+      return;
+    }
 
+    setAgreementSummary({
+      borrowerName: `${formData.firstName} ${formData.lastName}`.trim() || user?.fullName || 'Applicant',
+      studentName: `${formData.firstName} ${formData.lastName}`.trim() || user?.fullName || 'Applicant',
+      institutionName: formData.schoolName,
+      loanAmount: formData.loanAmount,
+      loanTenure: formData.selectedPlan,
+      monthlyRepayment: selectedPlanData.monthlyAmount,
+      totalRepayment: selectedPlanData.totalAmount,
+    });
+  };
+
+  const executeSubmit = async (meta: AgreementMeta) => {
     setIsSubmitting(true);
     let cloudinaryResults: CloudinaryUploadResult[];
 
@@ -192,9 +210,7 @@ export function TeacherApplyForLoanForm() {
       }
 
       if (!cloudinaryResults || cloudinaryResults.length === 0) {
-        alert('Please wait for all files to finish uploading');
-        setIsSubmitting(false);
-        return;
+        throw new Error('Please wait for all files to finish uploading.');
       }
 
       const normalizedFiles = cloudinaryResults.map((r) => ({
@@ -211,7 +227,6 @@ export function TeacherApplyForLoanForm() {
         loanAmount: formData.loanAmount,
         repaymentMonths: formData.selectedPlan,
         residencyStatus: ResidencyStatus.LOCAL,
-        // Teacher-specific metadata stored in notes/academicSession fields
         academicSession: new Date().getFullYear().toString(),
         term: formData.loanType,
         notes: JSON.stringify({
@@ -224,19 +239,21 @@ export function TeacherApplyForLoanForm() {
           registrationNumber: formData.registrationNumber,
         }),
         uploadedFiles: normalizedFiles,
+        agreementMeta: meta,
       };
 
       const result = await applyForLoan(payload);
 
       if (!result.success) {
-        setSuccessModal({ open: true, title: 'Submission Failed', message: result.error || 'Failed to submit application.' });
-        return;
+        throw new Error(result.error || 'Failed to submit application.');
       }
 
+      setAgreementSummary(null);
       setSuccessModal({ open: true, title: 'Application Submitted!', message: 'Your loan application has been submitted successfully.' });
       setFormData(INITIAL_FORM);
     } catch (err: any) {
-      setSuccessModal({ open: true, title: 'Submission Failed', message: err.message || 'An error occurred.' });
+      console.error('Submission error:', err);
+      throw err;
     } finally {
       setIsSubmitting(false);
     }
@@ -393,6 +410,7 @@ export function TeacherApplyForLoanForm() {
               maxFileSize={10}
               maxFiles={4}
               autoUpload={true}
+              initialFiles={formData.uploadedFiles}
             />
             {errors.uploadedFiles && (
               <p className="mt-2 text-red-600 text-sm">{errors.uploadedFiles}</p>
@@ -504,13 +522,23 @@ export function TeacherApplyForLoanForm() {
             ) : (
               <>
                 <CheckSquareIcon />
-                Submit
+                Review
               </>
             )}
           </button>
         </div>
       </form>
 
+      <LoanAgreementModal
+        isOpen={!!agreementSummary}
+        onClose={() => setAgreementSummary(null)}
+        onAccept={executeSubmit}
+        summary={agreementSummary ?? {
+          borrowerName: '', studentName: '', institutionName: '',
+          loanAmount: 0, loanTenure: 1, monthlyRepayment: 0, totalRepayment: 0,
+        }}
+        isSubmitting={isSubmitting}
+      />
       <SuccessModal
         isOpen={successModal.open}
         onClose={() => setSuccessModal({ open: false, title: '', message: '' })}

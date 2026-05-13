@@ -202,7 +202,7 @@ export default function StudentProfilePage() {
               <InfoRow label="Student Name" value={student.fullName} />
               <InfoRow label="Student ID" value={(params?.userId as any)?.split('-')[0]} />
               <InfoRow label="School" value={loan?.schoolName} />
-              <InfoRow label="Program/Course" value={student.programCourseOfStudy} />
+              <InfoRow label="Phone Number" value={student.phone} />
               <InfoRow label="Country" value={student.country} />
               <InfoRow label="City" value={student.city} />
               <InfoRow label="Account Status" value="N/A" />

@@ -14,6 +14,22 @@ model User {
   password             String                @db.VarChar(255)
   role                 UserRole
   fullName             String                @db.VarChar(255)
+  firstName            String?               @db.VarChar(100)
+  lastName             String?               @db.VarChar(100)
+  middleName           String?               @db.VarChar(100)
+  dob                  DateTime?             @db.Date
+  address              String?               @db.VarChar(500)
+  city                 String?               @db.VarChar(100)
+  // NIN and BVN are NOT stored raw — they are passed through to Embedly for
+  // verification only, then discarded. Only the verified status is persisted.
+  // This is required for compliance with the Nigeria Data Protection Act 2023
+  // and CBN KYC guidelines (biometric data minimisation principle).
+  ninVerified          Boolean               @default(false)
+  bvnVerified          Boolean               @default(false)
+  kycVerifiedAt        DateTime?
+  bankCode             String?               @db.VarChar(20)
+  bankAccountNumber    String?               @db.VarChar(20)
+  bankAccountName      String?               @db.VarChar(255)
   profileImage         String?               @db.VarChar(500)
   emailVerified        Boolean               @default(false)
   phoneVerified        Boolean               @default(false)

@@ -9,6 +9,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FormInput, FormSelect } from '@/components/ui/form-input';
 import { EMPLOYMENT_STATUS_OPTIONS, PROGRAM_OPTIONS, validateLoanApplication, type LoanApplicationIntFormData } from '@/data';
 import { applyForLoan } from '@/src/utils/loan-api';
+import { LoanAgreementModal, type AgreementMeta, type LoanAgreementSummary } from './loan-agreement-modal';
+import useAuthStore from '@/src/authStore';
 
 interface RepaymentPlan {
   months: number;
@@ -43,6 +45,7 @@ interface FormErrors {
 
 
 export function ApplyForLoanFormInt() {
+  const { user } = useAuthStore();
   // Form state
   const [formData, setFormData] = useState<Partial<LoanApplicationIntFormData>>({
     selectedPlan: 6,
@@ -71,6 +74,7 @@ export function ApplyForLoanFormInt() {
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [agreementSummary, setAgreementSummary] = useState<LoanAgreementSummary | null>(null);
 
   // Calculate repayment plans
   const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
@@ -173,60 +177,52 @@ export function ApplyForLoanFormInt() {
     return true;
   };
 
+  const RESET_FORM: Partial<LoanApplicationIntFormData> = {
+    selectedPlan: 6, loanAmount: 0, schoolName: '', academicSession: '', term: '',
+    countryOfStudy: '', programCourseOfStudy: '', employmentStatus: '', companyName: '',
+    jobTitleRole: '', monthlyNetIncome: 0, paymentFrequency: '', accountHolderName: '',
+    bankName: '', accountNumber: '', countryOfBankAccount: '', uploadedFiles: [],
+    consents: { schoolDetails: false, directPayment: false, terms: false },
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
+    if (!selectedPlanData) return;
 
-    if (!validateForm()) {
-      return;
-    }
+    const interestRates: Record<number, number> = {
+      1: 0.05, 2: 0.08, 3: 0.10, 4: 0.12, 5: 0.15, 6: 0.18,
+      7: 0.20, 8: 0.22, 9: 0.25, 10: 0.28, 11: 0.30, 12: 0.32,
+    };
+    const months = formData.selectedPlan ?? 6;
+    const rate = interestRates[months] ?? 0.35;
+    const monthlyRatePct = ((rate / months) * 100).toFixed(1);
 
+    setAgreementSummary({
+      borrowerName: user?.fullName ?? 'Applicant',
+      studentName: user?.fullName ?? 'Applicant',
+      institutionName: formData.schoolName ?? '',
+      loanAmount: formData.loanAmount ?? 0,
+      loanTenure: months,
+      monthlyRepayment: selectedPlanData.monthlyAmount,
+      totalRepayment: selectedPlanData.totalAmount,
+      interestRateLabel: `${monthlyRatePct}% per month (${(rate * 100).toFixed(0)}% total)`,
+    });
+  };
+
+  const executeSubmit = async (meta: AgreementMeta) => {
     setIsSubmitting(true);
-
     try {
-      console.log('Form submitted:', formData);
-      const result = await applyForLoan(formData);
-
+      const result = await applyForLoan({ ...formData, agreementMeta: meta });
       if (!result.success) {
-        // Show error message from API
-        alert(result.error || 'Failed to submit application. Please try again.');
-        return;
+        throw new Error(result.error || 'Failed to submit application. Please try again.');
       }
-
-      console.log(result.data);
-      // Handle successful submission
+      setAgreementSummary(null);
       alert('Loan application submitted successfully!');
-
-      // Reset form
-      setFormData({
-        selectedPlan: 6,
-        loanAmount: 0,
-        schoolName: '',
-        academicSession: '',
-        term: '',
-        countryOfStudy: '',
-        programCourseOfStudy: '',
-        employmentStatus: '',
-        companyName: '',
-        jobTitleRole: '',
-        monthlyNetIncome: 0,
-        paymentFrequency: '',
-        accountHolderName: '',
-        bankName: '',
-        accountNumber: '',
-        countryOfBankAccount: '',
-        uploadedFiles: [],
-        consents: {
-          schoolDetails: false,
-          directPayment: false,
-          terms: false
-        }
-      });
-
+      setFormData(RESET_FORM);
     } catch (error: any) {
       console.error('Submission error:', error);
-      // Display the actual error message
-      const errorMessage = error.message || 'Failed to submit application. Please try again.';
-      alert(errorMessage);
+      throw error;
     } finally {
       setIsSubmitting(false);
     }
@@ -283,6 +279,7 @@ export function ApplyForLoanFormInt() {
   };
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="space-y-8">
 
 
@@ -624,11 +621,22 @@ export function ApplyForLoanFormInt() {
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
-              Submit Loan Application
+              Review
             </>
           )}
         </button>
       </div>
     </form>
+    <LoanAgreementModal
+      isOpen={!!agreementSummary}
+      onClose={() => setAgreementSummary(null)}
+      onAccept={executeSubmit}
+      summary={agreementSummary ?? {
+        borrowerName: '', studentName: '', institutionName: '',
+        loanAmount: 0, loanTenure: 1, monthlyRepayment: 0, totalRepayment: 0,
+      }}
+      isSubmitting={isSubmitting}
+    />
+  </>
   );
 }
