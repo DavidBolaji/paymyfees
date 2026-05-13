@@ -15,6 +15,7 @@ interface LoanDetailDrawerProps {
   onApprove?: () => void;
   onReject?: () => void;
   onRefresh?: () => void;
+  userLabel?: string;
 }
 
 function fmt(n: number) {
@@ -82,7 +83,7 @@ function Row({ label, value, valueClass }: { label: string; value: string; value
   );
 }
 
-export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, onRefresh }: LoanDetailDrawerProps) {
+export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, onRefresh, userLabel = 'Student Information' }: LoanDetailDrawerProps) {
   const [detail, setDetail] = useState<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [note, setNote] = useState('');
@@ -228,13 +229,13 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
                   </div>
                 ) : (
                   <>
-                    {/* Student Information */}
+                    {/* User Information */}
                     <div>
                       <p className="font-semibolds text-[#191919] text-xl mb-5 inline-block">
-                        Student Information
+                        {userLabel}
                       </p>
                       <div className="space-y-4">
-                        <Row label="Student Name:" value={l?.userName || '—'} valueClass="text-[#00296B] font-semibold" />
+                        <Row label={userLabel === 'Teacher Information' ? 'Teacher Name:' : 'Student Name:'} value={l?.userName || '—'} valueClass="text-[#00296B] font-semibold" />
                         <Row label="Email:" value={l?.userEmail || '—'} />
                         <Row label="Phone:" value={l?.userPhone || '—'} />
                         <Row label="School:" value={l?.schoolName || '—'} />

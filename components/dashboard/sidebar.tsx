@@ -26,6 +26,7 @@ import { UserCircleIcon } from '@/assets/icons/UserCircleIcon';
 interface SidebarProps {
   className?: string;
   isAdmin?: boolean;
+  isTeacherAdmin?: boolean;
   isOpen?: boolean;
   onClose?: () => void;
 }
@@ -74,6 +75,33 @@ const studentNavigationGroups: NavGroup[] = [
   },
 ];
 
+const teacherAdminNavigationGroups: NavGroup[] = [
+  {
+    title: 'OVERVIEW',
+    items: [
+      { icon: LayoutDashboard, label: 'Dashboard', href: '/teacher-admin' }
+    ]
+  },
+  {
+    title: 'TEACHERS',
+    items: [
+      { icon: GraduationCap, label: 'Teachers Directory', href: '/teacher-admin/teachers' },
+    ]
+  },
+  {
+    title: 'LOANS & FINANCING',
+    items: [
+      { icon: FileText, label: 'Loan Applications', href: '/teacher-admin/loans' }
+    ]
+  },
+  {
+    title: 'SUPPORT',
+    items: [
+      { icon: HelpCircle, label: 'Support Tickets', href: '/teacher-admin/support' },
+    ]
+  },
+];
+
 const adminNavigationGroups: NavGroup[] = [
   {
      title: 'OVERVIEW',
@@ -110,11 +138,15 @@ const adminNavigationGroups: NavGroup[] = [
   },
 ];
 
-export function Sidebar({ className, isAdmin = false, isOpen = false, onClose }: SidebarProps) {
+export function Sidebar({ className, isAdmin = false, isTeacherAdmin = false, isOpen = false, onClose }: SidebarProps) {
   const [isDark, setIsDark] = useState(false);
   const {logout} = useAuthStore()
   const pathname = usePathname();
-  const navigationGroups = isAdmin ? adminNavigationGroups : studentNavigationGroups;
+  const navigationGroups = isTeacherAdmin
+    ? teacherAdminNavigationGroups
+    : isAdmin
+      ? adminNavigationGroups
+      : studentNavigationGroups;
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
@@ -182,11 +214,11 @@ export function Sidebar({ className, isAdmin = false, isOpen = false, onClose }:
               )}
               <div className="space-y-1">
                 {group.items.map((item, itemIndex) => {
-                  const isActive = (item.href === '/dashboard' || item.href === '/admin')
-                    ? pathname === item.href || 
+                  const isActive = (item.href === '/dashboard' || item.href === '/admin' || item.href === '/teacher-admin')
+                    ? pathname === item.href ||
                       (item.href === '/dashboard' && (
-                        pathname.startsWith('/dashboard/loans') || 
-                        pathname.startsWith('/dashboard/timeline') || 
+                        pathname.startsWith('/dashboard/loans') ||
+                        pathname.startsWith('/dashboard/timeline') ||
                         pathname.startsWith('/dashboard/transactions') ||
                         pathname.startsWith('/dashboard/apply-loan') ||
                         pathname.startsWith('/dashboard/view-payment-plan')

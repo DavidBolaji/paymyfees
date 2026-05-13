@@ -227,18 +227,14 @@ export function TeacherApplyForLoanForm() {
         loanAmount: formData.loanAmount,
         repaymentMonths: formData.selectedPlan,
         residencyStatus: ResidencyStatus.LOCAL,
-        academicSession: new Date().getFullYear().toString(),
-        term: formData.loanType,
-        notes: JSON.stringify({
-          teacherLoan: true,
-          loanType: formData.loanType,
-          purposeOfLoan: formData.purposeOfLoan,
-          repaymentMethod: formData.repaymentMethod,
-          schoolEmail: formData.schoolEmail,
-          schoolAddress: formData.schoolAddress,
-          registrationNumber: formData.registrationNumber,
-        }),
+        academicSession: `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
+        term: formData.loanType || 'Teachers Support Loan',
         uploadedFiles: normalizedFiles,
+        consents: {
+          schoolDetails: formData.consents.schoolDetails,
+          directPayment: formData.consents.directPayment,
+          terms: formData.consents.terms,
+        },
         agreementMeta: meta,
       };
 

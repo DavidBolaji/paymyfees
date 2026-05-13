@@ -344,7 +344,7 @@ export class LoanRepository implements ILoanRepository {
       userEmail: loan.user?.email,
       userPhone: loan.user?.phone,
       userCountry: loan.user?.country,
-      userCity: loan.user?.parentProfile?.city,
+      userCity: loan.user?.parentProfile?.city ?? loan.user?.city ?? null,
       userIsActive: loan.user?.isActive,
       schoolIsVerified: loan.school?.isVerified,
       userPreviousLoans: loan.user?.parentProfile?.completedLoans ?? 0,

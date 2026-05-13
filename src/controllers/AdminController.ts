@@ -532,4 +532,33 @@ export class AdminController {
     await this.adminService.requestAdditionalDocuments(schoolId, adminId, data);
     return NextResponse.json({ success: true, message: 'Document request sent' }, { status: 200 });
   }
+
+  async getTeacherLoans(req: Request): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const statusParam = searchParams.get('status') || undefined;
+    const statuses = statusParam ? statusParam.split(',').map(s => s.trim()) : undefined;
+    const result = await this.adminService.getTeacherLoans(page, limit, statuses);
+    return NextResponse.json(
+      { success: true, data: result.loans, metadata: { pagination: result.pagination } },
+      { status: 200 }
+    );
+  }
+
+  async getTeacherUsers(req: Request): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const result = await this.adminService.getTeacherUsers(page, limit);
+    return NextResponse.json(
+      { success: true, data: result.teachers, metadata: { pagination: result.pagination } },
+      { status: 200 }
+    );
+  }
+
+  async getTeacherDetails(_req: Request, userId: string): Promise<NextResponse> {
+    const result = await this.adminService.getTeacherDetails(userId);
+    return NextResponse.json({ success: true, data: result }, { status: 200 });
+  }
 }

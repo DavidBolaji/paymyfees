@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { DataTable } from '@/components/dashboard/data-table';
 import { api } from '@/src/lib/api';
 
@@ -16,6 +17,7 @@ const COLUMNS = [
 ];
 
 export default function TeacherAdminTeachersPage() {
+  const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState<any>(null);
@@ -23,10 +25,10 @@ export default function TeacherAdminTeachersPage() {
   const fetchData = async (page = 1) => {
     setLoading(true);
     try {
-      const res = await api.get(`/api/admin/students?page=${page}&limit=10&role=TEACHER`);
+      const res = await api.get(`/api/teacher-admin/teachers?page=${page}&limit=10`);
       const json = await res.json();
-      setData(json.data?.users ?? json.data ?? []);
-      setPagination(json.data?.pagination ?? null);
+      setData(json.data ?? []);
+      setPagination(json.metadata?.pagination ?? null);
     } catch (err) {
       console.error(err);
     } finally {
@@ -47,6 +49,7 @@ export default function TeacherAdminTeachersPage() {
         itemsPerPage={10}
         paginationInfo={pagination}
         onPageChange={fetchData}
+        onRowClick={row => router.push(`/teacher-admin/teachers/${row.id}`)}
       />
     </div>
   );

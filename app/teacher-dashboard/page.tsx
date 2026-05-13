@@ -13,9 +13,10 @@ import useAuthStore from '@/src/authStore';
 import useLoan from '@/hooks/useLoan';
 import useDashboard from '@/hooks/useDashboard';
 import useDashboardStore from '@/src/stores/dashboardStore';
-import { GradientSendIcon } from '@/assets/icons/GredientSendIcon';
-import { GradientWalletIcon } from '@/assets/icons/GradientWalletIcon';
-import { NetworkIcon } from '@/assets/icons/NetworkIcon';
+import { QuickActionsCard2 } from '@/components/dashboard/quick-actions-card';
+
+
+
 
 export default function TeacherDashboardPage() {
   const { user } = useAuthStore();
@@ -41,38 +42,7 @@ export default function TeacherDashboardPage() {
         </p>
 
         {/* Quick Actions */}
-        <div className="rounded-[20px] border-2 border-[#00296B] px-6 bg-[#B0BDD1] flex flex-col py-4 mb-6">
-          <h2 className="text-lg font-bold text-[#00296B] mt-3 mb-4 text-center">Quick Actions</h2>
-          <div className="flex justify-around items-center">
-            <div className="flex flex-col items-center gap-2">
-              <button
-                onClick={() => router.push('/teacher-dashboard/apply-loan')}
-                className="w-16 h-16 rounded-full bg-[#00296B] flex items-center justify-center hover:bg-[#003D82] transition-colors"
-              >
-                <GradientSendIcon />
-              </button>
-              <span className="text-xs font-medium text-[#00296B] text-center">Apply for Loan</span>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <button
-                onClick={() => router.push('/teacher-dashboard/wallet')}
-                className="w-16 h-16 rounded-full bg-[#00296B] flex items-center justify-center hover:bg-[#003D82] transition-colors"
-              >
-                <GradientWalletIcon />
-              </button>
-              <span className="text-xs font-medium text-[#00296B] text-center">Wallet</span>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <button
-                onClick={() => router.push('/teacher-dashboard/timeline')}
-                className="w-16 h-16 rounded-full bg-[#00296B] flex items-center justify-center hover:bg-[#003D82] transition-colors"
-              >
-                <NetworkIcon color="white" />
-              </button>
-              <span className="text-xs font-medium text-[#00296B] text-center">Timeline</span>
-            </div>
-          </div>
-        </div>
+        <QuickActionsCard2 />
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { requireAuth, requireParent, requireSchool, requireAdmin, requireStudent } from '@/src/middleware/auth';
+import { requireAuth, requireParent, requireSchool, requireAdmin, requireStudent, requireTeacherAdmin } from '@/src/middleware/auth';
 import { UnauthorizedError } from '@/src/types/errors';
 
 /**
@@ -219,10 +219,43 @@ export async function adminAuthMiddleware(req: Request): Promise<AuthMiddlewareR
       },
       { status }
     );
-    
+
     return {
       success: false,
       response
     };
+  }
+}
+
+/**
+ * Teacher Admin authentication middleware
+ * Verifies JWT token and ensures user has TEACHER_ADMIN role
+ */
+export async function teacherAdminAuthMiddleware(req: Request): Promise<AuthMiddlewareResult> {
+  try {
+    const user = await requireTeacherAdmin(req);
+    return {
+      success: true,
+      userId: user.id,
+      role: user.role
+    };
+  } catch (error) {
+    console.warn({ msg: 'Teacher admin authentication failed', error: (error as Error).message });
+    const status = error instanceof UnauthorizedError ? 401 : 403;
+    const message = error instanceof UnauthorizedError
+      ? 'Authentication required'
+      : 'Teacher Admin access required';
+    const response = NextResponse.json(
+      {
+        success: false,
+        error: message,
+        message: error instanceof UnauthorizedError
+          ? 'Please log in to access this resource'
+          : 'This resource is only accessible to teacher administrators',
+        metadata: { timestamp: new Date().toISOString() },
+      },
+      { status }
+    );
+    return { success: false, response };
   }
 }

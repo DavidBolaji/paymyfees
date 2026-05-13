@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { StatCardSkeleton } from '@/components/dashboard/stat-card-skeleton';
 import { DataTable } from '@/components/dashboard/data-table';
+import { LoanDetailDrawer } from '@/components/dashboard/loan-detail-drawer';
 import { api } from '@/src/lib/api';
 
 const LOAN_COLUMNS = [
@@ -24,35 +26,41 @@ const TEACHER_COLUMNS = [
 ];
 
 export default function TeacherAdminDashboard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [recentLoans, setRecentLoans] = useState<any[]>([]);
   const [recentTeachers, setRecentTeachers] = useState<any[]>([]);
+  const [selectedLoan, setSelectedLoan] = useState<any>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [loansRes, teachersRes] = await Promise.all([
-        api.get('/api/admin/loans?page=1&limit=5&role=TEACHER'),
-        api.get('/api/admin/students?page=1&limit=5&role=TEACHER'),
+      const [loansRes, teachersRes, pendingRes, approvedRes, rejectedRes] = await Promise.all([
+        api.get('/api/teacher-admin/loans?page=1&limit=5'),
+        api.get('/api/teacher-admin/teachers?page=1&limit=5'),
+        api.get('/api/teacher-admin/loans?page=1&limit=1&status=PENDING'),
+        api.get('/api/teacher-admin/loans?page=1&limit=1&status=APPROVED,DISBURSED'),
+        api.get('/api/teacher-admin/loans?page=1&limit=1&status=REJECTED'),
       ]);
-      const [loansData, teachersData] = await Promise.all([
+      const [loansData, teachersData, pendingData, approvedData, rejectedData] = await Promise.all([
         loansRes.json(),
         teachersRes.json(),
+        pendingRes.json(),
+        approvedRes.json(),
+        rejectedRes.json(),
       ]);
 
-      const loans: any[] = loansData.data?.loans ?? loansData.data ?? [];
-      const teachers: any[] = teachersData.data?.users ?? teachersData.data ?? [];
-
-      setRecentLoans(loans);
-      setRecentTeachers(teachers);
+      setRecentLoans(loansData.data ?? []);
+      setRecentTeachers(teachersData.data ?? []);
       setStats({
-        totalTeachers: teachersData.data?.total ?? teachers.length,
-        pendingLoans: loans.filter((l) => l.status === 'PENDING').length,
-        approvedLoans: loans.filter((l) => l.status === 'APPROVED' || l.status === 'DISBURSED').length,
-        rejectedLoans: loans.filter((l) => l.status === 'REJECTED').length,
+        totalTeachers: teachersData.metadata?.pagination?.total ?? 0,
+        pendingLoans: pendingData.metadata?.pagination?.total ?? 0,
+        approvedLoans: approvedData.metadata?.pagination?.total ?? 0,
+        rejectedLoans: rejectedData.metadata?.pagination?.total ?? 0,
       });
     } catch (err) {
       console.error('Teacher admin dashboard error:', err);
@@ -81,13 +89,15 @@ export default function TeacherAdminDashboard() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
         <DataTable
           title="Recent Teacher Loan Applications"
           columns={LOAN_COLUMNS}
           data={recentLoans}
           isLoading={loading}
           itemsPerPage={5}
+          viewAllHref="/teacher-admin/loans"
+          onRowClick={row => { setSelectedLoan(row); setDrawerOpen(true); }}
         />
         <DataTable
           title="Recently Registered Teachers"
@@ -95,8 +105,18 @@ export default function TeacherAdminDashboard() {
           data={recentTeachers}
           isLoading={loading}
           itemsPerPage={5}
+          viewAllHref="/teacher-admin/teachers"
+          onRowClick={row => router.push(`/teacher-admin/teachers/${row.id}`)}
         />
       </div>
+
+      <LoanDetailDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        loan={selectedLoan}
+        onRefresh={fetchData}
+        userLabel="Teacher Information"
+      />
     </div>
   );
 }

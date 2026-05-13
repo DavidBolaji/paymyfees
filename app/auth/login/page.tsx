@@ -55,6 +55,8 @@ export default function LoginPage() {
           window.location.href = "/admin";
         } else if (data.data.user.role === 'SCHOOL') {
           window.location.href = "/school-dashboard";
+        } else if (data.data.user.role === 'TEACHER_ADMIN') {
+          window.location.href = "/teacher-admin";
         } else {
           window.location.href = "/dashboard";
         }

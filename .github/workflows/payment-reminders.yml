@@ -1,0 +1,24 @@
+name: Payment Reminders Cron
+
+on:
+  schedule:
+    - cron: '0 7 * * *'   # Daily at 07:00 UTC (08:00 WAT)
+  workflow_dispatch:       # Allow manual trigger from GitHub UI for testing
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Trigger payment reminder cron
+        run: |
+          STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/payment-reminders")
+          echo "HTTP status: $STATUS"
+          cat /tmp/response.json
+          if [ "$STATUS" != "200" ]; then
+            echo "Cron job failed with status $STATUS"
+            exit 1
+          fi

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { DataTable } from '@/components/dashboard/data-table';
+import { LoanDetailDrawer } from '@/components/dashboard/loan-detail-drawer';
 import { api } from '@/src/lib/api';
 
 const COLUMNS = [
@@ -11,7 +12,7 @@ const COLUMNS = [
   { key: 'loanAmount', label: 'Amount (₦)' },
   { key: 'repaymentMonths', label: 'Duration' },
   { key: 'status', label: 'Status' },
-  { key: 'applicationDate', label: 'Applied' },
+  { key: 'createdAt', label: 'Applied' },
 ];
 
 export default function TeacherAdminLoansPage() {
@@ -19,16 +20,18 @@ export default function TeacherAdminLoansPage() {
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState('');
+  const [selectedLoan, setSelectedLoan] = useState<any>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const fetchData = async (page = 1) => {
     setLoading(true);
     try {
-      let url = `/api/admin/loans?page=${page}&limit=10&role=TEACHER`;
+      let url = `/api/teacher-admin/loans?page=${page}&limit=10`;
       if (statusFilter) url += `&status=${statusFilter}`;
       const res = await api.get(url);
       const json = await res.json();
-      setData(json.data?.loans ?? json.data ?? []);
-      setPagination(json.data?.pagination ?? null);
+      setData(json.data ?? []);
+      setPagination(json.metadata?.pagination ?? null);
     } catch (err) {
       console.error(err);
     } finally {
@@ -37,6 +40,11 @@ export default function TeacherAdminLoansPage() {
   };
 
   useEffect(() => { fetchData(); }, [statusFilter]);
+
+  const handleRowClick = (row: any) => {
+    setSelectedLoan(row);
+    setDrawerOpen(true);
+  };
 
   return (
     <div className="p-6">
@@ -55,6 +63,7 @@ export default function TeacherAdminLoansPage() {
           <option value="REJECTED">Rejected</option>
         </select>
       </div>
+
       <DataTable
         title="Loan Applications"
         columns={COLUMNS}
@@ -63,6 +72,15 @@ export default function TeacherAdminLoansPage() {
         itemsPerPage={10}
         paginationInfo={pagination}
         onPageChange={fetchData}
+        onRowClick={handleRowClick}
+      />
+
+      <LoanDetailDrawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        loan={selectedLoan}
+        onRefresh={() => fetchData()}
+        userLabel="Teacher Information"
       />
     </div>
   );

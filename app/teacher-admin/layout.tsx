@@ -12,9 +12,11 @@ function TeacherAdminGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (hasHydrated && user && user.role !== 'TEACHER_ADMIN') {
-      router.replace('/dashboard');
-    }
+    if (!hasHydrated || !user) return;
+    if (user.role === 'TEACHER_ADMIN') return;
+    if (user.role === 'ADMIN') { router.replace('/admin'); return; }
+    if (user.role === 'SCHOOL') { router.replace('/school-dashboard'); return; }
+    router.replace('/dashboard');
   }, [hasHydrated, user, router]);
 
   if (hasHydrated && user && user.role !== 'TEACHER_ADMIN') {
@@ -32,7 +34,7 @@ export default function TeacherAdminLayout({ children }: { children: React.React
       <TeacherAdminGuard>
         <div className="flex h-screen bg-gray-50">
           <Sidebar
-            isAdmin={true}
+            isTeacherAdmin={true}
             isOpen={sidebarOpen}
             onClose={() => setSidebarOpen(false)}
           />

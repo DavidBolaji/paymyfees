@@ -42,6 +42,9 @@ export interface IAdminService {
   flagAccount(userId: string, adminId: string, reason: string, notes: string): Promise<any>;
   getPendingVerificationSchools(page: number, limit: number): Promise<any>;
   requestAdditionalDocuments(schoolId: string, adminId: string, data: any): Promise<any>;
+  getTeacherLoans(page: number, limit: number, statuses?: string[]): Promise<any>;
+  getTeacherUsers(page: number, limit: number): Promise<any>;
+  getTeacherDetails(userId: string): Promise<any>;
 }
 
 /**
@@ -277,5 +280,17 @@ export class AdminService implements IAdminService {
 
   async requestAdditionalDocuments(schoolId: string, adminId: string, data: any): Promise<any> {
     return await this.adminRepository.requestAdditionalDocuments(schoolId, adminId, data);
+  }
+
+  async getTeacherLoans(page: number = 1, limit: number = 10, statuses?: string[]): Promise<any> {
+    return await this.adminRepository.getTeacherLoans(page, limit, statuses);
+  }
+
+  async getTeacherUsers(page: number = 1, limit: number = 10): Promise<any> {
+    return await this.adminRepository.getTeacherUsers(page, limit);
+  }
+
+  async getTeacherDetails(userId: string): Promise<any> {
+    return await this.adminRepository.getTeacherDetails(userId);
   }
 }

@@ -37,6 +37,9 @@ export interface IAdminRepository {
   flagAccount(userId: string, adminId: string, reason: string, notes: string): Promise<any>;
   getPendingVerificationSchools(page: number, limit: number): Promise<any>;
   requestAdditionalDocuments(schoolId: string, adminId: string, data: any): Promise<any>;
+  getTeacherLoans(page: number, limit: number, statuses?: string[]): Promise<any>;
+  getTeacherUsers(page: number, limit: number): Promise<any>;
+  getTeacherDetails(userId: string): Promise<any>;
 }
 
 export class AdminRepository implements IAdminRepository {
@@ -1452,5 +1455,152 @@ export class AdminRepository implements IAdminRepository {
         performedBy: adminId
       }
     });
+  }
+
+  /**
+   * Get loans for users with TEACHER role
+   */
+  async getTeacherLoans(page: number, limit: number, statuses?: string[]): Promise<any> {
+    const skip = (page - 1) * limit;
+    const where: any = {
+      user: { role: UserRole.TEACHER },
+      ...(statuses?.length === 1
+        ? { status: statuses[0] as LoanStatus }
+        : statuses && statuses.length > 1
+          ? { status: { in: statuses as LoanStatus[] } }
+          : {}),
+    };
+
+    const [loans, total] = await Promise.all([
+      prisma.loan.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, fullName: true, email: true, phone: true, country: true, city: true, isActive: true } },
+          school: { select: { schoolName: true, isVerified: true } },
+        },
+      }),
+      prisma.loan.count({ where }),
+    ]);
+
+    return {
+      loans: loans.map((l: any) => ({
+        id: l.id,
+        loanNumber: l.loanNumber,
+        teacherName: l.user.fullName,
+        // Aliases used by LoanDetailDrawer while detail fetch is in progress
+        userName: l.user.fullName,
+        userEmail: l.user.email,
+        userPhone: l.user.phone,
+        userCountry: l.user.country,
+        userCity: l.user.city,
+        userIsActive: l.user.isActive,
+        userId: l.userId,
+        schoolName: l.school?.schoolName ?? l.schoolName,
+        schoolIsVerified: l.school?.isVerified ?? false,
+        userPreviousLoans: 0,
+        loanAmount: Number(l.loanAmount),
+        repaymentMonths: l.repaymentMonths,
+        status: l.status,
+        applicationDate: l.applicationDate,
+        createdAt: l.createdAt,
+      })),
+      pagination: {
+        page, limit, total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrevious: page > 1,
+      },
+    };
+  }
+
+  /**
+   * Get single teacher details (user + teacherProfile + loans)
+   */
+  async getTeacherDetails(userId: string): Promise<any> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { teacherProfile: true },
+    });
+
+    if (!user) throw new Error('Teacher not found');
+
+    const loans = await prisma.loan.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        installments: { orderBy: { installmentNumber: 'asc' } },
+        documents: { select: { id: true, documentType: true, fileName: true, fileUrl: true, fileSize: true } },
+        school: { select: { schoolName: true } },
+      },
+    });
+
+    return {
+      user: {
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+      },
+      teacherProfile: user.teacherProfile,
+      loans: loans.map((l: any) => ({
+        id: l.id,
+        loanNumber: l.loanNumber,
+        loanAmount: Number(l.loanAmount),
+        totalAmount: Number(l.totalAmount),
+        amountRepaid: Number(l.amountRepaid),
+        outstandingBalance: Number(l.outstandingBalance),
+        status: l.status,
+        applicationDate: l.applicationDate,
+        disbursementDate: l.disbursementDate,
+        schoolName: l.school?.schoolName ?? l.schoolName,
+        installments: l.installments.map((i: any) => ({ ...i, amount: Number(i.amount) })),
+        documents: l.documents,
+      })),
+    };
+  }
+
+  /**
+   * Get users with TEACHER role and their profiles
+   */
+  async getTeacherUsers(page: number, limit: number): Promise<any> {
+    const skip = (page - 1) * limit;
+    const where = { role: UserRole.TEACHER };
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: { teacherProfile: true },
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return {
+      teachers: users.map((u: any) => ({
+        id: u.id,
+        fullName: u.fullName,
+        email: u.email,
+        phone: u.phone,
+        isActive: u.isActive,
+        createdAt: u.createdAt,
+        staffId: u.teacherProfile?.staffId ?? null,
+        subject: u.teacherProfile?.subject ?? null,
+        schoolName: u.teacherProfile?.schoolName ?? null,
+        employmentStatus: u.teacherProfile?.employmentStatus ?? null,
+      })),
+      pagination: {
+        page, limit, total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrevious: page > 1,
+      },
+    };
   }
 }
