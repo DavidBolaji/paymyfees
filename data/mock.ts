@@ -240,12 +240,11 @@ export const schoolDetailsData = {
 
 export const EMPLOYMENT_STATUS_OPTIONS = [
   { value: '', label: 'Select status' },
-  { value: 'employed_full_time', label: 'Employed (Full-time)' },
-  { value: 'employed_part_time', label: 'Employed (Part-time)' },
-  { value: 'self_employed', label: 'Self-employed' },
-  { value: 'student', label: 'Student' },
-  { value: 'unemployed', label: 'Unemployed' },
-  { value: 'freelancer', label: 'Freelancer / Contractor' },
+  { value: 'Employed (Full-time)', label: 'Employed (Full-time)' },
+  { value: 'Employed (Part-time)', label: 'Employed (Part-time)' },
+  { value: 'Self-Employed', label: 'Self-Employed' },
+  { value: 'Student', label: 'Student' },
+  { value: 'Unemployed', label: 'Unemployed' },
 ];
 
 export const COUNTRY_OPTIONS = [

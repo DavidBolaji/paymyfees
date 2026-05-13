@@ -1330,7 +1330,7 @@ export class AdminRepository implements IAdminRepository {
    * Request additional documents from a school
    */
   async requestAdditionalDocuments(schoolId: string, adminId: string, data: any): Promise<any> {
-    const { documents, instructions, channels = [] } = data;
+    const { documents, instructions, channels = [], targetUserId, targetUserEmail, targetUserName } = data;
     const message = `Additional documents required: ${documents}. ${instructions ? `Instructions: ${instructions}` : 'Please submit the requested documents promptly.'}`;
 
     // Always create a school support message (visible in the school dashboard)
@@ -1338,18 +1338,27 @@ export class AdminRepository implements IAdminRepository {
       data: { schoolId, message, priority: 'high', isRead: false },
     });
 
-    // Look up the school's owner user for targeted notifications
-    const school = await prisma.schoolProfile.findUnique({
-      where: { id: schoolId },
-      select: { userId: true, user: { select: { email: true, fullName: true } } },
-    });
+    // Prefer the explicitly passed student (loan applicant); fall back to school owner
+    let recipientId: string | null = targetUserId || null;
+    let recipientEmail: string | null = targetUserEmail || null;
+    let recipientName: string = targetUserName || 'User';
 
-    if (school?.userId) {
+    if (!recipientId || !recipientEmail) {
+      const school = await prisma.schoolProfile.findUnique({
+        where: { id: schoolId },
+        select: { userId: true, user: { select: { email: true, fullName: true } } },
+      });
+      recipientId = recipientId || school?.userId || null;
+      recipientEmail = recipientEmail || school?.user?.email || null;
+      recipientName = recipientName !== 'User' ? recipientName : (school?.user?.fullName || 'User');
+    }
+
+    if (recipientId) {
       // In-app notification
       if (channels.includes('in_app')) {
         await prisma.notification.create({
           data: {
-            userId: school.userId,
+            userId: recipientId,
             type: NotificationType.INFO,
             title: 'Additional Documents Required',
             message,
@@ -1359,11 +1368,11 @@ export class AdminRepository implements IAdminRepository {
       }
 
       // Email notification
-      if (channels.includes('email') && school.user?.email) {
+      if (channels.includes('email') && recipientEmail) {
         const mailService = new MailService();
         await mailService.sendDocumentRequestEmail(
-          school.user.email,
-          school.user.fullName || 'User',
+          recipientEmail,
+          recipientName,
           documents,
           instructions || '',
         ).catch(err => console.error('Document request email failed:', err));
@@ -1376,7 +1385,7 @@ export class AdminRepository implements IAdminRepository {
         action: 'REQUEST_DOCUMENTS',
         entity: 'school',
         entityId: schoolId,
-        newValues: { documents, instructions, channels },
+        newValues: { documents, instructions, channels, targetUserId },
       },
     });
 

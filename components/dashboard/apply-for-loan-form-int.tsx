@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormInput, FormSelect } from '@/components/ui/form-input';
-import { EMPLOYMENT_STATUS_OPTIONS, PROGRAM_OPTIONS, COUNTRIES, validateLoanApplication, type LoanApplicationIntFormData } from '@/data';
+import { EMPLOYMENT_STATUS_OPTIONS, PROGRAM_OPTIONS, COUNTRIES, validateLoanIntApplication, type LoanApplicationIntFormData } from '@/data';
 import { applyForLoan } from '@/src/utils/loan-api';
 import { LoanAgreementModal, type AgreementMeta, type LoanAgreementSummary } from './loan-agreement-modal';
 import useAuthStore from '@/src/authStore';
@@ -180,7 +180,7 @@ export function ApplyForLoanFormInt() {
   };
 
   const validateForm = (): boolean => {
-    const result = validateLoanApplication(formData);
+    const result = validateLoanIntApplication(formData);
 
     if (!result.isValid) {
       const formErrors: FormErrors = {};
@@ -280,6 +280,11 @@ export function ApplyForLoanFormInt() {
         uploadedFiles: normalizedFiles,
         residencyStatus: ResidencyStatus.INTERNATIONAL,
         agreementMeta: meta,
+        // Strip optional enum fields if empty so Zod receives undefined not ""
+        paymentFrequency: formData.paymentFrequency || undefined,
+        companyName: formData.companyName || undefined,
+        jobTitleRole: formData.jobTitleRole || undefined,
+        monthlyNetIncome: formData.monthlyNetIncome || undefined,
       };
 
       const result = await applyForLoan(payload);

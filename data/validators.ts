@@ -108,39 +108,55 @@ export const validateLoanApplication = (data: Partial<LoanApplicationFormData>):
   };
 };
 
-export const validateLoanIntApplication = (data: Partial<LoanApplicationFormData>): ValidationResult => {
+export const validateLoanIntApplication = (data: Partial<LoanApplicationIntFormData>): ValidationResult => {
   const errors: Record<string, string> = {};
 
-  // Validate loan amount
   if (!data.loanAmount || data.loanAmount < 1000) {
     errors.loanAmount = 'Minimum loan amount is ₦1,000';
   } else if (data.loanAmount > 10000000) {
     errors.loanAmount = 'Maximum loan amount is ₦10,000,000';
   }
 
-  // Validate school name
   if (!data.schoolName || data.schoolName.trim().length < 2) {
     errors.schoolName = 'School name is required';
-  } else if (data.schoolName.length > 100) {
-    errors.schoolName = 'School name is too long';
   }
 
-  // Validate academic session
   if (!data.academicSession) {
     errors.academicSession = 'Academic session is required';
   }
 
-  // Validate term
-  if (!data.term) {
-    errors.term = 'Term is required';
+  if (!data.countryOfStudy) {
+    errors.countryOfStudy = 'Country of study is required';
   }
 
-  // Validate uploaded files
+  if (!data.programCourseOfStudy) {
+    errors.programCourseOfStudy = 'Program/Course of study is required';
+  }
+
+  if (!data.employmentStatus) {
+    errors.employmentStatus = 'Employment status is required';
+  }
+
+  if (!data.accountHolderName || data.accountHolderName.trim().length < 2) {
+    errors.accountHolderName = 'Account holder name is required';
+  }
+
+  if (!data.bankName || data.bankName.trim().length < 2) {
+    errors.bankName = 'Bank name is required';
+  }
+
+  if (!data.accountNumber || data.accountNumber.trim().length < 10) {
+    errors.accountNumber = 'Account number must be at least 10 digits';
+  }
+
+  if (!data.countryOfBankAccount) {
+    errors.countryOfBankAccount = 'Country of bank account is required';
+  }
+
   if (!data.uploadedFiles || data.uploadedFiles.length === 0) {
     errors.uploadedFiles = 'At least one document is required';
   }
 
-  // Validate consents
   if (!data.consents?.schoolDetails) {
     errors['consents.schoolDetails'] = 'You must confirm school details are correct';
   }

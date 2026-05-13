@@ -169,10 +169,14 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
         documents: data.documents,
         instructions: data.instructions,
         channels: data.channels,
+        // Pass student info so backend sends to the loan applicant
+        targetUserId: detail.userId,
+        targetUserEmail: detail.userEmail,
+        targetUserName: detail.userName,
       }).then(r => r.json());
       if (res.success !== false) {
         setShowReqDocs(false);
-        setSuccessMessage({ title: 'Documents Requested', message: 'A document request has been sent to the school.' });
+        setSuccessMessage({ title: 'Documents Requested', message: 'A document request has been sent to the applicant.' });
         setShowSuccess(true);
       }
     } catch (e) { console.error(e); } finally { setReqDocsLoading(false); }
