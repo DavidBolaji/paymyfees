@@ -127,7 +127,7 @@ export function LoanAgreementModal({ isOpen, onClose, onAccept, summary, isSubmi
   const [step, setStep] = useState(0);
   const [agreementScrolled, setAgreementScrolled] = useState(false);
   const [accepted, setAccepted] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [, setSubmitError] = useState<string | null>(null);
 
   const agreementRef = useRef<HTMLDivElement>(null);
   const today = new Date();
