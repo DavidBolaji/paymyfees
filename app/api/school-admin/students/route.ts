@@ -10,5 +10,5 @@ export const GET = asyncHandler(async (req: Request): Promise<NextResponse> => {
   if (!authResult.success) return authResult.response!;
   const roleResult = await schoolAdminAuthMiddleware(req);
   if (!roleResult.success) return roleResult.response!;
-  return await controller.getStudents(req);
+  return await controller.getSchoolUserList(req);
 });

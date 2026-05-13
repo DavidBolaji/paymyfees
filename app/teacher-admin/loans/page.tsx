@@ -81,6 +81,7 @@ export default function TeacherAdminLoansPage() {
         loan={selectedLoan}
         onRefresh={() => fetchData()}
         userLabel="Teacher Information"
+        loansBasePath="/api/teacher-admin/loans"
       />
     </div>
   );

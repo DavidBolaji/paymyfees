@@ -142,6 +142,7 @@ export default function SchoolAdminDashboard() {
       <LoanDetailDrawer
         isOpen={drawerOpen}
         onClose={() => { setDrawerOpen(false); setSelectedLoan(null); }}
+        loansBasePath="/api/school-admin/loans"
         loan={selectedLoan}
         onRefresh={fetchData}
       />

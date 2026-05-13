@@ -13,6 +13,7 @@ interface TicketDrawerProps {
   onClose: () => void;
   ticket: any;
   onReplySent?: () => void;
+  supportBasePath?: string;
 }
 
 function fmt(d: string | Date | null | undefined) {
@@ -23,7 +24,7 @@ function fmt(d: string | Date | null | undefined) {
   }).replace(',', ' •');
 }
 
-export function TicketDrawer({ isOpen, onClose, ticket, onReplySent }: TicketDrawerProps) {
+export function TicketDrawer({ isOpen, onClose, ticket, onReplySent, supportBasePath = '/api/admin/support' }: TicketDrawerProps) {
   const router = useRouter();
   const [detail, setDetail] = useState<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -43,7 +44,7 @@ export function TicketDrawer({ isOpen, onClose, ticket, onReplySent }: TicketDra
   useEffect(() => {
     if (!isOpen || !ticket?.id) return;
     setLoadingDetail(true);
-    api.get(`/api/admin/support/${ticket.id}`)
+    api.get(`${supportBasePath}/${ticket.id}`)
       .then(r => r.json())
       .then((d: any) => { if (d.success) setDetail(d.data); })
       .catch(console.error)
@@ -54,7 +55,7 @@ export function TicketDrawer({ isOpen, onClose, ticket, onReplySent }: TicketDra
     if (!detail?.id) return;
     try {
       setClosing(true);
-      const res = await (await api.patch(`/api/admin/support/${detail.id}/status`, { status: 'CLOSED' })).json();
+      const res = await (await api.patch(`${supportBasePath}/${detail.id}/status`, { status: 'CLOSED' })).json();
       if (res.success !== false) {
         setSuccessMsg({ title: 'Ticket Closed', message: 'The support ticket has been successfully closed.' });
         onReplySent?.();
@@ -71,7 +72,7 @@ export function TicketDrawer({ isOpen, onClose, ticket, onReplySent }: TicketDra
     if (!detail?.id) return;
     try {
       setResolving(true);
-      const res = await (await api.patch(`/api/admin/support/${detail.id}/status`, { status: 'RESOLVED' })).json();
+      const res = await (await api.patch(`${supportBasePath}/${detail.id}/status`, { status: 'RESOLVED' })).json();
       if (res.success !== false) {
         setSuccessMsg({ title: 'Ticket Resolved', message: 'The support ticket has been marked as resolved.' });
         setDetail((prev: any) => prev ? { ...prev, status: 'RESOLVED' } : prev);
@@ -89,11 +90,11 @@ export function TicketDrawer({ isOpen, onClose, ticket, onReplySent }: TicketDra
     if (!note.trim() || !detail?.id) return;
     try {
       setSending(true);
-      const data = await (await api.post(`/api/admin/support/${detail.id}/respond`, { message: note.trim() })).json();
+      const data = await (await api.post(`${supportBasePath}/${detail.id}/respond`, { message: note.trim() })).json();
       if (data.success) {
         setNote('');
         // Re-fetch ticket detail to show the new message in the thread
-        const refreshed = await api.get(`/api/admin/support/${detail.id}`).then(r => r.json()).catch(() => null);
+        const refreshed = await api.get(`${supportBasePath}/${detail.id}`).then(r => r.json()).catch(() => null);
         if (refreshed?.success) setDetail(refreshed.data);
         onReplySent?.();
       }

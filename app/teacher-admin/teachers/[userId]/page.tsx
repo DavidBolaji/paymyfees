@@ -219,6 +219,7 @@ export default function TeacherProfilePage() {
         loan={selectedLoan}
         onRefresh={fetchTeacher}
         userLabel="Teacher Information"
+        loansBasePath="/api/teacher-admin/loans"
       />
     </>
   );

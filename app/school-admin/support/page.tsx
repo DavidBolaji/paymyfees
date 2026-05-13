@@ -134,6 +134,7 @@ export default function SchoolAdminSupportPage() {
         onClose={() => setDrawerOpen(false)}
         ticket={selectedTicket}
         onReplySent={() => { setLoaded({}); fetchTab(activeTab); }}
+        supportBasePath="/api/school-admin/support"
       />
     </div>
   );

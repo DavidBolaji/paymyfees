@@ -45,6 +45,13 @@ export interface IAdminService {
   getTeacherLoans(page: number, limit: number, statuses?: string[]): Promise<any>;
   getTeacherUsers(page: number, limit: number): Promise<any>;
   getTeacherDetails(userId: string): Promise<any>;
+  getSchoolLoans(page: number, limit: number, statuses?: string[]): Promise<any>;
+  getSchoolUserList(page: number, limit: number, status?: string): Promise<any>;
+  getSchoolUserDetails(userId: string): Promise<any>;
+  getSchoolSupportTickets(page: number, limit: number, status?: string): Promise<any>;
+  getSchoolAdminDashboardStats(): Promise<any>;
+  getTeacherSupportTickets(page: number, limit: number, status?: string): Promise<any>;
+  getTeacherAdminDashboardStats(): Promise<any>;
 }
 
 /**
@@ -292,5 +299,33 @@ export class AdminService implements IAdminService {
 
   async getTeacherDetails(userId: string): Promise<any> {
     return await this.adminRepository.getTeacherDetails(userId);
+  }
+
+  async getSchoolLoans(page: number = 1, limit: number = 10, statuses?: string[]): Promise<any> {
+    return await this.adminRepository.getSchoolLoans(page, limit, statuses);
+  }
+
+  async getSchoolUserList(page: number = 1, limit: number = 10, status?: string): Promise<any> {
+    return await this.adminRepository.getSchoolUserList(page, limit, status);
+  }
+
+  async getSchoolUserDetails(userId: string): Promise<any> {
+    return await this.adminRepository.getSchoolUserDetails(userId);
+  }
+
+  async getSchoolSupportTickets(page: number = 1, limit: number = 10, status?: string): Promise<any> {
+    return await this.adminRepository.getSchoolSupportTickets(page, limit, status);
+  }
+
+  async getSchoolAdminDashboardStats(): Promise<any> {
+    return await this.adminRepository.getSchoolAdminDashboardStats();
+  }
+
+  async getTeacherSupportTickets(page: number = 1, limit: number = 10, status?: string): Promise<any> {
+    return await this.adminRepository.getTeacherSupportTickets(page, limit, status);
+  }
+
+  async getTeacherAdminDashboardStats(): Promise<any> {
+    return await this.adminRepository.getTeacherAdminDashboardStats();
   }
 }

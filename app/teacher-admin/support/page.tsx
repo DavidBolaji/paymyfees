@@ -46,7 +46,7 @@ export default function TeacherAdminSupportPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
-    api.get('/api/admin/dashboard')
+    api.get('/api/teacher-admin/dashboard')
       .then(r => r.json())
       .then(d => { if (d.success) setStats(d.data); })
       .catch(console.error);
@@ -56,7 +56,7 @@ export default function TeacherAdminSupportPage() {
     setLoading(prev => ({ ...prev, [tab]: true }));
     try {
       const status = tab === 'all' ? '' : `&status=${tab}`;
-      const res = await api.get(`/api/admin/support?page=${page}&limit=10${status}`);
+      const res = await api.get(`/api/teacher-admin/support?page=${page}&limit=10${status}`);
       const data = await res.json();
       if (data.success) {
         setTickets(prev => ({ ...prev, [tab]: data.data || [] }));
@@ -151,6 +151,7 @@ export default function TeacherAdminSupportPage() {
         onClose={() => setDrawerOpen(false)}
         ticket={selectedTicket}
         onReplySent={() => { setLoaded({}); fetchTab(activeTab); }}
+        supportBasePath="/api/teacher-admin/support"
       />
     </div>
   );

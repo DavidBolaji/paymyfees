@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server';
 import { AdminController } from '@/src/controllers/AdminController';
-import { authMiddleware, schoolAdminAuthMiddleware } from '@/src/middleware/authMiddleware';
+import { authMiddleware, teacherAdminAuthMiddleware } from '@/src/middleware/authMiddleware';
 import { asyncHandler } from '@/src/middleware/errorHandler';
 
 const controller = new AdminController();
 
 export const GET = asyncHandler(async (
   req: Request,
-  context?: { params: Promise<{ userId: string }> }
+  context?: { params: Promise<{ ticketId: string }> }
 ): Promise<NextResponse> => {
   const authResult = await authMiddleware(req);
   if (!authResult.success) return authResult.response!;
-  const roleResult = await schoolAdminAuthMiddleware(req);
+  const roleResult = await teacherAdminAuthMiddleware(req);
   if (!roleResult.success) return roleResult.response!;
-  const { userId } = await context!.params;
-  return await controller.getSchoolUserDetails(req, userId);
+  const { ticketId } = await context!.params;
+  return await controller.getTicketDetails(req, ticketId);
 });

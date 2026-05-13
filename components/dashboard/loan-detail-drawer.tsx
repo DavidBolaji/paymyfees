@@ -16,6 +16,7 @@ interface LoanDetailDrawerProps {
   onReject?: () => void;
   onRefresh?: () => void;
   userLabel?: string;
+  loansBasePath?: string;
 }
 
 function fmt(n: number) {
@@ -83,7 +84,7 @@ function Row({ label, value, valueClass }: { label: string; value: string; value
   );
 }
 
-export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, onRefresh, userLabel = 'Student Information' }: LoanDetailDrawerProps) {
+export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, onRefresh, userLabel = 'Student Information', loansBasePath = '/api/admin/loans' }: LoanDetailDrawerProps) {
   const [detail, setDetail] = useState<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [note, setNote] = useState('');
@@ -104,7 +105,7 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
   useEffect(() => {
     if (!isOpen || !loan?.id) return;
     setLoadingDetail(true);
-    api.get(`/api/admin/loans/${loan.id}`)
+    api.get(`${loansBasePath}/${loan.id}`)
       .then(r => r.json())
       .then((d: any) => { if (d.success) setDetail(d.data); })
       .catch(console.error)
@@ -115,7 +116,7 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
     if (!detail?.id) return;
     try {
       setApproving(true);
-      const res = await api.patch(`/api/admin/loans/${detail.id}/status`, {
+      const res = await api.patch(`${loansBasePath}/${detail.id}/status`, {
         status: 'APPROVED',
         reason: note.trim() || undefined,
       }).then(r => r.json());
@@ -133,7 +134,7 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
     if (!detail?.id) return;
     try {
       setDisbursing(true);
-      const res = await api.post(`/api/admin/loans/${detail.id}/disburse`)
+      const res = await api.post(`${loansBasePath}/${detail.id}/disburse`)
         .then(r => r.json());
       if (res.success) {
         setSuccessMessage({ title: 'Loan Disbursed', message: 'Funds have been successfully disbursed to the school.' });
@@ -148,7 +149,7 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
     if (!detail?.id) return;
     try {
       setRejecting(true);
-      const res = await api.patch(`/api/admin/loans/${detail.id}/status`, {
+      const res = await api.patch(`${loansBasePath}/${detail.id}/status`, {
         status: 'REJECTED',
         reason: note.trim() || 'Rejected by admin',
       }).then(r => r.json());

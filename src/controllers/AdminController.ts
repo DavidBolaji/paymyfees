@@ -561,4 +561,68 @@ export class AdminController {
     const result = await this.adminService.getTeacherDetails(userId);
     return NextResponse.json({ success: true, data: result }, { status: 200 });
   }
+
+  async getSchoolLoans(req: Request): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const statusParam = searchParams.get('status') || undefined;
+    const statuses = statusParam ? statusParam.split(',').map(s => s.trim()) : undefined;
+    const result = await this.adminService.getSchoolLoans(page, limit, statuses);
+    return NextResponse.json(
+      { success: true, data: result.loans, metadata: { pagination: result.pagination } },
+      { status: 200 }
+    );
+  }
+
+  async getSchoolUserList(req: Request): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const status = searchParams.get('status') || undefined;
+    const result = await this.adminService.getSchoolUserList(page, limit, status);
+    return NextResponse.json(
+      { success: true, data: result.students, metadata: { pagination: result.pagination } },
+      { status: 200 }
+    );
+  }
+
+  async getSchoolUserDetails(_req: Request, userId: string): Promise<NextResponse> {
+    const result = await this.adminService.getSchoolUserDetails(userId);
+    return NextResponse.json({ success: true, data: result }, { status: 200 });
+  }
+
+  async getSchoolSupportTickets(req: Request): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const status = searchParams.get('status') || undefined;
+    const result = await this.adminService.getSchoolSupportTickets(page, limit, status);
+    return NextResponse.json(
+      { success: true, data: result.tickets, metadata: { pagination: result.pagination } },
+      { status: 200 }
+    );
+  }
+
+  async getSchoolAdminDashboardStats(_req: Request): Promise<NextResponse> {
+    const result = await this.adminService.getSchoolAdminDashboardStats();
+    return NextResponse.json({ success: true, data: result }, { status: 200 });
+  }
+
+  async getTeacherSupportTickets(req: Request): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const status = searchParams.get('status') || undefined;
+    const result = await this.adminService.getTeacherSupportTickets(page, limit, status);
+    return NextResponse.json(
+      { success: true, data: result.tickets, metadata: { pagination: result.pagination } },
+      { status: 200 }
+    );
+  }
+
+  async getTeacherAdminDashboardStats(_req: Request): Promise<NextResponse> {
+    const result = await this.adminService.getTeacherAdminDashboardStats();
+    return NextResponse.json({ success: true, data: result }, { status: 200 });
+  }
 }

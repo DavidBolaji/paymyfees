@@ -188,6 +188,7 @@ export default function SchoolAdminLoansPage() {
       <LoanDetailDrawer
         isOpen={showDrawer}
         onClose={() => { setShowDrawer(false); setSelectedLoan(null); }}
+        loansBasePath="/api/school-admin/loans"
         loan={selectedLoan}
       />
     </div>
