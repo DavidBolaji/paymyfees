@@ -62,7 +62,7 @@ export default function RegisterPage() {
       <HomeHeader />
       <div className="flex flex-col items-center">
         <div className="pt-40" />
-        <div className="w-full max-w-md p-6 border border-[#00296B] bg-white rounded-lg mb-10">
+        <div className="w-[480px] p-6 border border-[#00296B] bg-white rounded-lg mb-10">
           <h1 className="text-[1.6875rem] font-semibold text-center mb-1">Sign Up</h1>
           <p className="text-center font-semibold text-sm text-[#525252] mb-6">
             Finance Your Education, Stress Free
