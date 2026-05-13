@@ -14,5 +14,5 @@ export const GET = asyncHandler(async (
   const roleResult = await schoolAdminAuthMiddleware(req);
   if (!roleResult.success) return roleResult.response!;
   const { schoolId } = await context!.params;
-  return await controller.getSchoolById(req, schoolId);
+  return await controller.getSchoolDetails(req, schoolId);
 });

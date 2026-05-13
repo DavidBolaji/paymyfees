@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { StatCard } from '@/components/dashboard/stat-card';
 import { StatCardSkeleton } from '@/components/dashboard/stat-card-skeleton';
 import { DataTable } from '@/components/dashboard/data-table';
@@ -30,7 +29,6 @@ function fmt(d: any) {
 }
 
 export default function SchoolAdminDashboard() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [recentLoans, setRecentLoans] = useState<any[]>([]);
