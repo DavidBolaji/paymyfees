@@ -7,8 +7,8 @@ import { SchoolVerificationForm } from "./school-verification-form";
 export default function RegistrationModal({
     isOpen,
     onClose,
-
-}: {isOpen: boolean; onClose: () => void}) {
+    onSuccess,
+}: {isOpen: boolean; onClose: () => void; onSuccess?: () => void}) {
 
     if (!isOpen) return null;
 
@@ -41,7 +41,7 @@ export default function RegistrationModal({
 
                 {/* Content */}
                 <div className="space-y-5">
-                    <SchoolVerificationForm />
+                    <SchoolVerificationForm onSuccess={() => { onSuccess?.(); onClose(); }} />
                 </div>
             </div>
         </div>

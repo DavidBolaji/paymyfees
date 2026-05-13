@@ -155,7 +155,7 @@ export default function AdminDashboard() {
           title="Recently Active Students"
           columns={RECENTLY_ACTIVE_COLUMNS}
           data={formattedRecentlyActive}
-          viewAllHref="/admin/students/recently-active"
+          // viewAllHref="/admin/students/recently-active"
           paginationInfo={activePagination}
           onPageChange={handleActivePageChange}
           isLoading={loading}

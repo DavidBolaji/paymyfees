@@ -522,6 +522,10 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
       <RegistrationModal
         isOpen={showRegisterModal}
         onClose={() => setShowRegisterModal(false)}
+        onSuccess={() => {
+          setShowRegisterModal(false);
+          setSuccessModal({ open: true, title: 'School Registered', message: 'Your school has been registered successfully.' });
+        }}
       />
       <SuccessModal
         isOpen={successModal.open}

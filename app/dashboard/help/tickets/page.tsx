@@ -65,7 +65,7 @@ export default function MyTicketsPage() {
   }, []);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
+    <div className="">
       {/* Header */}
       <button
         onClick={() => router.back()}
@@ -113,7 +113,7 @@ export default function MyTicketsPage() {
 
       {/* Ticket Detail Modal */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-[#292929CC]">
+        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4 bg-[#292929CC]">
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col shadow-2xl">
             {/* Modal Header */}
             <div className="flex justify-between items-center px-5 py-4 border-b border-gray-200 shrink-0">
@@ -134,44 +134,60 @@ export default function MyTicketsPage() {
 
             {/* Conversation */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-              {/* Original issue */}
-              <div className="flex flex-col items-start gap-1">
-                <div className="bg-[#f3f4f6] text-[#191919] rounded-xl rounded-tl-none px-4 py-2.5 text-sm max-w-[85%] whitespace-pre-wrap">
-                  {selected.description}
-                </div>
-                <span className="text-[11px] text-gray-400 px-1">
-                  You • {fmt(selected.createdAt)}
-                </span>
-              </div>
-
               {detailLoading ? (
-                <div className="flex justify-center py-6">
-                  <Loader2 className="w-6 h-6 text-[#00296B] animate-spin" />
-                </div>
-              ) : (
-                selected.messages?.map(msg => {
-                  const isAdmin = msg.senderRole === 'ADMIN';
-                  return (
-                    <div key={msg.id} className={`flex flex-col gap-1 ${isAdmin ? 'items-end' : 'items-start'}`}>
-                      <div className={`px-4 py-2.5 rounded-xl text-sm max-w-[85%] whitespace-pre-wrap ${
-                        isAdmin
-                          ? 'bg-[#00296B] text-white rounded-tr-none'
-                          : 'bg-[#f3f4f6] text-[#191919] rounded-tl-none'
-                      }`}>
-                        {msg.message}
-                      </div>
-                      <span className="text-[11px] text-gray-400 px-1">
-                        {isAdmin ? 'Support Team' : 'You'} • {fmt(msg.createdAt)}
-                      </span>
+                <>
+                  {/* Show description while messages are loading */}
+                  <div className="flex flex-col items-start gap-1">
+                    <div className="bg-[#f3f4f6] text-[#191919] rounded-xl rounded-tl-none px-4 py-2.5 text-sm max-w-[85%] whitespace-pre-wrap">
+                      {selected.description}
                     </div>
-                  );
-                })
-              )}
+                    <span className="text-[11px] text-gray-400 px-1">You • {fmt(selected.createdAt)}</span>
+                  </div>
+                  <div className="flex justify-center py-6">
+                    <Loader2 className="w-6 h-6 text-[#00296B] animate-spin" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Deduplicate: show description bubble only if it's not already the first message */}
+                  {(() => {
+                    const msgs = selected.messages ?? [];
+                    const firstUserMsg = msgs.find(m => m.senderRole !== 'ADMIN');
+                    const descriptionInMessages = firstUserMsg?.message === selected.description;
+                    return !descriptionInMessages && (
+                      <div className="flex flex-col items-start gap-1">
+                        <div className="bg-[#f3f4f6] text-[#191919] rounded-xl rounded-tl-none px-4 py-2.5 text-sm max-w-[85%] whitespace-pre-wrap">
+                          {selected.description}
+                        </div>
+                        <span className="text-[11px] text-gray-400 px-1">You • {fmt(selected.createdAt)}</span>
+                      </div>
+                    );
+                  })()}
 
-              {!detailLoading && (!selected.messages || selected.messages.length === 0) && (
-                <p className="text-center text-sm text-gray-400 py-4">
-                  No responses yet. Our support team will reply soon.
-                </p>
+                  {selected.messages?.map(msg => {
+                    const isAdmin = msg.senderRole === 'ADMIN';
+                    return (
+                      <div key={msg.id} className={`flex flex-col gap-1 ${isAdmin ? 'items-end' : 'items-start'}`}>
+                        <div className={`px-4 py-2.5 rounded-xl text-sm max-w-[85%] whitespace-pre-wrap ${
+                          isAdmin
+                            ? 'bg-[#00296B] text-white rounded-tr-none'
+                            : 'bg-[#f3f4f6] text-[#191919] rounded-tl-none'
+                        }`}>
+                          {msg.message}
+                        </div>
+                        <span className="text-[11px] text-gray-400 px-1">
+                          {isAdmin ? 'Support Team' : 'You'} • {fmt(msg.createdAt)}
+                        </span>
+                      </div>
+                    );
+                  })}
+
+                  {(!selected.messages || selected.messages.length === 0) && (
+                    <p className="text-center text-sm text-gray-400 py-4">
+                      No responses yet. Our support team will reply soon.
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </div>

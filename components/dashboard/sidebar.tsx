@@ -86,7 +86,7 @@ const adminNavigationGroups: NavGroup[] = [
     title: 'STUDENTS',
     items: [
       { icon: GraduationCap, label: 'Students Directory', href: '/admin/students' },
-      { icon: Users, label: 'Parents Directory', href: '/admin/parents' },
+      // { icon: Users, label: 'Parents Direcstory', href: '/admin/parents' },
       { icon: Building2, label: 'School Verification', href: '/admin/schools' },
     ]
   },

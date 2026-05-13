@@ -31,7 +31,7 @@ export const academicSessionOptions = [
     { value: '2023/2024', label: '2023/2024' }
 ];
 
-export function SchoolVerificationForm() {
+export function SchoolVerificationForm({ onSuccess }: { onSuccess?: () => void }) {
     const { registerSchool } = useSchoolProfile();
     const fileUploadRef = useRef<any>(null);
     // Form state
@@ -178,12 +178,7 @@ export function SchoolVerificationForm() {
             }
 
             setUploadProgress('');
-            alert('School registered successfully!');
-
-
-            // Handle successful submission
-            console.log('Form submitted successfully:', formData);
-            alert('school registration completed successfully!');
+            onSuccess?.();
 
             // Reset form
             setFormData({

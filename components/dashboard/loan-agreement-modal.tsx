@@ -176,14 +176,14 @@ export function LoanAgreementModal({ isOpen, onClose, onAccept, summary, isSubmi
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 12 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 12 }}
         transition={{ duration: 0.18 }}
-        className="bg-white rounded-2xl shadow-2xl border border-[#F2F2F2] flex flex-col max-h-[92vh]"
-        style={{ width: '644px', maxWidth: '90vw', padding: '23px 15px 20px' }}
+        className="bg-white rounded-2xl shadow-2xl border border-[#F2F2F2] flex flex-col"
+        style={{ width: '644px', maxWidth: '90vw', height: '90vh', padding: '23px 15px 20px' }}
       >
         {/* ── Header — matches Contact Support ── */}
         <div className="relative flex items-center justify-center mb-4 flex-shrink-0">

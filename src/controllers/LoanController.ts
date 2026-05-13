@@ -491,8 +491,10 @@ private transformToPaymentPlan(loan: any): any {
     : 0;
 
   // Determine current status
-  let currentStatus: 'active' | 'overdue' | 'completed' = 'active';
-  if (loan.status === 'COMPLETED') {
+  let currentStatus: 'active' | 'overdue' | 'completed' | 'rejected' = 'active';
+  if (loan.status === 'REJECTED') {
+    currentStatus = 'rejected';
+  } else if (loan.status === 'COMPLETED') {
     currentStatus = 'completed';
   } else if (overdueInstallments.length > 0) {
     currentStatus = 'overdue';

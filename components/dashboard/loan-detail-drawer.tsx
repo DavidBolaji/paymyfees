@@ -231,6 +231,8 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
                       </p>
                       <div className="space-y-4">
                         <Row label="Student Name:" value={l?.userName || '—'} valueClass="text-[#00296B] font-semibold" />
+                        <Row label="Email:" value={l?.userEmail || '—'} />
+                        <Row label="Phone:" value={l?.userPhone || '—'} />
                         <Row label="School:" value={l?.schoolName || '—'} />
                         <Row label="Program / Level:" value={l?.programCourseOfStudy || l?.academicSession || '—'} />
                         <Row label="Country:" value={l?.userCountry || '—'} />

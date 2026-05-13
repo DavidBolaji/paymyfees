@@ -4,8 +4,9 @@
  */
 
 import { prisma } from '@/src/database/prisma';
-import { Installment, LoanStatus, PaymentStatus, SupportTicketStatus, UserRole, VerificationStatus } from '@prisma/client';
+import { Installment, LoanStatus, NotificationType, PaymentStatus, SupportTicketStatus, UserRole, VerificationStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { MailService } from '@/src/services/MailService';
 
 export interface IAdminRepository {
   getAnalytics(): Promise<any>;
@@ -259,7 +260,7 @@ export class AdminRepository implements IAdminRepository {
       updateData.rejectionReason = reason;
     }
 
-    const [loan] = await Promise.all([
+    const ops: Promise<any>[] = [
       prisma.loan.update({
         where: { id: loanId },
         data: updateData,
@@ -280,7 +281,14 @@ export class AdminRepository implements IAdminRepository {
           reason
         }
       })
-    ]);
+    ];
+
+    // Delete all installments when a loan is rejected
+    if (status === LoanStatus.REJECTED) {
+      ops.push(prisma.installment.deleteMany({ where: { loanId } }));
+    }
+
+    const [loan] = await Promise.all(ops);
 
     return loan;
   }
@@ -1322,16 +1330,45 @@ export class AdminRepository implements IAdminRepository {
    * Request additional documents from a school
    */
   async requestAdditionalDocuments(schoolId: string, adminId: string, data: any): Promise<any> {
-    const { documents, instructions, channels } = data;
+    const { documents, instructions, channels = [] } = data;
+    const message = `Additional documents required: ${documents}. ${instructions ? `Instructions: ${instructions}` : 'Please submit the requested documents promptly.'}`;
 
+    // Always create a school support message (visible in the school dashboard)
     await prisma.schoolSupportMessage.create({
-      data: {
-        schoolId,
-        message: `Additional documents required: ${documents}. Instructions: ${instructions || 'Please submit the requested documents promptly.'}`,
-        priority: 'high',
-        isRead: false
-      }
+      data: { schoolId, message, priority: 'high', isRead: false },
     });
+
+    // Look up the school's owner user for targeted notifications
+    const school = await prisma.schoolProfile.findUnique({
+      where: { id: schoolId },
+      select: { userId: true, user: { select: { email: true, fullName: true } } },
+    });
+
+    if (school?.userId) {
+      // In-app notification
+      if (channels.includes('in_app')) {
+        await prisma.notification.create({
+          data: {
+            userId: school.userId,
+            type: NotificationType.INFO,
+            title: 'Additional Documents Required',
+            message,
+            isRead: false,
+          },
+        });
+      }
+
+      // Email notification
+      if (channels.includes('email') && school.user?.email) {
+        const mailService = new MailService();
+        await mailService.sendDocumentRequestEmail(
+          school.user.email,
+          school.user.fullName || 'User',
+          documents,
+          instructions || '',
+        ).catch(err => console.error('Document request email failed:', err));
+      }
+    }
 
     await prisma.auditLog.create({
       data: {
@@ -1339,8 +1376,8 @@ export class AdminRepository implements IAdminRepository {
         action: 'REQUEST_DOCUMENTS',
         entity: 'school',
         entityId: schoolId,
-        newValues: { documents, instructions, channels }
-      }
+        newValues: { documents, instructions, channels },
+      },
     });
 
     return { success: true };

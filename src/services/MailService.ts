@@ -36,6 +36,7 @@ export interface IMailService {
   sendLoanCompletedEmail(to: string, fullName: string, loanNumber: string): Promise<boolean>;
   sendWalletFundedEmail(to: string, fullName: string, amount: number): Promise<boolean>;
   sendRepaymentReminderEmail(to: string, fullName: string, amount: number, dueDate: string, loanNumber: string): Promise<boolean>;
+  sendDocumentRequestEmail(to: string, fullName: string, documentType: string, instructions: string): Promise<boolean>;
 }
 
 /**
@@ -343,6 +344,31 @@ export class MailService implements IMailService {
       amount: `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
       dashboardUrl: `${this.appUrl}/dashboard/wallet`,
     });
+  }
+
+  async sendDocumentRequestEmail(to: string, fullName: string, documentType: string, instructions: string): Promise<boolean> {
+    try {
+      const html = `
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <h2 style="color:#00296B">Additional Documents Required</h2>
+          <p>Hi ${fullName},</p>
+          <p>Our team has reviewed your application and requires the following additional document:</p>
+          <p style="background:#f5f5f5;padding:12px;border-radius:8px;font-weight:bold">${documentType}</p>
+          ${instructions ? `<p><strong>Instructions:</strong> ${instructions}</p>` : ''}
+          <p>Please upload the requested document via your dashboard as soon as possible.</p>
+          <a href="${this.appUrl}/dashboard/school-verification" style="display:inline-block;background:#00296B;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;margin-top:12px">Go to Dashboard</a>
+          <p style="margin-top:24px;color:#888;font-size:12px">— The ${this.appName} Team</p>
+        </div>`;
+      const result = await this.sendWithRetry({
+        from: `${this.appName} <${this.fromEmail}>`,
+        to: [to],
+        subject: `${this.appName} — Additional Documents Required`,
+        html,
+      });
+      return !result?.error;
+    } catch {
+      return false;
+    }
   }
 
   /**
