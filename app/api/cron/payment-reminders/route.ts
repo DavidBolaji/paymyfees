@@ -14,7 +14,7 @@ import { PaymentStatus } from '@prisma/client';
 import { prisma } from '@/src/database/prisma';
 import { MailService } from '@/src/services/MailService';
 
-const REMINDER_DAYS = [10, 5, 3, 2, 1] as const;
+const REMINDER_DAYS = [30,10, 5, 3, 2, 1] as const;
 
 function reminderType(days: number) {
   return `${days}_day${days !== 1 ? 's' : ''}`;
