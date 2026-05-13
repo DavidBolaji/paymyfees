@@ -15,7 +15,6 @@ import {
   ChevronRight,
   Building2,
   FileText,
-  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Logo from "@/assets/images/logo/logo.png";

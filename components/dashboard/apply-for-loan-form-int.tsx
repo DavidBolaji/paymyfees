@@ -310,7 +310,6 @@ export function ApplyForLoanFormInt() {
   const isFormValid = () => {
     return formData.schoolName &&
       formData.academicSession &&
-      formData.term &&
       formData.loanAmount &&
       formData.loanAmount > 0 &&
       formData.uploadedFiles &&
@@ -320,6 +319,7 @@ export function ApplyForLoanFormInt() {
       formData.consents?.terms &&
       formData.countryOfStudy &&
       formData.programCourseOfStudy &&
+      formData.employmentStatus &&
       formData.accountHolderName &&
       formData.bankName &&
       formData.accountNumber &&
