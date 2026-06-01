@@ -150,10 +150,9 @@ export class AdminService implements IAdminService {
    */
   async approveSchool(schoolId: string, adminId: string): Promise<any> {
     console.log({ msg: 'Approving school', schoolId, adminId });
-    
-    const school = await this.adminRepository.getSchools(1, 1, undefined);
-    const foundSchool = school.schools.find((s: any) => s.id === schoolId);
-    
+
+    const foundSchool = await this.adminRepository.getSchoolById(schoolId);
+
     if (!foundSchool) {
       throw new NotFoundError('School not found');
     }
@@ -167,9 +166,8 @@ export class AdminService implements IAdminService {
   async rejectSchool(schoolId: string, adminId: string, reason: string): Promise<any> {
     console.log({ msg: 'Rejecting school', schoolId, adminId });
     
-    const school = await this.adminRepository.getSchools(1, 1, undefined);
-    const foundSchool = school.schools.find((s: any) => s.id === schoolId);
-    
+    const foundSchool = await this.adminRepository.getSchoolById(schoolId);
+
     if (!foundSchool) {
       throw new NotFoundError('School not found');
     }

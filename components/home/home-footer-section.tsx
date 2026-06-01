@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { InstagramIcon, LinkedinIcon, TwitterIcon } from "lucide-react";
 import { ArrowRight } from "lucide-react";
 import { HomeGradientWrapper } from "./home-gradient-wrapper";
 
@@ -8,10 +7,10 @@ const navColumns = [
   {
     heading: "Explore",
     links: [
-      { label: "About Us", href: "/#about" },
+      // { label: "About Us", href: "/#about" },
       { label: "Careers", href: "/careers" },
       { label: "Features", href: "/#features" },
-      { label: "Blog", href: "/blog" },
+      // { label: "Blog", href: "/blog" },
     ],
   },
   {
@@ -27,8 +26,9 @@ const navColumns = [
     heading: "Support",
     links: [
       { label: "FAQs", href: "/#faqs" },
-      { label: "Help Center", href: "/help" },
       { label: "Contact Us", href: "/contact" },
+      { label: "+234 803 585 1047", href: "tel:+2348035851047" },
+      { label: "support@paymyfees.co", href: "mailto:support@paymyfees.co" },
     ],
   },
   {
@@ -41,11 +41,27 @@ const navColumns = [
   },
 ];
 
-/* TikTok icon – not in lucide, so inline SVG */
+/* ── Social icons (not in lucide) ── */
 function TikTokIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
       <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.34 6.34 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.18 8.18 0 0 0 4.78 1.52V6.75a4.85 4.85 0 0 1-1.01-.06z" />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+function FacebookIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+      <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
     </svg>
   );
 }
@@ -81,15 +97,17 @@ export function HomeFooterSection() {
               {/* Social icons */}
               <div className="flex items-center gap-[1.125rem] pt-1">
                 {[
-                  { href: "#", icon: <InstagramIcon size={18} color="white" strokeWidth={1.75} />, label: "Instagram" },
-                  { href: "#", icon: <TwitterIcon size={18} color="white" strokeWidth={1.75} />, label: "X / Twitter" },
-                  { href: "#", icon: <LinkedinIcon size={18} color="white" strokeWidth={1.75} />, label: "LinkedIn" },
-                  { href: "#", icon: <TikTokIcon />, label: "TikTok" },
+                  // { href: "#", icon: <InstagramIcon size={18} color="white" strokeWidth={1.75} />, label: "Instagram" },
+                  { href: "https://x.com/paymyfeesglobal?s=21", icon: <XIcon />, label: "X / Twitter" },
+                  { href: "https://www.facebook.com/share/1HNRYXghzC/?mibextid=wwXIfr", icon: <FacebookIcon />, label: "Facebook" },
+                  { href: "https://www.tiktok.com/@paymyfeesglobal?_r=1&_t=ZS-96gGDx9JllV", icon: <TikTokIcon />, label: "TikTok" },
                 ].map(({ href, icon, label }) => (
                   <Link
                     key={label}
                     href={href}
                     aria-label={label}
+                    target={href.startsWith("http") ? "_blank" : undefined}
+                    rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
                     className="flex h-[3rem] w-[3rem] items-center justify-center rounded-full border border-white/30 transition-colors hover:border-white/60"
                   >
                     {icon}

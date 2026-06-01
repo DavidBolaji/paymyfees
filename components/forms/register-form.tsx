@@ -20,6 +20,12 @@ const ROLES = [
   { value: "TEACHER", label: "Teacher" },
 ];
 
+const GENDERS = [
+  { value: "MALE", label: "Male" },
+  { value: "FEMALE", label: "Female" },
+  { value: "OTHER", label: "Other" },
+];
+
 const STEPS = [
   "Personal Info",
   "Address",
@@ -114,6 +120,7 @@ export interface RegisterFormData {
   email: string;
   phone: string;
   dob: string;
+  gender: string;
   role: string;
   // Step 2
   address: string;
@@ -180,7 +187,7 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState<RegisterFormData>({
     firstName: "", lastName: "", middleName: "", email: "", phone: "",
-    dob: "", role: "", address: "", city: "", schoolName: "",
+    dob: "", gender: "", role: "", address: "", city: "", schoolName: "",
     password: "", agreeToTerms: false, verificationMode: "otp",
   });
 
@@ -241,6 +248,8 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
         }
         case "dob":
           !value ? (next.dob = "Date of birth is required") : delete next.dob; break;
+        case "gender":
+          !value ? (next.gender = "Please select your gender") : delete next.gender; break;
         case "role":
           !value ? (next.role = "Please select your account type") : delete next.role; break;
         case "address":
@@ -298,7 +307,7 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
 
   // ── Step navigation ───────────────────────────────────────────────────────
   const STEP_FIELDS: (keyof RegisterFormData)[][] = [
-    ["firstName", "lastName", "email", "phone", "dob", "role"],
+    ["firstName", "lastName", "email", "phone", "dob", "gender", "role"],
     ["address", "city", ...(formData.role === "SCHOOL" ? (["schoolName"] as (keyof RegisterFormData)[]) : [])],
     ["password", "agreeToTerms"],
   ];
@@ -381,6 +390,14 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
                   onChange={(v) => set("dob", v)} onBlur={() => touch("dob")}
                   error={touched.dob && !!errors.dob} />
                 <FieldError show={!!touched.dob} message={errors.dob} />
+              </div>
+
+              <div>
+                <CustomInput label="Gender" type="select" value={formData.gender}
+                  placeholder="Select gender" options={GENDERS}
+                  onChange={(v) => set("gender", v)} onBlur={() => touch("gender")}
+                  error={touched.gender && !!errors.gender} />
+                <FieldError show={!!touched.gender} message={errors.gender} />
               </div>
 
               <div>

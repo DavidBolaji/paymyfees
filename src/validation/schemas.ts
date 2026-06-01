@@ -5,12 +5,13 @@
  */
 
 import { z } from 'zod';
-import { 
-  UserRole, 
-  PaymentMethod, 
+import {
+  UserRole,
+  PaymentMethod,
   SupportTicketPriority,
-  DocumentType, 
-  ResidencyStatus
+  DocumentType,
+  ResidencyStatus,
+  Gender
 } from '@prisma/client';
 
 // ============================================
@@ -66,6 +67,7 @@ export const registerSchema = z.object({
     required_error: 'Verification mode is required',
     invalid_type_error: 'Verification mode must be either "otp" or "link"',
   }),
+  gender: z.nativeEnum(Gender),
   schoolName: z.string().min(2, 'School name must be at least 2 characters').max(200).optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Passwords do not match',
@@ -160,6 +162,22 @@ const baseLoanSchema = z.object({
       acceptedAt: z.string(),
     })),
   }).optional(),
+  // Student profile — optional, only for parent loans
+  studentProfileId: z.string().uuid().optional(),
+  newStudentProfile: z.object({
+    studentName: z.string().min(2, 'Student name is required').max(255),
+    dateOfBirth: z.string().optional(),
+    relationship: z.string().min(1, 'Relationship is required').max(100),
+    classLevel: z.string().min(1, 'Class/Level is required').max(100),
+  }).optional(),
+  // Parent employment details — optional
+  parentDetails: z.object({
+    employmentStatus: z.string().max(100).optional(),
+    employmentRole: z.string().max(255).optional(),
+    employmentType: z.enum(['Business', 'Employee']).optional(),
+    monthlyNetIncome: z.number().min(0).optional(),
+    lengthOfEmployment: z.enum(['<1year', '1-2years', '2-3years', '3-4years', '5+years']).optional(),
+  }).optional(),
 });
 
 /**
@@ -225,6 +243,13 @@ export const createStudentSchema = z.object({
   studentClass: z.string().min(1, 'Student class is required').max(50),
   studentId: z.string().max(50).optional(),
   schoolId: idSchema.optional(),
+});
+
+export const createStudentProfileSchema = z.object({
+  studentName: z.string().min(2, 'Student name is required').max(255),
+  dateOfBirth: z.coerce.date().optional(),
+  relationship: z.string().min(1, 'Relationship is required').max(100),
+  classLevel: z.string().min(1, 'Class/Level is required').max(100),
 });
 
 // ============================================

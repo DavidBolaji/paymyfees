@@ -85,6 +85,37 @@ export class LoanController {
       schoolName: validatedData.schoolName 
     });
 
+    // Resolve student profile — create new one if provided, else use existing ID
+    let studentProfileId: string | undefined = (validatedData as any).studentProfileId;
+    if ((validatedData as any).newStudentProfile) {
+      const { studentName, dateOfBirth, relationship, classLevel } = (validatedData as any).newStudentProfile;
+      const createdProfile = await prisma.studentProfile.create({
+        data: {
+          parentId: user.id,
+          studentName,
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+          relationship,
+          classLevel,
+        },
+      });
+      studentProfileId = createdProfile.id;
+    }
+
+    // Update parent employment details if provided
+    if ((validatedData as any).parentDetails) {
+      const pd = (validatedData as any).parentDetails;
+      await prisma.parentProfile.updateMany({
+        where: { userId: user.id },
+        data: {
+          ...(pd.employmentStatus !== undefined && { employmentStatus: pd.employmentStatus }),
+          ...(pd.employmentRole !== undefined && { employmentRole: pd.employmentRole }),
+          ...(pd.employmentType !== undefined && { employmentType: pd.employmentType }),
+          ...(pd.monthlyNetIncome !== undefined && { monthlyIncome: pd.monthlyNetIncome }),
+          ...(pd.lengthOfEmployment !== undefined && { lengthOfEmployment: pd.lengthOfEmployment }),
+        },
+      });
+    }
+
     // Base loan data
     const baseLoanData = {
       userId: user.id,
@@ -117,6 +148,7 @@ export class LoanController {
           ...baseLoanData,
           term: (validatedData as any).term,
           uploadedFiles: (validatedData as any).uploadedFiles,
+          studentProfileId,
         });
 
     // Send in-app + email notification (async, never breaks response)

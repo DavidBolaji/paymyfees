@@ -236,7 +236,7 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
                         {userLabel}
                       </p>
                       <div className="space-y-4">
-                        <Row label={userLabel === 'Teacher Information' ? 'Teacher Name:' : 'Student Name:'} value={l?.userName || '—'} valueClass="text-[#00296B] font-semibold" />
+                        <Row label={userLabel === 'Teacher Information' ? 'Teacher Name:' : 'Applicant Name:'} value={l?.userName || '—'} valueClass="text-[#00296B] font-semibold" />
                         <Row label="Email:" value={l?.userEmail || '—'} />
                         <Row label="Phone:" value={l?.userPhone || '—'} />
                         <Row label="School:" value={l?.schoolName || '—'} />
@@ -245,6 +245,24 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
                         <Row label="City:" value={l?.userCity || '—'} />
                         <Row label="Account Status:" value={accountStatus} />
                       </div>
+
+                      {/* Student Profile — shown only when loan has one */}
+                      {l?.studentProfile && (
+                        <div className="mt-5 pt-4 border-t border-gray-100">
+                          <p className="text-sm font-semibold text-[#191919] mb-3">Student Profile</p>
+                          <div className="space-y-3">
+                            <Row label="Student Name:" value={l.studentProfile.studentName || '—'} valueClass="text-[#00296B] font-semibold" />
+                            <Row
+                              label="Date of Birth:"
+                              value={l.studentProfile.dateOfBirth
+                                ? new Date(l.studentProfile.dateOfBirth).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+                                : '—'}
+                            />
+                            <Row label="Relationship:" value={l.studentProfile.relationship || '—'} />
+                            <Row label="Class / Level:" value={l.studentProfile.classLevel || '—'} />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Loan & Disbursement Context */}

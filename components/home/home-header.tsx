@@ -7,8 +7,8 @@ import WebLogo from "@/assets/images/logo/web_logo2.png";
 const navItems = [
   { label: "Home", href: "/#home" },
   { label: "Products", href: "/#products" },
-  { label: "About Us", href: "/#about" },
-  { label: "Contact", href: "/#contact" },
+  // { label: "About Us", href: "/#about" },
+  { label: "Contact", href: "/contact" },
 ];
 
 export function HomeHeader() {

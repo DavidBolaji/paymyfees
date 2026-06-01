@@ -1,10 +1,11 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Info, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
+import { UploadedFile } from '@/components/ui/file-upload';
+import { DocumentUploadList, DocumentUploadListRef } from './document-upload-list';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormInput, FormSelect } from '@/components/ui/form-input';
 import { validateLoanApplication, type LoanApplicationFormData } from '@/data';
@@ -21,6 +22,14 @@ import { fetchDashboardStats } from '@/src/utils/dashboard-api';
 import { CheckSquareIcon } from '@/assets/icons/CheckSquareIcon';
 import { LoanAgreementModal, type AgreementMeta, type LoanAgreementSummary } from './loan-agreement-modal';
 
+interface StudentProfileOption {
+  id: string;
+  studentName: string;
+  dateOfBirth: string | null;
+  relationship: string;
+  classLevel: string;
+}
+
 interface RepaymentPlan {
   months: number;
   monthlyAmount: number;
@@ -35,6 +44,7 @@ interface FormErrors {
   academicSession?: string;
   term?: string;
   uploadedFiles?: string;
+  studentProfile?: string;
   consents?: {
     schoolDetails?: string;
     directPayment?: string;
@@ -46,13 +56,61 @@ export function ApplyForLoanForm() {
   const { user } = useAuthStore();
   const { formData, updateFormData, updateConsent, resetForm } = useLoanApplicationStore();
   const { clearCache, setStats, setLastFetched } = useDashboardStore();
-  const fileUploadRef = useRef<any>(null);
-  
+  const fileUploadRef = useRef<DocumentUploadListRef>(null);
+
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [successModal, setSuccessModal] = useState({ open: false, title: '', message: '' });
   const [agreementSummary, setAgreementSummary] = useState<LoanAgreementSummary | null>(null);
+
+  // Student profile state
+  const [studentProfiles, setStudentProfiles] = useState<StudentProfileOption[]>([]);
+  const [studentProfileSelection, setStudentProfileSelection] = useState<string>('');
+  const [newStudentForm, setNewStudentForm] = useState({
+    firstName: '',
+    lastName: '',
+    dateOfBirth: '',
+    relationship: '',
+    classLevel: '',
+  });
+
+  useEffect(() => {
+    fetch('/api/student-profiles')
+      .then(r => r.json())
+      .then(d => { if (d.success) setStudentProfiles(d.data || []); })
+      .catch(() => {});
+  }, []);
+
+  const handleStudentProfileChange = (value: string) => {
+    setStudentProfileSelection(value);
+    // Clear student profile error on any selection
+    if (errors.studentProfile) {
+      setErrors(prev => ({ ...prev, studentProfile: undefined }));
+    }
+    if (value === 'new') {
+      updateFormData({ studentProfileId: undefined, newStudentProfile: { studentName: '', dateOfBirth: '', relationship: '', classLevel: '' } });
+    } else if (value) {
+      updateFormData({ studentProfileId: value, newStudentProfile: undefined });
+    } else {
+      updateFormData({ studentProfileId: undefined, newStudentProfile: undefined });
+    }
+  };
+
+  const handleNewStudentChange = (field: keyof typeof newStudentForm, value: string) => {
+    const updated = { ...newStudentForm, [field]: value };
+    setNewStudentForm(updated);
+    // Combine first + last name into the single studentName field for the API
+    const fullName = `${updated.firstName} ${updated.lastName}`.trim();
+    updateFormData({
+      newStudentProfile: {
+        studentName: fullName,
+        dateOfBirth: updated.dateOfBirth,
+        relationship: updated.relationship,
+        classLevel: updated.classLevel,
+      },
+    });
+  };
 
   // Calculate repayment plans
 const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
@@ -80,12 +138,15 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
   const repaymentPlans = calculateRepaymentPlans(formData.loanAmount || 0);
   const selectedPlanData = repaymentPlans.find(plan => plan.months === formData.selectedPlan);
 
-  // Academic session options
+  // Academic session options — dynamic based on current year
+  const currentYear = new Date().getFullYear();
   const academicSessionOptions = [
     { value: '', label: 'Select Academic Session' },
-    { value: '2025/2026', label: '2025/2026' },
-    { value: '2024/2025', label: '2024/2025' },
-    { value: '2023/2024', label: '2023/2024' }
+    ...Array.from({ length: 3 }, (_, i) => {
+      const end = currentYear - i;
+      const session = `${end - 1}/${end}`;
+      return { value: session, label: session };
+    })
   ];
 
   // Term options
@@ -129,22 +190,36 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
 
   const validateForm = (): boolean => {
     const result = validateLoanApplication(formData);
+    const formErrors: FormErrors = {};
 
     if (!result.isValid) {
-      const formErrors: FormErrors = {};
-
       Object.entries(result.errors).forEach(([key, message]) => {
         if (key.startsWith('consents.')) {
           const consentField = key.split('.')[1] as keyof NonNullable<FormErrors['consents']>;
-          formErrors.consents = {
-            ...formErrors.consents,
-            [consentField]: message
-          };
+          formErrors.consents = { ...formErrors.consents, [consentField]: message };
         } else {
           (formErrors as any)[key] = message;
         }
       });
+    }
 
+    // Parents must select or create a student profile
+    if (user?.role === 'PARENT') {
+      if (!studentProfileSelection) {
+        formErrors.studentProfile = 'Please select or create a student profile to continue.';
+      } else if (studentProfileSelection === 'new') {
+        const fullName = `${newStudentForm.firstName} ${newStudentForm.lastName}`.trim();
+        if (!fullName) {
+          formErrors.studentProfile = 'Please enter the student\'s first and last name.';
+        } else if (!newStudentForm.relationship) {
+          formErrors.studentProfile = 'Please select your relationship to the student.';
+        } else if (!newStudentForm.classLevel) {
+          formErrors.studentProfile = 'Please enter the student\'s class or level.';
+        }
+      }
+    }
+
+    if (Object.keys(formErrors).length > 0) {
       setErrors(formErrors);
       return false;
     }
@@ -162,9 +237,17 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
       return;
     }
 
+    // Resolve student name: new profile entry → newStudentForm, existing profile → lookup, else fallback
+    const resolvedStudentName =
+      studentProfileSelection === 'new'
+        ? `${newStudentForm.firstName} ${newStudentForm.lastName}`.trim() || user?.fullName || 'Applicant'
+        : studentProfileSelection
+          ? studentProfiles.find(p => p.id === studentProfileSelection)?.studentName || user?.fullName || 'Applicant'
+          : user?.fullName || 'Applicant';
+
     setAgreementSummary({
       borrowerName: user?.fullName ?? 'Applicant',
-      studentName: user?.fullName ?? 'Applicant',
+      studentName: resolvedStudentName,
       institutionName: formData.schoolName ?? '',
       loanAmount: formData.loanAmount ?? 0,
       loanTenure: formData.selectedPlan ?? 1,
@@ -211,7 +294,7 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
         type: result.format || result.resource_type,
       }));
 
-      const payload = {
+      const payload: any = {
         ...formData,
         studentId: user!.id,
         repaymentMonths: formData.selectedPlan,
@@ -219,6 +302,25 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
         residencyStatus: ResidencyStatus.LOCAL,
         agreementMeta: meta,
       };
+
+      // Attach student profile — either existing ID or new profile data
+      if (formData.studentProfileId) {
+        payload.studentProfileId = formData.studentProfileId;
+        delete payload.newStudentProfile;
+      } else if (formData.newStudentProfile?.studentName) {
+        payload.newStudentProfile = formData.newStudentProfile;
+        delete payload.studentProfileId;
+      } else {
+        delete payload.studentProfileId;
+        delete payload.newStudentProfile;
+      }
+
+      // Attach parent details if any field is filled
+      if (formData.parentDetails && Object.values(formData.parentDetails).some(v => v !== undefined && v !== '')) {
+        payload.parentDetails = formData.parentDetails;
+      } else {
+        delete payload.parentDetails;
+      }
 
       const result = await applyForLoan(payload);
 
@@ -250,6 +352,16 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
     }
   };
 
+  const isStudentProfileValid = () => {
+    if (user?.role !== 'PARENT') return true;
+    if (!studentProfileSelection) return false;
+    if (studentProfileSelection === 'new') {
+      const fullName = `${newStudentForm.firstName} ${newStudentForm.lastName}`.trim();
+      return !!fullName && !!newStudentForm.relationship && !!newStudentForm.classLevel;
+    }
+    return true;
+  };
+
   const isFormValid = () => {
     return formData.schoolName &&
       formData.academicSession &&
@@ -262,7 +374,8 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
       formData.uploadedFiles.length > 0 &&
       formData.consents?.schoolDetails &&
       formData.consents?.directPayment &&
-      formData.consents?.terms;
+      formData.consents?.terms &&
+      isStudentProfileValid();
   };
 
   const handleSchoolChange = (schoolId: string, schoolName: string) => {
@@ -273,6 +386,133 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
     <>
       <form onSubmit={handleSubmit} className="space-y-8">
 
+        {/* Student Profile Section */}
+        <div className="bg-white p-4 rounded-xl space-y-4">
+          <h3 className="font-semibold text-[#292D32] text-[18px]">Student Profile</h3>
+
+          <FormSelect
+            label={user?.role === 'PARENT' ? 'Select Student *' : 'Select Student'}
+            options={[
+              { value: '', label: user?.role === 'PARENT' ? 'Select a student profile' : 'Select a student profile (optional)' },
+              ...studentProfiles.map(p => ({
+                value: p.id,
+                label: `${p.studentName} — ${p.classLevel}`,
+              })),
+              { value: 'new', label: '+ Create new student profile' },
+            ]}
+            value={studentProfileSelection}
+            onChange={e => handleStudentProfileChange(e.target.value)}
+          />
+
+          {errors.studentProfile && (
+            <p className="text-red-600 text-sm">{errors.studentProfile}</p>
+          )}
+
+          {studentProfileSelection === 'new' && (
+            <div className="space-y-4 pt-2 border-t border-gray-100">
+              <p className="text-sm font-medium text-[#5F5F5F]">New Student Details</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormInput
+                  label="Student First Name"
+                  value={newStudentForm.firstName}
+                  onChange={e => handleNewStudentChange('firstName', e.target.value)}
+                  placeholder="e.g. Chisom"
+                />
+                <FormInput
+                  label="Student Last Name"
+                  value={newStudentForm.lastName}
+                  onChange={e => handleNewStudentChange('lastName', e.target.value)}
+                  placeholder="e.g. Adeyemi"
+                />
+                <FormInput
+                  label="Date of Birth"
+                  type="date"
+                  value={newStudentForm.dateOfBirth}
+                  onChange={e => handleNewStudentChange('dateOfBirth', e.target.value)}
+                />
+                <FormSelect
+                  label="Relationship to Student"
+                  options={[
+                    { value: '', label: 'Select relationship' },
+                    { value: 'Father', label: 'Father' },
+                    { value: 'Mother', label: 'Mother' },
+                    { value: 'Guardian', label: 'Guardian' },
+                    { value: 'Uncle', label: 'Uncle' },
+                    { value: 'Aunt', label: 'Aunt' },
+                    { value: 'Sibling', label: 'Sibling' },
+                    { value: 'Other', label: 'Other' },
+                  ]}
+                  value={newStudentForm.relationship}
+                  onChange={e => handleNewStudentChange('relationship', e.target.value)}
+                />
+                <FormInput
+                  label="Class / Level"
+                  value={newStudentForm.classLevel}
+                  onChange={e => handleNewStudentChange('classLevel', e.target.value)}
+                  placeholder="e.g. JSS 2, SSS 3, Grade 5"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Parent Employment Details */}
+        <div className="bg-white p-4 rounded-xl space-y-4">
+          <h3 className="font-semibold text-[#292D32] text-[18px]">Parent / Guardian Details</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormSelect
+              label="Employment Status"
+              options={[
+                { value: '', label: 'Select status' },
+                { value: 'Employed', label: 'Employed' },
+                { value: 'Self-Employed', label: 'Self-Employed' },
+                { value: 'Unemployed', label: 'Unemployed' },
+                { value: 'Retired', label: 'Retired' },
+              ]}
+              value={formData.parentDetails?.employmentStatus ?? ''}
+              onChange={e => updateFormData({ parentDetails: { ...formData.parentDetails, employmentStatus: e.target.value } })}
+            />
+            <FormSelect
+              label="Employment Type"
+              options={[
+                { value: '', label: 'Select type' },
+                { value: 'Employee', label: 'Employee' },
+                { value: 'Business', label: 'Business Person' },
+              ]}
+              value={formData.parentDetails?.employmentType ?? ''}
+              onChange={e => updateFormData({ parentDetails: { ...formData.parentDetails, employmentType: e.target.value as 'Employee' | 'Business' } })}
+            />
+            <FormInput
+              label="Employment Role / Job Title"
+              value={formData.parentDetails?.employmentRole ?? ''}
+              onChange={e => updateFormData({ parentDetails: { ...formData.parentDetails, employmentRole: e.target.value } })}
+              placeholder="e.g. Software Engineer, Trader"
+            />
+            <FormInput
+              label="Monthly NET Income (₦)"
+              value={formData.parentDetails?.monthlyNetIncome ? `₦${formData.parentDetails.monthlyNetIncome.toLocaleString()}` : ''}
+              onChange={e => {
+                const raw = e.target.value.replace(/[₦,]/g, '');
+                const num = parseInt(raw) || undefined;
+                updateFormData({ parentDetails: { ...formData.parentDetails, monthlyNetIncome: num } });
+              }}
+              placeholder="₦0"
+            />
+            <FormSelect
+              label="Length of Employment"
+              options={[
+                { value: '', label: 'Select range' },
+                { value: '<1year', label: 'Less than 1 year' },
+                { value: '1-2years', label: '1 – 2 years' },
+                { value: '2-3years', label: '2 – 3 years' },
+                { value: '3-4years', label: '3 – 4 years' },
+                { value: '5+years', label: '5+ years' },
+              ]}
+              value={formData.parentDetails?.lengthOfEmployment ?? ''}
+              onChange={e => updateFormData({ parentDetails: { ...formData.parentDetails, lengthOfEmployment: e.target.value } })}
+            />
+          </div>
+        </div>
 
         <div className="gap-4 grid grid-cols-1 lg:grid-cols-2">
           {/* Left Column - School & Tuition Details */}
@@ -344,29 +584,21 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
           </div>
 
           {/* Right Column - Upload Files */}
-          <div className="space-y-6 bg-white p-4 rounded-xl">
-            <div>
-              <h3 className="mb-2 font-semibold text-[#292D32] text-[18px]">
-                Upload Files
-              </h3>
-              <p className="mb-4 text-[#7C7C7C] text-sm">
-                Upload Bvn, Nin, Salary slips, Bank statement, Proof of address, School fees invoice / offer letter, School fees receipts for the last two (2) terms, Recent 3 months Bank statement, Passport photograph (Parent/Guardian), Passport photograph (Student) and other supporting docs
-              </p>
+          <div className="bg-white p-4 rounded-xl">
+            <h3 className="mb-4 font-semibold text-[#292D32] text-[18px]">
+              Upload Documents
+            </h3>
 
-              <FileUpload
+            <div className="h-[480px] overflow-y-scroll [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+              <DocumentUploadList
                 ref={fileUploadRef}
                 onFilesChange={(files) => handleInputChange('uploadedFiles', files)}
-                acceptedTypes={['.pdf', '.png', '.jpg', '.jpeg']}
-                maxFileSize={10}
-                maxFiles={4}
-                autoUpload={true}
-                initialFiles={formData.uploadedFiles}
               />
-
-              {errors.uploadedFiles && (
-                <p className="mt-2 text-red-600 text-sm">{errors.uploadedFiles}</p>
-              )}
             </div>
+
+            {errors.uploadedFiles && (
+              <p className="mt-2 text-red-600 text-sm">{errors.uploadedFiles}</p>
+            )}
           </div>
         </div>
 

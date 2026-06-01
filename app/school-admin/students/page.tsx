@@ -18,9 +18,10 @@ const TABLE_COLUMNS = [
 ];
 
 const STATUS_MAP: Record<string, string> = {
-  DISBURSED: 'ongoing', ACTIVE: 'ongoing', PENDING: 'ongoing',
-  APPROVED: 'pending', COMPLETED: 'completed',
-  DEFAULTED: 'cancelled', CANCELLED: 'cancelled',
+  DISBURSED: 'ongoing', ACTIVE: 'ongoing',
+  PENDING: 'pending', UNDER_REVIEW: 'pending', APPROVED: 'pending',
+  COMPLETED: 'completed',
+  DEFAULTED: 'cancelled', REJECTED: 'cancelled', CANCELLED: 'cancelled',
 };
 
 type Tab = 'all' | 'overdue' | 'completed';

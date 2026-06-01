@@ -22,7 +22,7 @@ const faqs = [
   {
     question: "What makes PayMyFees different from banks?",
     answer:
-      "Unlike traditional banks, PayMyFees is built exclusively for education financing. We offer faster approvals, a transparent 2% monthly interest rate, and repayment plans aligned with school terms designed to better support families and schools.",
+      "Unlike traditional banks, PayMyFees is built exclusively for education financing. We offer faster approvals, a transparent 2.5% monthly interest rate, and repayment plans aligned with school terms designed to better support families and schools.",
   },
   {
     question: "Is my data safe?",
@@ -108,9 +108,7 @@ export function HomeFaqSection() {
           <h2 className="text-[1.5rem] font-extrabold leading-[105%] tracking-[0] text-[#191919] md:text-[2.125rem]">
             Frequently Asked Questions (FAQs)
           </h2>
-          <p className="mt-[0.625rem] text-[0.9375rem] font-medium leading-[120%] tracking-[0] text-[#7C7C7C] md:text-[1.0625rem]">
-            Clear answers to common questions about tuition financing, on how PayMyFees works
-          </p>
+          
         </div>
 
         {/* Two-column accordion grid */}

@@ -309,10 +309,7 @@ export class AdminRepository implements IAdminRepository {
   async processDisbursement(loanId: string, adminId: string): Promise<any> {
     const loan = await prisma.loan.findUnique({
       where: { id: loanId },
-      include: {
-        school: true,
-        installments: { select: { id: true }, take: 1 },
-      }
+      include: { school: true },
     });
 
     if (!loan) {
@@ -322,16 +319,36 @@ export class AdminRepository implements IAdminRepository {
     const disbursementDate = new Date();
     const disbursementReference = `DISB-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-    const [updatedLoan, disbursement] = await Promise.all([
-      prisma.loan.update({
+    // Calculate installment schedule anchored to disbursement date
+    const firstPaymentDate = new Date(disbursementDate);
+    firstPaymentDate.setDate(firstPaymentDate.getDate() + 30);
+    const monthlyPayment = Number(loan.monthlyPayment);
+    const installmentsData = Array.from({ length: loan.repaymentMonths }, (_, i) => {
+      const dueDate = new Date(firstPaymentDate);
+      dueDate.setMonth(dueDate.getMonth() + i);
+      return {
+        loanId,
+        installmentNumber: i + 1,
+        amount: monthlyPayment,
+        dueDate,
+        status: 'PENDING' as const,
+        daysOverdue: 0,
+        lateFee: 0,
+      };
+    });
+
+    const [updatedLoan, disbursement] = await prisma.$transaction(async (tx) => {
+      const updated = await tx.loan.update({
         where: { id: loanId },
         data: {
           status: LoanStatus.DISBURSED,
           amountDisbursed: loan.loanAmount,
           disbursementDate,
+          firstPaymentDate,
         }
-      }),
-      prisma.disbursement.create({
+      });
+
+      const disb = await tx.disbursement.create({
         data: {
           disbursementReference,
           loanId,
@@ -344,39 +361,23 @@ export class AdminRepository implements IAdminRepository {
           disbursedAt: disbursementDate,
           confirmedAt: disbursementDate,
         }
-      }),
-      prisma.loanStatusHistory.create({
+      });
+
+      await tx.loanStatusHistory.create({
         data: {
           loanId,
           newStatus: LoanStatus.DISBURSED,
           changedBy: adminId,
           reason: 'Disbursement processed by admin'
         }
-      })
-    ]);
-
-    // Create installments if none exist yet (anchored to disbursement date)
-    if (loan.installments.length === 0) {
-      const monthlyPayment = Number(loan.monthlyPayment);
-      const firstPaymentDate = new Date(disbursementDate);
-      firstPaymentDate.setDate(firstPaymentDate.getDate() + 30);
-
-      const installmentsData = Array.from({ length: loan.repaymentMonths }, (_, i) => {
-        const dueDate = new Date(firstPaymentDate);
-        dueDate.setMonth(dueDate.getMonth() + i);
-        return {
-          loanId,
-          installmentNumber: i + 1,
-          amount: monthlyPayment,
-          dueDate,
-          status: 'PENDING' as const,
-          daysOverdue: 0,
-          lateFee: 0,
-        };
       });
 
-      await prisma.installment.createMany({ data: installmentsData });
-    }
+      // Always delete any stale installments and create fresh ones anchored to disbursement date
+      await tx.installment.deleteMany({ where: { loanId } });
+      await tx.installment.createMany({ data: installmentsData });
+
+      return [updated, disb];
+    });
 
     return { loan: updatedLoan, disbursement };
   }
@@ -1320,6 +1321,9 @@ export class AdminRepository implements IAdminRepository {
         schoolEmail: s.schoolEmail,
         schoolPhone: s.schoolPhone,
         website: s.website,
+        schoolType: s.schoolType,
+        yearEstablished: s.yearEstablished,
+        registrationNumber: s.registrationNumber,
         contactPersonName: s.contactPersonName,
         applicationCount: s.loans.length,
         dateSubmitted: s.createdAt,

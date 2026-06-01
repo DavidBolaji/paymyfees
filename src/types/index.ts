@@ -15,7 +15,8 @@ import {
   NotificationType,
   SupportTicketStatus,
   SupportTicketPriority,
-  ResidencyStatus
+  ResidencyStatus,
+  Gender
 } from '@prisma/client';
 
 // ============================================
@@ -92,6 +93,7 @@ export interface CreateUserInput {
   address: string;
   city: string;
   profileImage?: string;
+  gender: Gender;
   mode: 'otp' | 'link';
   schoolName?: string;  // Required when role is SCHOOL
   // Derived — populated by the service layer for backward compat
@@ -134,6 +136,9 @@ export interface ParentProfileDTO {
   ninVerified: boolean;
   employmentStatus: string | null;
   employerName: string | null;
+  employmentRole: string | null;
+  employmentType: string | null;
+  lengthOfEmployment: string | null;
   monthlyIncome: number | null;
   creditScore: number | null;
   totalLoans: number;
@@ -173,6 +178,9 @@ export interface SchoolProfileDTO {
   schoolEmail: string;
   schoolPhone: string;
   website: string | null;
+  schoolType: string | null;
+  yearEstablished: number | null;
+  registrationNumber: string | null;
   contactPersonName: string;
   contactPersonPosition: string;
   contactPersonEmail: string;
@@ -195,6 +203,9 @@ export interface CreateSchoolProfileInput {
   schoolEmail: string;
   schoolPhone: string;
   website?: string;
+  schoolType?: string;
+  yearEstablished?: number;
+  registrationNumber?: string;
   contactPersonName: string;
   contactPersonPosition: string;
   contactPersonEmail: string;
@@ -227,6 +238,25 @@ export interface CreateStudentInput {
   dateOfBirth?: Date;
   studentClass: string;
   studentId?: string;
+}
+
+export interface StudentProfileDTO {
+  id: string;
+  parentId: string;
+  studentName: string;
+  dateOfBirth: Date | null;
+  relationship: string;
+  classLevel: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateStudentProfileInput {
+  parentId: string;
+  studentName: string;
+  dateOfBirth?: Date;
+  relationship: string;
+  classLevel: string;
 }
 
 // ============================================
@@ -313,6 +343,16 @@ export interface LoanDTO {
   userIsActive?: boolean;
   schoolIsVerified?: boolean;
   userPreviousLoans?: number;
+
+  // Student profile (optional — only for parent loans that have one)
+  studentProfileId?: string | null;
+  studentProfile?: {
+    id: string;
+    studentName: string;
+    dateOfBirth: Date | null;
+    relationship: string;
+    classLevel: string;
+  } | null;
 
   // International student specific fields
   countryOfStudy?: string;

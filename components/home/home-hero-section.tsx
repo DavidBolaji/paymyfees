@@ -16,8 +16,6 @@ export function HomeHeroSection() {
 
           <p className="mt-[12px] max-w-[640px] text-[13px] font-medium leading-[120%] tracking-[0] text-[#7C7C7C] md:text-[15px] xl:text-[17px]">
             Structured tuition support designed for families, teachers, and schools.
-            <br />
-            Verified, transparent, direct to school payments.
           </p>
 
           <div className="mt-[26px] flex w-full flex-wrap items-center justify-center gap-[10px]">

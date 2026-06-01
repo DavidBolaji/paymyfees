@@ -20,6 +20,7 @@ export default function RegisterPage() {
         email: formData.email,
         phone: formData.phone,
         dob: formData.dob,
+        gender: formData.gender,
         address: formData.address.trim(),
         city: formData.city.trim(),
         country: "Nigeria",

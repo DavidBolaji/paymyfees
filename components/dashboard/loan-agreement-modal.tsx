@@ -71,7 +71,7 @@ I confirm that my application information is accurate.
 
 I consent to verification and data processing for loan and compliance purposes.
 
-─── Data Protection & Consent (NDPA 2023 Compliance) ───
+Data Protection & Consent (NDPA 2023 Compliance)
 
 I expressly consent to the collection, processing, storage, and sharing of my personal data for:
   • Loan processing and administration

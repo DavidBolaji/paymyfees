@@ -21,6 +21,22 @@ export interface LoanApplicationFormData {
     directPayment: boolean;
     terms: boolean;
   };
+  // Student profile — optional, set when parent selects or creates one
+  studentProfileId?: string;
+  newStudentProfile?: {
+    studentName: string;
+    dateOfBirth?: string;
+    relationship: string;
+    classLevel: string;
+  };
+  // Parent employment details — optional
+  parentDetails?: {
+    employmentStatus?: string;
+    employmentRole?: string;
+    employmentType?: 'Business' | 'Employee';
+    monthlyNetIncome?: number;
+    lengthOfEmployment?: string;
+  };
 }
 
 export interface LoanApplicationIntFormData {
@@ -199,7 +215,13 @@ export interface SchoolVerficationFormData {
   schoolName: string;
   academicLevel: string;
   address: string;
+  schoolPhone: string;
+  schoolEmail: string;
   academicSession: string;
+  schoolType: string;
+  website: string;
+  yearEstablished: string;
+  registrationNumber: string;
   uploadedFiles: UploadedFile[];
   consents: {
     terms: boolean;
@@ -231,9 +253,49 @@ export const validateSchoolApplication = (data: Partial<SchoolVerficationFormDat
     errors.schoolName = 'Address is too long';
   }
 
+  // Validate school phone
+  if (!data.schoolPhone || data.schoolPhone.trim().length === 0) {
+    errors.schoolPhone = 'School phone number is required';
+  }
+
+  // Validate school email
+  if (!data.schoolEmail || data.schoolEmail.trim().length === 0) {
+    errors.schoolEmail = 'School email is required';
+  } else if (!data.schoolEmail.includes('@') || !data.schoolEmail.includes('.')) {
+    errors.schoolEmail = 'Enter a valid email address';
+  }
+
   // Validate academic session
   if (!data.academicSession) {
     errors.academicSession = 'Academic session is required';
+  }
+
+  // Validate school type
+  if (!data.schoolType || data.schoolType.trim().length < 2) {
+    errors.schoolType = 'School type is required';
+  }
+
+  // Validate website
+  if (!data.website || data.website.trim().length === 0) {
+    errors.website = 'Website is required';
+  } else if (!data.website.includes('http') && !data.website.includes('www') && !data.website.includes('.')) {
+    errors.website = 'Enter a valid website URL';
+  }
+
+  // Validate year established
+  if (!data.yearEstablished || data.yearEstablished.trim().length === 0) {
+    errors.yearEstablished = 'Year established is required';
+  } else {
+    const year = parseInt(data.yearEstablished);
+    const currentYear = new Date().getFullYear();
+    if (isNaN(year) || year < 1800 || year > currentYear) {
+      errors.yearEstablished = `Enter a valid year between 1800 and ${currentYear}`;
+    }
+  }
+
+  // Validate registration number
+  if (!data.registrationNumber || data.registrationNumber.trim().length < 2) {
+    errors.registrationNumber = 'Registration number is required';
   }
 
   // Validate uploaded files

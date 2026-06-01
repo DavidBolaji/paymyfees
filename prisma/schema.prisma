@@ -45,12 +45,14 @@ model User {
   updatedAt                 DateTime              @updatedAt
   country                   String                @db.VarChar(255)
   residencyStatus           ResidencyStatus       @default(LOCAL)
+  gender                    Gender?
   auditLogs            AuditLog[]
   documents            Document[]
   loans                Loan[]
   notificationSettings NotificationSettings?
   notifications        Notification[]
   parentProfile        ParentProfile?
+  studentProfiles      StudentProfile[]
   teacherProfile       TeacherProfile?
   payments             Payment[]
   schoolProfile        SchoolProfile[]
@@ -82,6 +84,9 @@ model ParentProfile {
   ninVerified        Boolean    @default(false)
   employmentStatus   String?    @db.VarChar(100)
   employerName       String?    @db.VarChar(255)
+  employmentRole     String?    @db.VarChar(255)
+  employmentType     String?    @db.VarChar(50)
+  lengthOfEmployment String?    @db.VarChar(50)
   monthlyIncome      Decimal?   @db.Decimal(15, 2)
   creditScore        Int?
   totalLoans         Int        @default(0)
@@ -100,6 +105,22 @@ model ParentProfile {
   @@index([nin])
   @@index([userId])
   @@map("parent_profiles")
+}
+
+model StudentProfile {
+  id           String    @id @default(uuid()) @db.Char(36)
+  parentId     String    @db.Char(36)
+  studentName  String    @db.VarChar(255)
+  dateOfBirth  DateTime? @db.Date
+  relationship String    @db.VarChar(100)
+  classLevel   String    @db.VarChar(100)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  parent       User      @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  loans        Loan[]
+
+  @@index([parentId])
+  @@map("student_profiles")
 }
 
 model TeacherProfile {
@@ -132,6 +153,9 @@ model SchoolProfile {
   schoolEmail            String?                     @db.VarChar(255)
   schoolPhone            String?                     @db.VarChar(20)
   website                String?                     @db.VarChar(255)
+  schoolType             String?                     @db.VarChar(100)
+  yearEstablished        Int?
+  registrationNumber     String?                     @db.VarChar(100)
   contactPersonName      String?                     @db.VarChar(255)
   contactPersonPosition  String?                     @db.VarChar(100)
   contactPersonEmail     String?                     @db.VarChar(255)
@@ -167,6 +191,7 @@ model Loan {
   loanNumber           String                @unique @db.VarChar(50)
   userId               String                @db.Char(36)
   schoolId             String                @db.Char(36)
+  studentProfileId     String?               @db.Char(36)
   loanAmount           Decimal               @db.Decimal(15, 2)
   interestRate         Decimal               @db.Decimal(5, 2)
   totalInterest        Decimal               @db.Decimal(15, 2)
@@ -209,12 +234,14 @@ model Loan {
   statusHistory        LoanStatusHistory[]
   school               SchoolProfile         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentProfile       StudentProfile?       @relation(fields: [studentProfileId], references: [id])
   payments             Payment[]
   fundingDetails       SchoolFundingDetails?
   verification         SchoolVerification?
 
   @@index([userId])
   @@index([schoolId])
+  @@index([studentProfileId])
   @@index([status])
   @@index([loanNumber])
   @@index([applicationDate])
@@ -868,4 +895,10 @@ enum SupportTicketPriority {
 enum ResidencyStatus {
   LOCAL
   INTERNATIONAL
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
 }

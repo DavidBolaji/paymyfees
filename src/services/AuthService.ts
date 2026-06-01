@@ -89,6 +89,7 @@ export class AuthService implements IAuthService {
           dob: input.dob ? new Date(input.dob) : null,
           address: input.address || null,
           city: input.city || null,
+          gender: input.gender,
           profileImage: input.profileImage,
           emailVerified: false,
         },

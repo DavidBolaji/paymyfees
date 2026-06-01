@@ -8,9 +8,10 @@ import { StatusBadge } from '@/components/dashboard/status-badge';
 import { api } from '@/src/lib/api';
 
 const STATUS_MAP: Record<string, string> = {
-  DISBURSED: 'ongoing', ACTIVE: 'ongoing', PENDING: 'ongoing',
-  APPROVED: 'pending', COMPLETED: 'completed',
-  DEFAULTED: 'cancelled', CANCELLED: 'cancelled',
+  DISBURSED: 'ongoing', ACTIVE: 'ongoing',
+  PENDING: 'pending', UNDER_REVIEW: 'pending', APPROVED: 'pending',
+  COMPLETED: 'completed',
+  DEFAULTED: 'cancelled', REJECTED: 'cancelled', CANCELLED: 'cancelled',
 };
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
