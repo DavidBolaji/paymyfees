@@ -821,7 +821,7 @@ export class AdminRepository implements IAdminRepository {
         where: { role: { in: [UserRole.PARENT, UserRole.STUDENT] } }
       }),
       prisma.loan.findMany({
-        where: { status: LoanStatus.ACTIVE },
+        where: { status: { in: [LoanStatus.ACTIVE, LoanStatus.DISBURSED] } },
         distinct: ['userId'],
         select: { userId: true },
       }).then(r => r.length),
@@ -838,7 +838,7 @@ export class AdminRepository implements IAdminRepository {
       prisma.schoolProfile.count({ where: { isVerified: true } }),
       prisma.schoolVerification.count({ where: { status: VerificationStatus.REJECTED } }),
       prisma.loan.count(),
-      prisma.loan.count({ where: { status: LoanStatus.PENDING } }),
+      prisma.loan.count({ where: { status: { in: [LoanStatus.PENDING, LoanStatus.UNDER_REVIEW] } } }),
       prisma.loan.count({ where: { status: { in: [LoanStatus.APPROVED, LoanStatus.ACTIVE, LoanStatus.DISBURSED, LoanStatus.COMPLETED] } } }),
       prisma.loan.count({ where: { status: LoanStatus.REJECTED } }),
       prisma.supportTicket.count({ where: { createdAt: { gte: todayStart } } }),
@@ -849,9 +849,9 @@ export class AdminRepository implements IAdminRepository {
 
     // Compute average first response time in minutes using DB-level aggregation
     const avgResult = await prisma.$queryRaw<[{ avg_mins: number | null }]>`
-      SELECT AVG(TIMESTAMPDIFF(SECOND, created_at, first_response_at) / 60.0) AS avg_mins
+      SELECT AVG(TIMESTAMPDIFF(SECOND, createdAt, firstResponseAt) / 60.0) AS avg_mins
       FROM support_tickets
-      WHERE first_response_at IS NOT NULL
+      WHERE firstResponseAt IS NOT NULL
     `;
     const avgFirstResponseMins = Math.round(avgResult[0]?.avg_mins ?? 0);
 
