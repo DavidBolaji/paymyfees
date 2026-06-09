@@ -807,6 +807,7 @@ export class AdminRepository implements IAdminRepository {
    * Get dashboard stats for new admin dashboard
    */
   async getDashboardStats(): Promise<any> {
+    const now = new Date();
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
@@ -817,10 +818,19 @@ export class AdminRepository implements IAdminRepository {
       totalTicketsToday, totalPlatformTickets, resolvedTicketsCount, closedTicketsCount,
     ] = await Promise.all([
       prisma.user.count({
-        where: { role: { in: ['PARENT', 'STUDENT'] }, isActive: true }
+        where: { role: { in: [UserRole.PARENT, UserRole.STUDENT] } }
       }),
-      prisma.loan.count({ where: { status: LoanStatus.ACTIVE } }),
-      prisma.installment.count({ where: { daysOverdue: { gt: 0 } } }),
+      prisma.loan.findMany({
+        where: { status: LoanStatus.ACTIVE },
+        distinct: ['userId'],
+        select: { userId: true },
+      }).then(r => r.length),
+      prisma.installment.count({
+        where: {
+          dueDate: { lt: now },
+          status: { notIn: [PaymentStatus.PAID, PaymentStatus.CANCELLED] },
+        }
+      }),
       prisma.supportTicket.count({ where: { status: SupportTicketStatus.OPEN } }),
       prisma.loan.count({ where: { status: LoanStatus.COMPLETED } }),
       prisma.schoolProfile.count({ where: { isVerified: false } }),
