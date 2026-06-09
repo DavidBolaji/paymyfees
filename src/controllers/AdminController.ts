@@ -457,6 +457,11 @@ export class AdminController {
     return NextResponse.json({ success: true, data }, { status: 200 });
   }
 
+  async getSchoolsStats(_req: Request): Promise<NextResponse> {
+    const data = await this.adminService.getSchoolsStats();
+    return NextResponse.json({ success: true, data }, { status: 200 });
+  }
+
   async getStudents(req: Request): Promise<NextResponse> {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');

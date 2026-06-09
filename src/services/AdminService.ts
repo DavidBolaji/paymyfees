@@ -52,6 +52,7 @@ export interface IAdminService {
   getSchoolAdminDashboardStats(): Promise<any>;
   getTeacherSupportTickets(page: number, limit: number, status?: string): Promise<any>;
   getTeacherAdminDashboardStats(): Promise<any>;
+  getSchoolsStats(): Promise<any>;
 }
 
 /**
@@ -241,6 +242,10 @@ export class AdminService implements IAdminService {
 
   async getDashboardStats(): Promise<any> {
     return await this.adminRepository.getDashboardStats();
+  }
+
+  async getSchoolsStats(): Promise<any> {
+    return await this.adminRepository.getSchoolsStats();
   }
 
   async getStudents(page: number = 1, limit: number = 10, status?: string): Promise<any> {

@@ -47,6 +47,7 @@ export interface IAdminRepository {
   getSchoolAdminDashboardStats(): Promise<any>;
   getTeacherSupportTickets(page: number, limit: number, status?: string): Promise<any>;
   getTeacherAdminDashboardStats(): Promise<any>;
+  getSchoolsStats(): Promise<any>;
 }
 
 export class AdminRepository implements IAdminRepository {
@@ -786,6 +787,20 @@ export class AdminRepository implements IAdminRepository {
         isRead: false
       }
     });
+  }
+
+  /**
+   * Get stats specific to the school verification page
+   */
+  async getSchoolsStats(): Promise<any> {
+    const [pendingSchoolsCount, underReviewCount, verifiedSchoolsCount, rejectedSchoolsCount] =
+      await Promise.all([
+        prisma.schoolProfile.count({ where: { isVerified: false } }),
+        prisma.schoolVerification.count({ where: { status: VerificationStatus.PENDING } }),
+        prisma.schoolProfile.count({ where: { isVerified: true } }),
+        prisma.schoolVerification.count({ where: { status: VerificationStatus.REJECTED } }),
+      ]);
+    return { pendingSchoolsCount, underReviewCount, verifiedSchoolsCount, rejectedSchoolsCount };
   }
 
   /**
