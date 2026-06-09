@@ -374,12 +374,10 @@ export class LoanController {
     statuses: loans.map(l => l.status)
   });
 
-  // Statuses that should show a payment plan (excluding rejected, cancelled, pending)
+  // Only show payment plan for disbursed loans — instalments are calculated from disbursementDate
   const activeStatuses = [
     LoanStatus.ACTIVE,
     LoanStatus.DISBURSED,
-    LoanStatus.APPROVED,
-    LoanStatus.UNDER_REVIEW, // Include under review as it may have installments
   ];
 
   // Filter for loans with payment plans
@@ -508,8 +506,8 @@ private generateVirtualInstallments(loan: any): any[] {
 private transformToPaymentPlan(loan: any): any {
   let installments = loan.installments || [];
 
-  // If no installments exist in DB, generate virtual ones from loan terms
-  if (installments.length === 0 && loan.repaymentMonths > 0 && loan.monthlyPayment) {
+  // Only generate virtual instalments after disbursement — dates are based on disbursementDate
+  if (installments.length === 0 && loan.repaymentMonths > 0 && loan.monthlyPayment && loan.disbursementDate) {
     installments = this.generateVirtualInstallments(loan);
   }
 
