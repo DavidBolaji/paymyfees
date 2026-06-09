@@ -822,18 +822,13 @@ export class AdminRepository implements IAdminRepository {
       prisma.supportTicket.count({ where: { status: SupportTicketStatus.CLOSED } }),
     ]);
 
-    // Compute average first response time in minutes from firstResponseAt
-    const ticketsWithResponse = await prisma.supportTicket.findMany({
-      where: { firstResponseAt: { not: null } },
-      select: { createdAt: true, firstResponseAt: true },
-    });
-    let avgFirstResponseMins = 0;
-    if (ticketsWithResponse.length > 0) {
-      const totalMins = ticketsWithResponse.reduce((sum, t) => {
-        return sum + (t.firstResponseAt!.getTime() - t.createdAt.getTime()) / 60000;
-      }, 0);
-      avgFirstResponseMins = Math.round(totalMins / ticketsWithResponse.length);
-    }
+    // Compute average first response time in minutes using DB-level aggregation
+    const avgResult = await prisma.$queryRaw<[{ avg_mins: number | null }]>`
+      SELECT AVG(TIMESTAMPDIFF(SECOND, created_at, first_response_at) / 60.0) AS avg_mins
+      FROM support_tickets
+      WHERE first_response_at IS NOT NULL
+    `;
+    const avgFirstResponseMins = Math.round(avgResult[0]?.avg_mins ?? 0);
 
     return {
       activeStudentCount, activeLoansCount, overdueCount, openTicketsCount, completedLoansCount,
@@ -1113,7 +1108,7 @@ export class AdminRepository implements IAdminRepository {
         orderBy: { transactionDate: 'desc' },
         take: 10
       }),
-      prisma.document.findMany({ where: { userId } })
+      prisma.document.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 50 })
     ]);
 
     if (!user) throw new Error('Student not found');

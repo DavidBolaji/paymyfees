@@ -382,9 +382,9 @@ export class SchoolRepository implements ISchoolRepository {
   /**
    * Get verification requests for a school
    */
-  async getVerificationRequests(schoolId: string): Promise<any[]> {
+  async getVerificationRequests(schoolId: string, page = 1, limit = 100): Promise<any[]> {
     console.log({ msg: 'Getting verification requests', schoolId });
-    
+
     try {
       const verificationRequests = await prisma.schoolVerification.findMany({
         where: { schoolId },
@@ -404,6 +404,8 @@ export class SchoolRepository implements ISchoolRepository {
         orderBy: {
           requestedAt: 'desc',
         },
+        skip: (page - 1) * limit,
+        take: limit,
       });
 
       return verificationRequests;

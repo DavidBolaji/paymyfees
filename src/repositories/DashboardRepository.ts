@@ -37,6 +37,7 @@ export class DashboardRepository implements IDashboardRepository {
       }
 
       // Get active loans (includes DISBURSED and ACTIVE status)
+      // Include pending installments and paid count to avoid N+1 in DashboardService
       const activeLoans = await prisma.loan.findMany({
         where: {
           userId,
@@ -45,6 +46,25 @@ export class DashboardRepository implements IDashboardRepository {
           },
         },
         orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          loanNumber: true,
+          loanAmount: true,
+          monthlyPayment: true,
+          repaymentMonths: true,
+          outstandingBalance: true,
+          disbursementDate: true,
+          status: true,
+          schoolName: true,
+          createdAt: true,
+          installments: {
+            where: { status: 'PENDING' },
+            orderBy: { dueDate: 'asc' },
+            take: 1,
+            select: { id: true, amount: true, dueDate: true },
+          },
+          _count: { select: { installments: { where: { status: 'PAID' } } } },
+        },
       });
 
       // Get ALL loans for the loan selector dropdown
@@ -106,6 +126,13 @@ export class DashboardRepository implements IDashboardRepository {
           status: {
             notIn: [LoanStatus.CANCELLED, LoanStatus.REJECTED],
           },
+        },
+        select: {
+          id: true,
+          loanAmount: true,
+          amountRepaid: true,
+          outstandingBalance: true,
+          status: true,
         },
       });
       

@@ -45,14 +45,11 @@ export class DashboardService implements IDashboardService {
       ? (data.activeLoans || []).find((l: any) => l.id === loanId) || data.activeLoans?.[0]
       : data.activeLoans?.[0];
 
-    // Get upcoming payment
+    // Get upcoming payment — use installments already loaded in activeLoans query
     let upcomingPayment = null;
     if (targetLoan) {
-      const firstLoan = targetLoan;
-      
-      // Get the next pending installment
-      const nextInstallment = await this.getNextPendingInstallment(firstLoan.id);
-      
+      const nextInstallment = (targetLoan as any).installments?.[0];
+
       if (nextInstallment) {
         upcomingPayment = {
           amount: nextInstallment.amount,
@@ -60,28 +57,23 @@ export class DashboardService implements IDashboardService {
         };
       } else {
         // Fallback: Calculate the next payment date (30 days from disbursement date or today)
-        const disbursementDate = firstLoan?.disbursementDate || new Date();
+        const disbursementDate = targetLoan?.disbursementDate || new Date();
         const nextPaymentDate = new Date(disbursementDate);
         nextPaymentDate.setDate(nextPaymentDate.getDate() + 30);
-        
+
         upcomingPayment = {
-          amount: firstLoan?.monthlyPayment || 0,
+          amount: targetLoan?.monthlyPayment || 0,
           dueDate: this.formatDate(nextPaymentDate),
         };
       }
     }
 
-    // Get active plan
+    // Get active plan — use _count already loaded in activeLoans query
     let activePlan = null;
     if (targetLoan) {
-      const loan = targetLoan;
-      
-      // Calculate the number of installments paid and total installments
-      const totalInstallments = loan?.repaymentMonths || 0;
-      
-      // Count actual paid installments from database
-      const paidInstallmentsCount = await this.getPaidInstallmentsCount(loan.id);
-      
+      const totalInstallments = targetLoan?.repaymentMonths || 0;
+      const paidInstallmentsCount = (targetLoan as any)._count?.installments ?? 0;
+
       activePlan = {
         current: paidInstallmentsCount,
         total: totalInstallments,
@@ -117,41 +109,6 @@ export class DashboardService implements IDashboardService {
         createdAt: l.createdAt,
       })),
     };
-  }
-  
-  /**
-   * Get count of paid installments for a loan
-   */
-  private async getPaidInstallmentsCount(loanId: string): Promise<number> {
-    const { prisma } = await import('@/src/lib/prisma');
-    
-    const paidCount = await prisma.installment.count({
-      where: {
-        loanId,
-        status: 'PAID',
-      },
-    });
-    
-    return paidCount;
-  }
-  
-  /**
-   * Get next pending installment for a loan
-   */
-  private async getNextPendingInstallment(loanId: string): Promise<any> {
-    const { prisma } = await import('@/src/lib/prisma');
-    
-    const nextInstallment = await prisma.installment.findFirst({
-      where: {
-        loanId,
-        status: 'PENDING',
-      },
-      orderBy: {
-        dueDate: 'asc',
-      },
-    });
-    
-    return nextInstallment;
   }
   
   /**

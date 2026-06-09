@@ -36,6 +36,7 @@ export class NotificationRepository implements INotificationRepository {
         orderBy: {
           createdAt: 'desc',
         },
+        take: 50,
       });
       
       return notifications;
