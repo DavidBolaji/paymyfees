@@ -203,6 +203,11 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
       });
     }
 
+    // All required document slots must be uploaded
+    if (!fileUploadRef.current?.areAllRequiredUploaded()) {
+      formErrors.uploadedFiles = 'Please upload all 8 required documents before submitting.';
+    }
+
     // Parents must select or create a student profile
     if (user?.role === 'PARENT') {
       if (!studentProfileSelection) {
@@ -372,6 +377,7 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
       formData.selectedPlan > 0 &&
       formData.uploadedFiles &&
       formData.uploadedFiles.length > 0 &&
+      (fileUploadRef.current?.areAllRequiredUploaded() ?? false) &&
       formData.consents?.schoolDetails &&
       formData.consents?.directPayment &&
       formData.consents?.terms &&

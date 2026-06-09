@@ -144,7 +144,7 @@ const baseLoanSchema = z.object({
     url: z.string(),
     size: z.number(),
     type: z.string()
-  })).min(1, 'At least one document is required'),
+  })).min(8, 'All 8 required documents must be uploaded'),
   consents: z.object({
     schoolDetails: z.boolean().refine(val => val === true, 'You must confirm school details'),
     directPayment: z.boolean().refine(val => val === true, 'You must agree to direct payment'),
