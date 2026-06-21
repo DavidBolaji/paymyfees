@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Download, FileText } from 'lucide-react';
+import { Download, FileText, Edit } from 'lucide-react';
 import { BackNavigation } from '@/components/dashboard/back-navigation';
 import { StatusBadge } from '@/components/dashboard/status-badge';
 import { FreezeAccountModal } from '@/components/admin/freeze-account-modal';
 import { SuspendLoanModal } from '@/components/admin/suspend-loan-modal';
 import { PaymentReminderModal } from '@/components/admin/payment-reminder-modal';
+import { EditStudentDrawer } from '@/components/admin/edit-student-drawer';
 import useAuthStore from '@/src/authStore';
 import { api } from '@/src/lib/api';
 
@@ -70,6 +71,7 @@ export default function StudentDetailPage() {
   const [showSuspend, setShowSuspend] = useState(false);
   const [showReminder, setShowReminder] = useState(false);
   const [showFreeze, setShowFreeze] = useState(false);
+  const [showEditDrawer, setShowEditDrawer] = useState(false);
 
   useEffect(() => {
     if (user?.role !== 'ADMIN') { router.push('/dashboard'); return; }
@@ -306,16 +308,23 @@ export default function StudentDetailPage() {
           {/* ── Action Buttons ───────────────────────────────────── */}
           <div className="flex flex-col sm:flex-row gap-3">
             <button
-              onClick={() => setShowSuspend(true)}
-              className="flex-1 h-12 rounded-xl border-2 border-red-500 bg-white text-red-500 font-semibold text-sm hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+              onClick={() => setShowEditDrawer(true)}
+              className="flex-1 h-12 rounded-xl border-2 border-[#002561] bg-white text-[#002561] font-semibold text-sm hover:bg-blue-50 transition-colors flex items-center justify-center gap-2"
             >
-              Suspend Future Loan Eligibility
+              <Edit className="w-4 h-4" />
+              Edit Profile
             </button>
             <button
               onClick={() => setShowReminder(true)}
               className="flex-1 h-12 rounded-xl bg-[#002561] text-white font-semibold text-sm hover:bg-[#001d4e] transition-colors flex items-center justify-center gap-2"
             >
               Send Payment Reminder
+            </button>
+            <button
+              onClick={() => setShowSuspend(true)}
+              className="flex-1 h-12 rounded-xl border-2 border-red-500 bg-white text-red-500 font-semibold text-sm hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+            >
+              Suspend Future Loan Eligibility
             </button>
             <button
               onClick={() => setShowFreeze(true)}
@@ -345,6 +354,12 @@ export default function StudentDetailPage() {
         onClose={() => setShowFreeze(false)}
         onConfirm={(d) => { postAction('freeze', d); setShowFreeze(false); }}
         loading={actionLoading}
+      />
+      <EditStudentDrawer
+        isOpen={showEditDrawer}
+        onClose={() => setShowEditDrawer(false)}
+        student={data?.user}
+        onSaved={fetchStudent}
       />
     </>
   );

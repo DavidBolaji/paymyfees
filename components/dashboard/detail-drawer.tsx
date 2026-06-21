@@ -169,11 +169,11 @@ export function LoanDisbursementDrawer({
   // Get the active plan information (e.g., 0/6 months paid)
   const activePlanCurrent = loan.activePlan?.current || 0;
   const activePlanTotal = loan.activePlan?.total || 6; // Default to 6 months if not specified
-  
+
   // Calculate the outstanding amount (what is owed - what has been paid)
   const tuitionAmount = loan.tuitionAmount || 120000;
   const totalRepayable = tuitionAmount * 1.33;
-  
+
   // Parse total paid amount from string if available
   let totalPaid = 0;
   if (loan.repaymentProgress?.totalPaid) {
@@ -185,15 +185,20 @@ export function LoanDisbursementDrawer({
       totalPaid = totalPaidStr;
     }
   }
-  
+
   // Calculate outstanding amount (balance from stat card or calculated)
   const outstandingAmount = loan.balance?.amount !== undefined ?
     loan.balance.amount : (totalRepayable - totalPaid);
-  
+
   // Get the next repayment date and amount from the upcoming payment stat card
   const nextRepaymentDate = loan.upcomingPayment?.dueDate || 'N/A';
   const nextRepaymentAmount = loan.upcomingPayment?.amount ?
     `₦${loan.upcomingPayment.amount.toLocaleString()}` : '₦0';
+
+  // Check if loan is approved but not yet disbursed
+  const isApprovedNotDisbursed = ['APPROVED', 'PENDING', 'UNDER_REVIEW'].includes(
+    loan.status?.toUpperCase() || ''
+  );
 
   const sections: DrawerSection[] = [
     {
@@ -235,31 +240,43 @@ export function LoanDisbursementDrawer({
         { label: 'Mode', value: 'Direct School Payment' }
       ]
     },
-    {
-      title: 'Repayment Progress',
-      items: [
-        {
-          label: 'Progress',
-          value: `${activePlanCurrent} / ${activePlanTotal} months paid`
-        },
-        {
-          label: 'Total Paid',
-          value: loan.repaymentProgress?.totalPaid || '₦0'
-        },
-        {
-          label: 'Outstanding',
-          value: `₦${outstandingAmount.toLocaleString()}`
-        },
-        {
-          label: 'Next Repayment Date',
-          value: nextRepaymentDate
-        },
-        {
-          label: 'Next Repayment Amount',
-          value: nextRepaymentAmount
-        }
-      ]
-    }
+    ...(isApprovedNotDisbursed ? [
+      {
+        title: 'Repayment Schedule',
+        items: [
+          {
+            label: 'Status',
+            value: 'Repayment schedule will be available once your loan is disbursed.'
+          }
+        ]
+      }
+    ] : [
+      {
+        title: 'Repayment Progress',
+        items: [
+          {
+            label: 'Progress',
+            value: `${activePlanCurrent} / ${activePlanTotal} months paid`
+          },
+          {
+            label: 'Total Paid',
+            value: loan.repaymentProgress?.totalPaid || '₦0'
+          },
+          {
+            label: 'Outstanding',
+            value: `₦${outstandingAmount.toLocaleString()}`
+          },
+          {
+            label: 'Next Repayment Date',
+            value: nextRepaymentDate
+          },
+          {
+            label: 'Next Repayment Amount',
+            value: nextRepaymentAmount
+          }
+        ]
+      }
+    ])
   ];
 
   const actions: DrawerAction[] = [

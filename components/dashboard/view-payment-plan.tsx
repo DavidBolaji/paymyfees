@@ -14,13 +14,14 @@ import { useRouter } from 'next/navigation';
 
 interface ViewPaymentPlanProps {
   paymentPlan: PaymentPlan | null;
+  emptyReason?: 'no_loan' | 'approved_pending';
 }
 
-export function ViewPaymentPlan({ paymentPlan }: ViewPaymentPlanProps) {
+export function ViewPaymentPlan({ paymentPlan, emptyReason = 'no_loan' }: ViewPaymentPlanProps) {
   const router = useRouter();
   // If no payment plan exists, show empty state
   if (!paymentPlan) {
-    return <EmptyPaymentPlan />;
+    return <EmptyPaymentPlan reason={emptyReason} />;
   }
 
   // Check if payment is overdue by comparing dates

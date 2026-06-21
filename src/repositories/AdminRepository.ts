@@ -1069,8 +1069,7 @@ export class AdminRepository implements IAdminRepository {
           user: { select: { id: true, fullName: true } },
           installments: {
             where: overdueInstallmentFilter,
-            orderBy: { dueDate: 'asc' },
-            take: 1
+            orderBy: { dueDate: 'asc' }
           }
         }
       }),
@@ -1083,6 +1082,8 @@ export class AdminRepository implements IAdminRepository {
         const daysOverdue = earliest
           ? Math.floor((now.getTime() - new Date(earliest.dueDate).getTime()) / 86400000)
           : 0;
+        // Sum all overdue instalments for this loan
+        const overdueTotal = loan.installments.reduce((sum: number, inst: any) => sum + Number(inst.amount), 0);
         return {
           installmentId: earliest?.id ?? null,
           loanId: loan.id,
@@ -1090,7 +1091,8 @@ export class AdminRepository implements IAdminRepository {
           userId: loan.userId,
           studentName: loan.user.fullName,
           school: loan.schoolName,
-          outstanding: Number(loan.outstandingBalance),
+          outstanding: overdueTotal,
+          totalOutstanding: Number(loan.outstandingBalance),
           status: 'delayed',
           delayCount: `Delayed for ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''}`,
           daysOverdue,
@@ -1989,6 +1991,52 @@ export class AdminRepository implements IAdminRepository {
         total: totalPlatformTickets,
         avgFirstResponseMins,
       },
+    };
+  }
+
+  /**
+   * Update student profile (user with role PARENT)
+   */
+  async updateStudent(userId: string, data: any): Promise<any> {
+    const updatableFields = ['fullName', 'email', 'phone', 'gender', 'dob', 'country', 'city', 'address'];
+    const updateData: any = {};
+
+    // Only allow specific fields to be updated
+    updatableFields.forEach(field => {
+      if (data[field] !== undefined) {
+        if (field === 'dob') {
+          updateData[field] = new Date(data[field]);
+        } else {
+          updateData[field] = data[field];
+        }
+      }
+    });
+
+    // Update the user
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      include: {
+        wallet: true,
+        loans: {
+          include: {
+            installments: true,
+            school: true,
+          },
+        },
+      },
+    });
+
+    return {
+      id: updatedUser.id,
+      fullName: updatedUser.fullName,
+      email: updatedUser.email,
+      phone: updatedUser.phone,
+      gender: updatedUser.gender,
+      dob: updatedUser.dob,
+      country: updatedUser.country,
+      city: updatedUser.city,
+      address: updatedUser.address,
     };
   }
 }

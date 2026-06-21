@@ -331,4 +331,8 @@ export class AdminService implements IAdminService {
   async getTeacherAdminDashboardStats(): Promise<any> {
     return await this.adminRepository.getTeacherAdminDashboardStats();
   }
+
+  async updateStudent(userId: string, data: any): Promise<any> {
+    return await this.adminRepository.updateStudent(userId, data);
+  }
 }

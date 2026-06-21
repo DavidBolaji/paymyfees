@@ -212,38 +212,50 @@ export default function FullLoanInformationPage() {
               />
             </div>
 
-            {/* Repayment progress */}
+            {/* Repayment progress or status message */}
             <div className="col-span-2 h-full">
-              <InfoCard
-                title="Repayment Progress"
-                topContent={
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-semibold text-[#7C7C7C] text-sm">
-                        Repayment Tracker
-                      </span>
-                      <span className="font-semibold text-[#00296B] text-sm">
-                        {progress.percentage}% Completed
-                      </span>
-                    </div>
+              {['APPROVED', 'PENDING', 'UNDER_REVIEW'].includes(loanDetails.status) ? (
+                <InfoCard
+                  title="Repayment Schedule"
+                  items={[
+                    {
+                      label: 'Status',
+                      value: 'Your loan is approved and awaiting disbursement. Your repayment schedule will appear here once funds are disbursed.'
+                    }
+                  ]}
+                />
+              ) : (
+                <InfoCard
+                  title="Repayment Progress"
+                  topContent={
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold text-[#7C7C7C] text-sm">
+                          Repayment Tracker
+                        </span>
+                        <span className="font-semibold text-[#00296B] text-sm">
+                          {progress.percentage}% Completed
+                        </span>
+                      </div>
 
-                    <div className="bg-[#B0BDD1] rounded w-full h-3">
-                      <div
-                        className="bg-gradient-to-b from-[#002561] via-[#00296B] to-black rounded h-3"
-                        style={{ width: `${progress.percentage}%` }}
-                      />
+                      <div className="bg-[#B0BDD1] rounded w-full h-3">
+                        <div
+                          className="bg-gradient-to-b from-[#002561] via-[#00296B] to-black rounded h-3"
+                          style={{ width: `${progress.percentage}%` }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                }
-                items={[
-                  { label: 'Progress', value: `${progress.paidCount} / ${progress.totalCount} months paid` },
-                  { label: 'Total Paid', value: `₦${loanDetails.amountRepaid.toLocaleString()}` },
-                  { label: 'Outstanding', value: `₦${loanDetails.outstandingBalance.toLocaleString()}` },
-                  { label: 'Next Repayment', value: `₦${nextRepayment.amount.toLocaleString()}` },
-                  { label: 'Next Repayment Date', value: nextRepayment.date },
-                  { label: 'Reminder', value: 'Yes' },
-                ]}
-              />
+                  }
+                  items={[
+                    { label: 'Progress', value: `${progress.paidCount} / ${progress.totalCount} months paid` },
+                    { label: 'Total Paid', value: `₦${loanDetails.amountRepaid.toLocaleString()}` },
+                    { label: 'Outstanding', value: `₦${loanDetails.outstandingBalance.toLocaleString()}` },
+                    { label: 'Next Repayment', value: `₦${nextRepayment.amount.toLocaleString()}` },
+                    { label: 'Next Repayment Date', value: nextRepayment.date },
+                    { label: 'Reminder', value: 'Yes' },
+                  ]}
+                />
+              )}
             </div>
           </div>
 

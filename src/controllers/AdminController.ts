@@ -630,4 +630,25 @@ export class AdminController {
     const result = await this.adminService.getTeacherAdminDashboardStats();
     return NextResponse.json({ success: true, data: result }, { status: 200 });
   }
+
+  /**
+   * PATCH /api/admin/students/[userId]
+   * Update student profile
+   */
+  async updateStudent(req: Request, userId: string): Promise<NextResponse> {
+    try {
+      const body = await req.json();
+      const result = await this.adminService.updateStudent(userId, body);
+      return NextResponse.json(
+        { success: true, data: result, message: 'Student profile updated successfully' },
+        { status: 200 }
+      );
+    } catch (error: any) {
+      console.error('Error updating student:', error);
+      return NextResponse.json(
+        { success: false, message: error.message || 'Failed to update student' },
+        { status: error.status || 500 }
+      );
+    }
+  }
 }

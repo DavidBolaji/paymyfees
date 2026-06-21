@@ -372,12 +372,12 @@ export class LoanService implements ILoanService {
 
   /**
    * Calculate loan details
-   * Uses 2.5% per month interest rate (24% per annum)
+   * Uses 2.5% per month interest rate (30% per annum)
    */
   calculateLoan(loanAmount: number, repaymentMonths: number): LoanCalculation {
-    // Interest rate is 2% per month (25% per annum)
+    // Interest rate is 2.5% per month (30% per annum)
     const monthlyInterestRate = 0.025;
-    const annualInterestRate = monthlyInterestRate * 12; // 0.25 (25%)
+    const annualInterestRate = monthlyInterestRate * 12; // 0.30 (30%)
 
     // Calculate total interest: .52% per month * number of months
     const totalInterestRate = monthlyInterestRate * repaymentMonths;

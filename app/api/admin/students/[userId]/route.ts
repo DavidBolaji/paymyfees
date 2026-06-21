@@ -15,3 +15,14 @@ export const GET = asyncHandler(async (req: Request, { params }: { params: Promi
   const { userId } = await params;
   return await adminController.getStudentDetails(req, userId);
 });
+
+//@ts-ignore
+export const PATCH = asyncHandler(async (req: Request, { params }: { params: Promise<{ userId: string }> }): Promise<NextResponse> => {
+  await lenientRateLimiter(req);
+  const authResult = await authMiddleware(req);
+  if (!authResult.success) return authResult.response!;
+  const adminResult = await adminAuthMiddleware(req);
+  if (!adminResult.success) return adminResult.response!;
+  const { userId } = await params;
+  return await adminController.updateStudent(req, userId);
+});

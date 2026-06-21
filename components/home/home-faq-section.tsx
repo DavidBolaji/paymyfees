@@ -12,7 +12,7 @@ const faqs = [
   {
     question: "What about interest and repayment?",
     answer:
-      "We offer a transparent interest rate of 2% per month, clearly disclosed upfront before you accept any offer. Your repayment is spread across manageable monthly instalments over your selected tenure, with no hidden fees.",
+      "We offer a transparent interest rate of 2.5% per month, clearly disclosed upfront before you accept any offer. Your repayment is spread across manageable monthly instalments over your selected tenure, with no hidden fees.",
   },
   {
     question: "How do you assess applications?",
