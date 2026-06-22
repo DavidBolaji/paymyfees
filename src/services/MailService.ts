@@ -57,18 +57,18 @@ export class MailService implements IMailService {
         console.warn('RESEND_API_KEY is not set. Email functionality may not work properly.');
       }
       this.resend = new Resend(resendApiKey || '');
-      
+
       // Set other configuration values with fallbacks
       this.fromEmail = process.env.FROM_EMAIL || 'noreply@paymyfees.co';
       this.appName = process.env.APP_NAME || 'PayMyFees';
-      this.appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000';
+      this.appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000';
     } catch (error) {
       console.error('Error initializing MailService:', error);
       // Initialize with defaults to prevent undefined errors
       this.resend = new Resend('');
       this.fromEmail = 'noreply@paymyfees.co';
       this.appName = 'PayMyFees';
-      this.appUrl = 'http://localhost:3000';
+      this.appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000';
     }
   }
 
