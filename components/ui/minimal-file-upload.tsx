@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { X, FileText, CheckCircle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { CloudinaryUploadResult, uploadToCloudinary } from '@/src/utils/cloudinary-api';
+import { CloudinaryUploadResult, uploadToCloudinary, getCloudinaryResourceType } from '@/src/utils/cloudinary-api';
 import { DocumentIcon } from '@/assets/icons/DocumentIcon';
 
 export interface MinimalUploadedFile {
@@ -82,7 +82,10 @@ export const MinimalFileUpload = forwardRef<MinimalFileUploadRef, MinimalFileUpl
     onFilesChange?.(updatedFiles);
 
     try {
-      const result = await uploadToCloudinary(file.file, { folder });
+      const result = await uploadToCloudinary(file.file, {
+        folder,
+        resourceType: getCloudinaryResourceType(file.file),
+      });
       
       updatedFiles[fileIndex] = {
         ...file,

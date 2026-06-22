@@ -4,7 +4,7 @@ import { useState, useRef, forwardRef, useImperativeHandle, useEffect } from 're
 import { Upload, X, CheckCircle, Loader2, AlertCircle, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UploadedFile } from '@/components/ui/file-upload';
-import { CloudinaryUploadResult, uploadToCloudinary } from '@/src/utils/cloudinary-api';
+import { CloudinaryUploadResult, uploadToCloudinary, getCloudinaryResourceType } from '@/src/utils/cloudinary-api';
 
 const DEFAULT_ACCEPT = ['.pdf', '.jpg', '.jpeg', '.png'];
 const PHOTO_ACCEPT = ['.jpg', '.jpeg', '.png'];
@@ -74,7 +74,11 @@ export const DocumentUploadList = forwardRef<DocumentUploadListRef, DocumentUplo
 
       updateFileStatus(slotId, file.id, { uploading: true, error: undefined });
       try {
-        const result = await uploadToCloudinary(file.file, { folder: uploadFolder, tags });
+        const result = await uploadToCloudinary(file.file, {
+          folder: uploadFolder,
+          tags,
+          resourceType: getCloudinaryResourceType(file.file),
+        });
         updateFileStatus(slotId, file.id, { uploading: false, uploaded: true, cloudinaryResult: result });
         return result;
       } catch (err) {

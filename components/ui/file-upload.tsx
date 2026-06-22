@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, forwardRef, useImperativeHandle } from '
 import { X, FileText, CheckCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DocumentIcon } from '@/assets/icons/DocumentIcon';
-import { CloudinaryUploadResult, uploadToCloudinary } from '@/src/utils/cloudinary-api';
+import { CloudinaryUploadResult, uploadToCloudinary, getCloudinaryResourceType } from '@/src/utils/cloudinary-api';
 
 
 export interface UploadedFile {
@@ -88,7 +88,10 @@ export const FileUpload = forwardRef<FileUploadRef, FileUploadProps>(({
     onFilesChange(updatedFiles);
 
     try {
-      const result = await uploadToCloudinary(file.file, { folder });
+      const result = await uploadToCloudinary(file.file, {
+        folder,
+        resourceType: getCloudinaryResourceType(file.file),
+      });
       
       // Update file with cloudinary result
       updatedFiles[fileIndex] = {
