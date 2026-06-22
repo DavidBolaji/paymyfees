@@ -48,6 +48,7 @@ export interface IAdminRepository {
   getTeacherSupportTickets(page: number, limit: number, status?: string): Promise<any>;
   getTeacherAdminDashboardStats(): Promise<any>;
   getSchoolsStats(): Promise<any>;
+  updateStudent(userId: string, data: any): Promise<any>;
 }
 
 export class AdminRepository implements IAdminRepository {

@@ -17,7 +17,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     error: '/auth/login',
   },
   callbacks: {
-    async signIn({ account, profile }) {
+    async signIn({ profile }) {
       if (!profile?.email) return false;
       return true;
     },

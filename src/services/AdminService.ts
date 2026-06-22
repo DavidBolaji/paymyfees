@@ -53,6 +53,7 @@ export interface IAdminService {
   getTeacherSupportTickets(page: number, limit: number, status?: string): Promise<any>;
   getTeacherAdminDashboardStats(): Promise<any>;
   getSchoolsStats(): Promise<any>;
+  updateStudent(userId: string, data: any): Promise<any>;
 }
 
 /**

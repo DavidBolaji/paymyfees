@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { UserRole, Gender } from '@prisma/client';
 import { asyncHandler } from '@/src/middleware/errorHandler';
-import { AppError } from '@/src/types';
+import { AppError, BadRequestError, InternalServerError, NotFoundError } from '@/src/types/errors';
 
 // Validation schema for complete profile request
 const completeProfileSchema = z.object({
@@ -16,10 +16,7 @@ const completeProfileSchema = z.object({
     return stripped.startsWith('0') ? stripped : `0${stripped}`;
   }),
   dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
-  role: z.nativeEnum(UserRole).refine(
-    r => ![UserRole.ADMIN, UserRole.SCHOOL_ADMIN, UserRole.TEACHER_ADMIN].includes(r),
-    'Invalid role for registration'
-  ),
+  role: z.enum([UserRole.PARENT, UserRole.SCHOOL, UserRole.STUDENT, UserRole.TEACHER]),
   address: z.string().min(5).max(500).optional().default('Nigeria'),
   city: z.string().min(2).max(100).optional().default('Lagos'),
   gender: z.nativeEnum(Gender).optional(),
@@ -83,29 +80,31 @@ export const POST = asyncHandler(async (req) => {
 
     // Create role-specific profile based on role
     if (validated.role === UserRole.PARENT) {
-      await prisma.parentProfile.upsert({
-        where: { userId },
-        create: { userId },
-        update: {},
-      });
+      const existingParent = await prisma.parentProfile.findUnique({ where: { userId } });
+      if (!existingParent) {
+        await prisma.parentProfile.create({ data: { userId } });
+      }
     } else if (validated.role === UserRole.SCHOOL) {
-      await prisma.schoolProfile.upsert({
-        where: { userId },
-        create: {
-          userId,
-          schoolName: validated.schoolName!,
-          isPrimary: true,
-        },
-        update: {
-          schoolName: validated.schoolName!,
-        },
-      });
+      const existingSchool = await prisma.schoolProfile.findFirst({ where: { userId } });
+      if (!existingSchool) {
+        await prisma.schoolProfile.create({
+          data: {
+            userId,
+            schoolName: validated.schoolName!,
+            isPrimary: true,
+          },
+        });
+      } else {
+        await prisma.schoolProfile.update({
+          where: { id: existingSchool.id },
+          data: { schoolName: validated.schoolName! },
+        });
+      }
     } else if (validated.role === UserRole.TEACHER) {
-      await prisma.teacherProfile.upsert({
-        where: { userId },
-        create: { userId },
-        update: {},
-      });
+      const existingTeacher = await prisma.teacherProfile.findUnique({ where: { userId } });
+      if (!existingTeacher) {
+        await prisma.teacherProfile.create({ data: { userId } });
+      }
     }
     // STUDENT role has no profile table
 
@@ -121,7 +120,7 @@ export const POST = asyncHandler(async (req) => {
     });
 
     // Provision Embedly (synchronous, blocking)
-    const authService = new AuthService(new UserRepository());
+    const authService = new AuthService();
     try {
       await authService.provisionEmbedly({
         id: userBeforeProfiles.id,
@@ -137,9 +136,8 @@ export const POST = asyncHandler(async (req) => {
     } catch (error) {
       console.error('Embedly provisioning failed:', error);
       // Return 500 but keep the user record — they can retry Phase 2
-      throw new AppError(
-        'Failed to provision payment wallet. Please try again.',
-        500
+      throw new InternalServerError(
+        'Failed to provision payment wallet. Please try again.'
       );
     }
 
@@ -152,7 +150,7 @@ export const POST = asyncHandler(async (req) => {
     const userDTO = await userRepository.getUserById(userId);
 
     if (!userDTO) {
-      throw new AppError('User not found', 404);
+      throw new NotFoundError('User not found');
     }
 
     return NextResponse.json(
@@ -170,8 +168,8 @@ export const POST = asyncHandler(async (req) => {
     // Re-throw app errors as-is, let asyncHandler catch others
     if (error instanceof AppError) throw error;
     if (error instanceof z.ZodError) {
-      throw new AppError('Validation failed', 400);
+      throw new BadRequestError('Validation failed');
     }
-    throw new AppError('An error occurred while completing your profile', 500);
+    throw new InternalServerError('An error occurred while completing your profile');
   }
 });

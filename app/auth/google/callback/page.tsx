@@ -4,7 +4,6 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import useAuthStore from '@/src/authStore';
-import { Spinner } from '@/components/ui/spinner';
 
 export default function GoogleCallbackPage() {
   const { data: session, status } = useSession();
@@ -83,7 +82,7 @@ export default function GoogleCallbackPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
-      <Spinner />
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00296B]" />
       <p className="text-sm text-gray-500 mt-4">Completing sign-in...</p>
     </div>
   );

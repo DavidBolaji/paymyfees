@@ -4,7 +4,7 @@ import { generateToken, generateRefreshToken } from '@/src/middleware/auth';
 import { UserRepository } from '@/src/repositories/UserRepository';
 import { NextResponse } from 'next/server';
 import { asyncHandler } from '@/src/middleware/errorHandler';
-import { AppError } from '@/src/types';
+import { NotFoundError } from '@/src/types/errors';
 
 /**
  * Exchange NextAuth session for custom JWT tokens
@@ -30,7 +30,7 @@ export const GET = asyncHandler(async () => {
   });
 
   if (!user) {
-    throw new AppError('User not found', 404);
+    throw new NotFoundError('User not found');
   }
 
   // Ensure the user has a wallet (for linked email users)
@@ -53,7 +53,7 @@ export const GET = asyncHandler(async () => {
   const userDTO = await userRepository.getUserById(userId);
 
   if (!userDTO) {
-    throw new AppError('User not found', 404);
+    throw new NotFoundError('User not found');
   }
 
   return NextResponse.json(

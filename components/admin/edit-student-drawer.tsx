@@ -37,7 +37,7 @@ export function EditStudentDrawer({ isOpen, onClose, student, onSaved }: EditStu
         email: student?.email || '',
         phone: student?.phone || '',
         gender: student?.gender || '',
-        dob: student?.dob ? new Date(student.dob).toISOString().split('T')[0] : '',
+        dob: (student?.dob ? new Date(student.dob).toISOString().split('T')[0] : '') as string,
         country: student?.country || '',
         city: student?.city || '',
         address: student?.address || '',
@@ -50,9 +50,9 @@ export function EditStudentDrawer({ isOpen, onClose, student, onSaved }: EditStu
 
   if (!student) return null;
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+  // Adapter for CustomInput onChange (string-based)
+  const handleCustomInputChange = (fieldName: string) => (value: string) => {
+    setFormData(prev => ({ ...prev, [fieldName]: value }));
   };
 
   const handleSave = async () => {
@@ -108,33 +108,29 @@ export function EditStudentDrawer({ isOpen, onClose, student, onSaved }: EditStu
                     <CustomInput
                       label="Full Name"
                       type="text"
-                      name="fullName"
                       value={formData.fullName}
-                      onChange={handleInputChange}
+                      onChange={handleCustomInputChange('fullName')}
                       placeholder="Enter full name"
                     />
                     <CustomInput
                       label="Email"
                       type="email"
-                      name="email"
                       value={formData.email}
-                      onChange={handleInputChange}
+                      onChange={handleCustomInputChange('email')}
                       placeholder="Enter email"
                     />
                     <CustomInput
                       label="Phone"
                       type="phone"
-                      name="phone"
                       value={formData.phone}
-                      onChange={handleInputChange}
+                      onChange={handleCustomInputChange('phone')}
                       placeholder="Enter phone number"
                     />
                     <CustomInput
                       label="Gender"
                       type="select"
-                      name="gender"
                       value={formData.gender}
-                      onChange={handleInputChange}
+                      onChange={handleCustomInputChange('gender')}
                       options={[
                         { value: '', label: 'Select gender' },
                         { value: 'MALE', label: 'Male' },
@@ -145,9 +141,8 @@ export function EditStudentDrawer({ isOpen, onClose, student, onSaved }: EditStu
                     <CustomInput
                       label="Date of Birth"
                       type="date"
-                      name="dob"
                       value={formData.dob}
-                      onChange={handleInputChange}
+                      onChange={handleCustomInputChange('dob')}
                     />
                   </div>
                 </div>
@@ -159,25 +154,22 @@ export function EditStudentDrawer({ isOpen, onClose, student, onSaved }: EditStu
                     <CustomInput
                       label="Country"
                       type="text"
-                      name="country"
                       value={formData.country}
-                      onChange={handleInputChange}
+                      onChange={handleCustomInputChange('country')}
                       placeholder="Enter country"
                     />
                     <CustomInput
                       label="City"
                       type="text"
-                      name="city"
                       value={formData.city}
-                      onChange={handleInputChange}
+                      onChange={handleCustomInputChange('city')}
                       placeholder="Enter city"
                     />
                     <CustomInput
                       label="Address"
                       type="text"
-                      name="address"
                       value={formData.address}
-                      onChange={handleInputChange}
+                      onChange={handleCustomInputChange('address')}
                       placeholder="Enter address"
                     />
                   </div>

@@ -200,27 +200,35 @@ export default function CompleteProfilePage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Phone Number */}
-          <CustomInput
-            type="tel"
-            placeholder="Phone Number"
-            label="Phone Number"
-            value={formData.phone}
-            onChange={(e) => set('phone', e.target.value)}
-            onBlur={() => touch('phone')}
-            error={touched.phone && errors.phone ? errors.phone : ''}
-            required
-          />
+          <div>
+            <CustomInput
+              type="phone"
+              placeholder="Phone Number"
+              label="Phone Number"
+              value={formData.phone}
+              onChange={(val) => set('phone', val)}
+              onBlur={() => touch('phone')}
+              error={touched.phone && !!errors.phone}
+            />
+            {touched.phone && errors.phone && (
+              <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
+            )}
+          </div>
 
           {/* Date of Birth */}
-          <CustomInput
-            type="date"
-            label="Date of Birth"
-            value={formData.dob}
-            onChange={(e) => set('dob', e.target.value)}
-            onBlur={() => touch('dob')}
-            error={touched.dob && errors.dob ? errors.dob : ''}
-            required
-          />
+          <div>
+            <CustomInput
+              type="date"
+              label="Date of Birth"
+              value={formData.dob}
+              onChange={(val) => set('dob', val)}
+              onBlur={() => touch('dob')}
+              error={touched.dob && !!errors.dob}
+            />
+            {touched.dob && errors.dob && (
+              <p className="text-red-500 text-xs mt-1">{errors.dob}</p>
+            )}
+          </div>
 
           {/* Account Type / Role */}
           <div>
@@ -254,16 +262,20 @@ export default function CompleteProfilePage() {
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
               >
-                <CustomInput
-                  type="text"
-                  placeholder="School Name"
-                  label="School Name"
-                  value={formData.schoolName}
-                  onChange={(e) => set('schoolName', e.target.value)}
-                  onBlur={() => touch('schoolName')}
-                  error={touched.schoolName && errors.schoolName ? errors.schoolName : ''}
-                  required={formData.role === UserRole.SCHOOL}
-                />
+                <div>
+                  <CustomInput
+                    type="text"
+                    placeholder="School Name"
+                    label="School Name"
+                    value={formData.schoolName}
+                    onChange={(val) => set('schoolName', val)}
+                    onBlur={() => touch('schoolName')}
+                    error={touched.schoolName && !!errors.schoolName}
+                  />
+                  {touched.schoolName && errors.schoolName && (
+                    <p className="text-red-500 text-xs mt-1">{errors.schoolName}</p>
+                  )}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -291,8 +303,7 @@ export default function CompleteProfilePage() {
             placeholder="Address"
             label="Address"
             value={formData.address}
-            onChange={(e) => set('address', e.target.value)}
-            className="placeholder-gray-400"
+            onChange={(val) => set('address', val)}
           />
 
           {/* City */}
@@ -301,8 +312,7 @@ export default function CompleteProfilePage() {
             placeholder="City"
             label="City"
             value={formData.city}
-            onChange={(e) => set('city', e.target.value)}
-            className="placeholder-gray-400"
+            onChange={(val) => set('city', val)}
           />
 
           {/* Error Message */}
