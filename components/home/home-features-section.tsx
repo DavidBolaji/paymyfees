@@ -84,8 +84,8 @@ export function HomeFeaturesSection() {
               Education financing pressure affects everyone
             </h2>
             <p className="mt-4 text-[0.9375rem] font-medium leading-[120%] tracking-[0] text-white max-w-[795px] mx-auto text-center mb-12 md:text-[1.0625rem]">
-              The education system operates on term-based payments. <br /> But income flows are monthly. Salaries are structured.
-              School expenses are continuous.
+              The education system operates on term-based payments, but families earn a monthly income.
+              When these timelines don&apos;t align, paying school fees can become stressful; even for financially responsible parents.
             </p>
           </div>
 

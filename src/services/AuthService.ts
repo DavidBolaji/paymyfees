@@ -250,6 +250,14 @@ export class AuthService implements IAuthService {
       throw new UnauthorizedError('Invalid email or password');
     }
 
+    // Check if password exists (Google-only users have no password)
+    if (!user.password) {
+      console.warn('Login failed: Google-only user', { email: normalizedEmail });
+      throw new UnauthorizedError(
+        'This account was created with Google Sign-In. Please use "Continue with Google" to sign in.'
+      );
+    }
+
     // Verify password
     const isPasswordValid = await this.verifyPassword(input.password, user.password);
 
@@ -761,7 +769,8 @@ export class AuthService implements IAuthService {
   /**
    * Verify password against hash
    */
-  private async verifyPassword(password: string, hash: string): Promise<boolean> {
+  private async verifyPassword(password: string, hash: string | null): Promise<boolean> {
+    if (!hash) return false;
     return await bcrypt.compare(password, hash);
   }
 

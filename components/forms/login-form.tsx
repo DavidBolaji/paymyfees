@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CustomInput } from "@/components/ui/custom-input";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
 
 // Form data interface
 interface FormData {
@@ -218,6 +219,7 @@ export function LoginForm({ onSubmit }: LoginFormProps) {
       {/* Google Sign In */}
       <button
         type="button"
+        onClick={() => signIn('google', { callbackUrl: '/auth/google/callback' })}
         className="w-full py-3 border border-gray-300 rounded-lg flex items-center justify-center space-x-2 hover:bg-gray-50 transition-colors"
       >
         <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">

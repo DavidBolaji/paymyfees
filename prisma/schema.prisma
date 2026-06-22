@@ -11,7 +11,7 @@ model User {
   id                   String                @id @default(uuid()) @db.Char(36)
   email                String                @unique @db.VarChar(255)
   phone                String?               @unique @db.VarChar(20)
-  password             String                @db.VarChar(255)
+  password             String?               @db.VarChar(255)
   role                 UserRole
   fullName             String                @db.VarChar(255)
   firstName            String?               @db.VarChar(100)
@@ -39,6 +39,8 @@ model User {
   twoFactorSecret           String?               @db.VarChar(255)
   lastLogin                 DateTime?
   embedlyCustomerId         String?               @db.VarChar(255)
+  googleId                  String?               @unique @db.VarChar(255)
+  googleProfileComplete     Boolean               @default(false)
   loanEligibilitySuspended  Boolean               @default(false)
   frozenUntil               DateTime?
   createdAt                 DateTime              @default(now())
@@ -64,6 +66,7 @@ model User {
   @@index([email])
   @@index([phone])
   @@index([role])
+  @@index([googleId])
   @@index([createdAt])
   @@map("users")
 }
