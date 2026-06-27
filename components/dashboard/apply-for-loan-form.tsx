@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FormInput, FormSelect } from '@/components/ui/form-input';
 import { validateLoanApplication, type LoanApplicationFormData } from '@/data';
 import { applyForLoan } from '../../src/utils/loan-api';
+import { api } from '@/src/lib/api';
 import { SchoolSelector } from './school-selector';
 import RegistrationModal from './registration-modal';
 import { SuccessModal } from '../ui/success-modal';
@@ -76,7 +77,7 @@ export function ApplyForLoanForm() {
   });
 
   useEffect(() => {
-    fetch('/api/student-profiles')
+    api.get('/api/student-profiles')
       .then(r => r.json())
       .then(d => { if (d.success) setStudentProfiles(d.data || []); })
       .catch(() => {});
@@ -205,7 +206,7 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
 
     // All required document slots must be uploaded
     if (!fileUploadRef.current?.areAllRequiredUploaded()) {
-      formErrors.uploadedFiles = 'Please upload all 8 required documents before submitting.';
+      formErrors.uploadedFiles = 'Please upload all 7 required documents before submitting.';
     }
 
     // Parents must select or create a student profile

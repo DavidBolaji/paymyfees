@@ -21,7 +21,7 @@ interface DocumentSlot {
 
 const DOCUMENT_SLOTS: DocumentSlot[] = [
   { id: 'nin',            label: 'NIN Slip',                        required: true,  accept: DEFAULT_ACCEPT, multiple: false, sensitive: true },
-  { id: 'salary',         label: 'Salary Slips',                    required: true,  accept: DEFAULT_ACCEPT, multiple: true  },
+  { id: 'salary',         label: 'Salary Slips',                    required: false, accept: DEFAULT_ACCEPT, multiple: true  },
   { id: 'bank_statement', label: 'Bank Statement',  hint: 'Last 3 months', required: true,  accept: DEFAULT_ACCEPT, multiple: false },
   { id: 'proof_of_address', label: 'Proof of Address',              required: true,  accept: DEFAULT_ACCEPT, multiple: false },
   { id: 'school_invoice', label: 'School Fees Invoice / Offer Letter', required: true, accept: DEFAULT_ACCEPT, multiple: false },

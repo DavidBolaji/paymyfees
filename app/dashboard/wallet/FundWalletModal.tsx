@@ -9,6 +9,7 @@ interface FundWalletModalProps {
   onSuccess?: () => void;
   virtualAccountNumber?: string | null;
   virtualAccountBank?: string | null;
+  virtualAccountName?: string | null;
 }
 
 export default function FundWalletModal({
@@ -16,6 +17,7 @@ export default function FundWalletModal({
   onClose,
   virtualAccountNumber,
   virtualAccountBank,
+  virtualAccountName,
 }: FundWalletModalProps) {
   const [copied, setCopied] = useState(false);
 
@@ -84,6 +86,13 @@ export default function FundWalletModal({
                   <p className="text-base font-semibold text-[#191919]">{virtualAccountBank || '—'}</p>
                 </div>
               </div>
+
+              {virtualAccountName && (
+                <div className="mb-4">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Account Name</p>
+                  <p className="text-base font-semibold text-[#191919]">{virtualAccountName}</p>
+                </div>
+              )}
 
               <div>
                 <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Account Number</p>

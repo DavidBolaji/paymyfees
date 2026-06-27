@@ -21,10 +21,10 @@ import { GradientSendIcon } from '@/assets/icons/GredientSendIcon';
 import { GradientWalletIcon } from '@/assets/icons/GradientWalletIcon';
 import { NetworkIcon } from '@/assets/icons/NetworkIcon';
 import useDashboardStore from '@/src/stores/dashboardStore';
-// import useAuthStore from '@/src/authStore';
+import useAuthStore from '@/src/authStore';
 
 export default function WalletPage({ basePath = "/dashboard" }: { basePath?: string }) {
-  // const { user } = useAuthStore();
+  const { user } = useAuthStore();
   const searchParams = useSearchParams();
   const { selectedLoanId } = useDashboardStore();
   const [isFundModalOpen, setIsFundModalOpen] = useState(false);
@@ -249,6 +249,7 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
                   currency={balance?.currency || "NGN"}
                   virtualAccountNumber={balance?.virtualAccountNumber}
                   virtualAccountBank={balance?.virtualAccountBank}
+                  virtualAccountName={user?.fullName}
                 />
               )}
             </div>
@@ -357,6 +358,7 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
         onClose={() => setIsFundModalOpen(false)}
         virtualAccountNumber={balance?.virtualAccountNumber}
         virtualAccountBank={balance?.virtualAccountBank}
+        virtualAccountName={user?.fullName}
       />
 
       <MakeRepaymentModal

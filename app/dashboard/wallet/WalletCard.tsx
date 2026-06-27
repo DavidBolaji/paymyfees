@@ -8,9 +8,10 @@ interface WalletCardProps {
   currency?: string;
   virtualAccountNumber?: string | null;
   virtualAccountBank?: string | null;
+  virtualAccountName?: string | null;
 }
 
-const WalletCard: React.FC<WalletCardProps> = ({ balance, currency = 'NGN', virtualAccountNumber, virtualAccountBank }) => {
+const WalletCard: React.FC<WalletCardProps> = ({ balance, currency = 'NGN', virtualAccountNumber, virtualAccountBank, virtualAccountName }) => {
   const [isBalanceVisible, setIsBalanceVisible] = useState(false);
 
   const toggleBalanceVisibility = () => {
@@ -67,6 +68,9 @@ const WalletCard: React.FC<WalletCardProps> = ({ balance, currency = 'NGN', virt
             <div className="flex flex-col gap-0.5">
               <span className="text-[9px] sm:text-[11px] text-white/70 font-medium uppercase tracking-wide">Fund via Bank Transfer</span>
               <span className="text-[11px] sm:text-[14px] font-semibold text-white tracking-widest">{virtualAccountNumber}</span>
+              {virtualAccountName && (
+                <span className="text-[9px] sm:text-[11px] text-white/80">{virtualAccountName}</span>
+              )}
               <span className="text-[9px] sm:text-[11px] text-white/80">{virtualAccountBank}</span>
             </div>
           )}

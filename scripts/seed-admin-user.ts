@@ -3,51 +3,73 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+const ADMINS = [
+  {
+    email: 'admin@paymyfees.co',
+    role: UserRole.ADMIN,
+    fullName: 'Super Admin',
+    phone: '+2348000000001',
+    label: 'ADMIN (Parent/Student management)',
+  },
+  {
+    email: 'schooladmin@paymyfees.co',
+    role: UserRole.SCHOOL_ADMIN,
+    fullName: 'School Admin',
+    phone: '+2348000000002',
+    label: 'SCHOOL_ADMIN',
+  },
+  {
+    email: 'teacheradmin@paymyfees.co',
+    role: UserRole.TEACHER_ADMIN,
+    fullName: 'Teacher Admin',
+    phone: '+2348000000003',
+    label: 'TEACHER_ADMIN',
+  },
+];
+
+const PASSWORD_PLAIN = 'Admin@123456';
+
 async function main() {
-  console.log('Seeding admin user...');
+  console.log('\n🌱 Seeding admin users (upsert — no data wipe)\n');
 
-  const adminEmail = 'admin@paymyfees.com'.toLowerCase();
-  const adminPassword = 'Admin@123456';
+  const hashedPassword = await bcrypt.hash(PASSWORD_PLAIN, 10);
 
-  // Check if admin already exists
-  const existingAdmin = await prisma.user.findUnique({
-    where: { email: adminEmail }
-  });
+  for (const admin of ADMINS) {
+    const existing = await prisma.user.findUnique({ where: { email: admin.email } });
 
-  if (existingAdmin) {
-    console.log('Admin user already exists:', adminEmail);
-    return;
+    if (existing) {
+      console.log(`⏭️  ${admin.email} already exists — skipping`);
+      continue;
+    }
+
+    await prisma.user.create({
+      data: {
+        email: admin.email,
+        phone: admin.phone,
+        password: hashedPassword,
+        role: admin.role,
+        fullName: admin.fullName,
+        emailVerified: true,
+        phoneVerified: true,
+        isActive: true,
+        isFirstTime: false,
+        country: 'Nigeria',
+        residencyStatus: 'LOCAL',
+        notificationSettings: { create: {} },
+      },
+    });
+
+    console.log(`✅ Created ${admin.email} (${admin.label})`);
   }
 
-  // Hash password
-  const hashedPassword = await bcrypt.hash(adminPassword, 10);
-
-  // Create admin user
-  const admin = await prisma.user.create({
-    data: {
-      email: adminEmail,
-      phone: '+2348012345678',
-      password: hashedPassword,
-      role: UserRole.ADMIN,
-      fullName: 'System Administrator',
-      emailVerified: true,
-      phoneVerified: true,
-      isActive: true,
-      isFirstTime: false,
-      country: 'Nigeria',
-      residencyStatus: 'LOCAL'
-    }
-  });
-
-  console.log('Admin user created successfully!');
-  console.log('Email:', adminEmail);
-  console.log('Password:', adminPassword);
-  console.log('User ID:', admin.id);
+  console.log('\n━'.repeat(60));
+  console.log('Password for ALL accounts: ' + PASSWORD_PLAIN);
+  console.log('━'.repeat(60) + '\n');
 }
 
 main()
   .catch((e) => {
-    console.error('Error seeding admin user:', e);
+    console.error('\n❌ Seed failed:', e);
     process.exit(1);
   })
   .finally(async () => {
