@@ -1,9 +1,13 @@
 /**
- * Paystack Webhook API Route
+ * Embedly Webhook API Route
  * POST /api/wallet/webhook
- * 
- * This endpoint receives webhook notifications from Paystack
- * about payment status changes
+ *
+ * Receives webhook events from Embedly:
+ *   - inflow          → user's virtual account received a bank transfer → credit wallet
+ *   - payout.success  → loan repayment transfer confirmed → mark installment PAID
+ *   - payout.failed   → loan repayment transfer failed → rollback wallet debit
+ *
+ * NOT protected by JWT — signature verified via HMAC-SHA256 (EMBEDLY_WEBHOOK_SECRET).
  */
 import { NextResponse } from 'next/server';
 import { WalletController } from '@/src/controllers/WalletController';
@@ -11,13 +15,6 @@ import { asyncHandler } from '@/src/middleware/errorHandler';
 
 const walletController = new WalletController();
 
-/**
- * POST /api/wallet/webhook
- * Handle Paystack webhook notifications
- * 
- * Note: This endpoint should NOT be protected by authentication
- * as it's called by Paystack's servers
- */
 export const POST = asyncHandler(async (req: Request): Promise<NextResponse> => {
   return await walletController.handleWebhook(req);
 });

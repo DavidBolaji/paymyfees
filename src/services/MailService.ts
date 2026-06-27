@@ -36,6 +36,8 @@ export interface IMailService {
   sendLoanCompletedEmail(to: string, fullName: string, loanNumber: string): Promise<boolean>;
   sendWalletFundedEmail(to: string, fullName: string, amount: number): Promise<boolean>;
   sendRepaymentReminderEmail(to: string, fullName: string, amount: number, dueDate: string, loanNumber: string): Promise<boolean>;
+  sendOverduePaymentEmail(to: string, fullName: string, amount: number, daysOverdue: number, loanNumber: string): Promise<boolean>;
+  sendDocumentRequestEmail(to: string, fullName: string, documentType: string, instructions: string): Promise<boolean>;
 }
 
 /**
@@ -55,18 +57,18 @@ export class MailService implements IMailService {
         console.warn('RESEND_API_KEY is not set. Email functionality may not work properly.');
       }
       this.resend = new Resend(resendApiKey || '');
-      
+
       // Set other configuration values with fallbacks
       this.fromEmail = process.env.FROM_EMAIL || 'noreply@paymyfees.co';
       this.appName = process.env.APP_NAME || 'PayMyFees';
-      this.appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000';
+      this.appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000';
     } catch (error) {
       console.error('Error initializing MailService:', error);
       // Initialize with defaults to prevent undefined errors
       this.resend = new Resend('');
       this.fromEmail = 'noreply@paymyfees.co';
       this.appName = 'PayMyFees';
-      this.appUrl = 'http://localhost:3000';
+      this.appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000';
     }
   }
 
@@ -343,6 +345,69 @@ export class MailService implements IMailService {
       amount: `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
       dashboardUrl: `${this.appUrl}/dashboard/wallet`,
     });
+  }
+
+  async sendOverduePaymentEmail(to: string, fullName: string, amount: number, daysOverdue: number, loanNumber: string): Promise<boolean> {
+    try {
+      const html = `
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <h2 style="color:#DC2626">Overdue Payment Notice</h2>
+          <p>Hi ${fullName},</p>
+          <p>Your repayment for loan <strong>${loanNumber}</strong> is <strong>${daysOverdue} day${daysOverdue !== 1 ? 's' : ''} overdue</strong>.</p>
+          <table style="width:100%;border-collapse:collapse;margin:16px 0">
+            <tr style="background:#FEF2F2">
+              <td style="padding:12px;border:1px solid #FECACA;font-weight:bold;color:#DC2626">Amount Due</td>
+              <td style="padding:12px;border:1px solid #FECACA;font-weight:bold;color:#DC2626">₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</td>
+            </tr>
+            <tr>
+              <td style="padding:12px;border:1px solid #e5e7eb">Days Overdue</td>
+              <td style="padding:12px;border:1px solid #e5e7eb">${daysOverdue} day${daysOverdue !== 1 ? 's' : ''}</td>
+            </tr>
+            <tr>
+              <td style="padding:12px;border:1px solid #e5e7eb">Loan Reference</td>
+              <td style="padding:12px;border:1px solid #e5e7eb">${loanNumber}</td>
+            </tr>
+          </table>
+          <p style="color:#DC2626;font-size:14px">⚠️ Late payment charges may apply. Please make payment immediately to avoid further penalties.</p>
+          <a href="${this.appUrl}/dashboard/wallet" style="display:inline-block;background:#DC2626;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;margin-top:12px;font-weight:bold">Pay Now</a>
+          <p style="margin-top:24px;color:#888;font-size:12px">If you believe this is an error, please contact our support team immediately.</p>
+          <p style="color:#888;font-size:12px">— The ${this.appName} Team</p>
+        </div>`;
+      const result = await this.sendWithRetry({
+        from: `${this.appName} <${this.fromEmail}>`,
+        to: [to],
+        subject: `${this.appName} — Overdue Payment Notice (${daysOverdue} day${daysOverdue !== 1 ? 's' : ''})`,
+        html,
+      });
+      return !result?.error;
+    } catch {
+      return false;
+    }
+  }
+
+  async sendDocumentRequestEmail(to: string, fullName: string, documentType: string, instructions: string): Promise<boolean> {
+    try {
+      const html = `
+        <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <h2 style="color:#00296B">Additional Documents Required</h2>
+          <p>Hi ${fullName},</p>
+          <p>Our team has reviewed your application and requires the following additional document:</p>
+          <p style="background:#f5f5f5;padding:12px;border-radius:8px;font-weight:bold">${documentType}</p>
+          ${instructions ? `<p><strong>Instructions:</strong> ${instructions}</p>` : ''}
+          <p>Please upload the requested document via your dashboard as soon as possible.</p>
+          <a href="${this.appUrl}/dashboard/school-verification" style="display:inline-block;background:#00296B;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;margin-top:12px">Go to Dashboard</a>
+          <p style="margin-top:24px;color:#888;font-size:12px">— The ${this.appName} Team</p>
+        </div>`;
+      const result = await this.sendWithRetry({
+        from: `${this.appName} <${this.fromEmail}>`,
+        to: [to],
+        subject: `${this.appName} — Additional Documents Required`,
+        html,
+      });
+      return !result?.error;
+    } catch {
+      return false;
+    }
   }
 
   /**

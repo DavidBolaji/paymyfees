@@ -14,13 +14,14 @@ import { useRouter } from 'next/navigation';
 
 interface ViewPaymentPlanProps {
   paymentPlan: PaymentPlan | null;
+  emptyReason?: 'no_loan' | 'approved_pending';
 }
 
-export function ViewPaymentPlan({ paymentPlan }: ViewPaymentPlanProps) {
+export function ViewPaymentPlan({ paymentPlan, emptyReason = 'no_loan' }: ViewPaymentPlanProps) {
   const router = useRouter();
   // If no payment plan exists, show empty state
   if (!paymentPlan) {
-    return <EmptyPaymentPlan />;
+    return <EmptyPaymentPlan reason={emptyReason} />;
   }
 
   // Check if payment is overdue by comparing dates
@@ -39,8 +40,10 @@ export function ViewPaymentPlan({ paymentPlan }: ViewPaymentPlanProps) {
     return dueDate < today;
   };
 
-  // Determine actual status (override backend if date shows overdue)
-  const actualStatus = isPaymentOverdue() ? 'overdue' : paymentPlan.currentStatus;
+  // Determine actual status (override backend if date shows overdue, but never override rejected)
+  const actualStatus = paymentPlan.currentStatus === 'rejected'
+    ? 'rejected'
+    : isPaymentOverdue() ? 'overdue' : paymentPlan.currentStatus;
   
   // Calculate days overdue if payment is late
   const calculateOverdueDays = () => {
@@ -64,18 +67,12 @@ export function ViewPaymentPlan({ paymentPlan }: ViewPaymentPlanProps) {
 
 
   const getStatusText = () => {
-    // Use actual status instead of paymentPlan.currentStatus
-    const displayStatus = actualStatus;
-    
-    switch (displayStatus) {
-      case 'active':
-        return 'Active';
-      case 'overdue':
-        return 'Overdue';
-      case 'completed':
-        return 'Completed';
-      default:
-        return 'Unknown';
+    switch (actualStatus) {
+      case 'active':    return 'Active';
+      case 'overdue':   return 'Overdue';
+      case 'completed': return 'Completed';
+      case 'rejected':  return 'Rejected';
+      default:          return 'Unknown';
     }
   };
 
@@ -203,57 +200,71 @@ export function ViewPaymentPlan({ paymentPlan }: ViewPaymentPlanProps) {
       </div>
 
       {/* 2 Column Grid Section - 8/4 split */}
-      <div className="gap-6 grid grid-cols-1 lg:grid-cols-12">
-        {/* Left Side - 8 columns - InfoCard */}
-        <div className="lg:col-span-8">
-          <InfoCard
-            title="Repayment Progress"
-            topContent={<ProgressBar />}
-            items={[
-              {
-                label: 'Progress',
-                value: `${paymentPlan.paymentsCompleted}/${paymentPlan.totalPayments} months paid`
-              },
-              {
-                label: 'Total Paid',
-                value: `₦${paymentPlan.totalPaid.toLocaleString()}`
-              },
-              {
-                label: 'Outstanding',
-                value: `₦${paymentPlan.outstanding.toLocaleString()}`
-              },
-              {
-                label: 'Next Repayment',
-                value: `₦${paymentPlan.nextRepayment.toLocaleString()}`
-              }
-            ]}
-          />
+      {actualStatus === 'rejected' ? (
+        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 text-center">
+          <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
+            <svg className="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <p className="font-bold text-red-700 text-lg mb-1">Loan Application Rejected</p>
+          <p className="text-red-500 text-sm">This loan application was not approved. No repayment is required. Please contact support for more information.</p>
         </div>
+      ) : (
+        <div className="gap-6 grid grid-cols-1 lg:grid-cols-12">
+          {/* Left Side - 8 columns - InfoCard */}
+          <div className="lg:col-span-8">
+            <InfoCard
+              title="Repayment Progress"
+              topContent={<ProgressBar />}
+              items={[
+                {
+                  label: 'Progress',
+                  value: `${paymentPlan.paymentsCompleted}/${paymentPlan.totalPayments} months paid`
+                },
+                {
+                  label: 'Total Paid',
+                  value: `₦${paymentPlan.totalPaid.toLocaleString()}`
+                },
+                {
+                  label: 'Outstanding',
+                  value: `₦${paymentPlan.outstanding.toLocaleString()}`
+                },
+                {
+                  label: 'Next Repayment',
+                  value: `₦${paymentPlan.nextRepayment.toLocaleString()}`
+                }
+              ]}
+            />
+          </div>
 
-        {/* Right Side - 4 columns - Custom Payment Card */}
-        <div className="lg:col-span-4">
-          <PaymentCard />
+          {/* Right Side - 4 columns - Custom Payment Card */}
+          <div className="lg:col-span-4">
+            <PaymentCard />
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Table Section - 6 columns out of 12 */}
-      <div className="grid grid-cols-1 lg:grid-cols-12">
-        <div className="md:col-span-7">
-          <DataTable
-            title="Installment Breakdown"
-            columns={INSTALLMENT_COLUMNS}
-            data={paymentPlan.installments.map(installment => ({
-              installment: `${installment.installmentNumber} of ${paymentPlan.installments.length}`,
-              amount: installment.amount,
-              dueDate: installment.dueDate,
-              status: installment.status
-            }))}
-            itemsPerPage={5}
-            viewAllHref="#"
-            searchable={false}
-          />
+      {/* Table Section - hidden when rejected */}
+      {actualStatus !== 'rejected' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12">
+          <div className="md:col-span-7">
+            <DataTable
+              title="Installment Breakdown"
+              columns={INSTALLMENT_COLUMNS}
+              data={paymentPlan.installments.map(installment => ({
+                installment: `${installment.installmentNumber} of ${paymentPlan.installments.length}`,
+                amount: installment.amount,
+                dueDate: installment.dueDate,
+                status: installment.status
+              }))}
+              itemsPerPage={5}
+              viewAllHref="#"
+              searchable={false}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Action Buttons */}
     </div>

@@ -68,7 +68,7 @@ export default function AdminSchoolsPage() {
 
   const fetchStats = async () => {
     try {
-      const res = await api.get('/api/admin/dashboard');
+      const res = await api.get('/api/admin/schools/stats');
       const data = await res.json();
       setStats(data.data);
     } catch (e) {

@@ -101,15 +101,6 @@ export class TimelineService implements ITimelineService {
           { label: '5th Installment', value: '-', isPaid: false },
         ],
         detailedTimeline: [
-          { id: '1', title: 'School Verified', status: 'upcoming' },
-          { id: '2', title: 'Loan Approved', status: 'upcoming' },
-          { id: '3', title: 'School Paid', status: 'upcoming' },
-          { id: '4', title: '1st Repayment', status: 'upcoming' },
-          { id: '5', title: '2nd Repayment', status: 'upcoming' },
-          { id: '6', title: '3rd Repayment', status: 'upcoming' },
-          { id: '7', title: '4th Repayment', status: 'upcoming' },
-          { id: '8', title: '5th Repayment', status: 'upcoming' },
-          { id: '9', title: '6th Repayment', status: 'upcoming' },
         ],
         disbursementReceiptUrl: undefined,
       };

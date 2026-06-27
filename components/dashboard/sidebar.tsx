@@ -15,7 +15,6 @@ import {
   ChevronRight,
   Building2,
   FileText,
-  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Logo from "@/assets/images/logo/logo.png";
@@ -27,6 +26,8 @@ import { UserCircleIcon } from '@/assets/icons/UserCircleIcon';
 interface SidebarProps {
   className?: string;
   isAdmin?: boolean;
+  isTeacherAdmin?: boolean;
+  isSchoolAdmin?: boolean;
   isOpen?: boolean;
   onClose?: () => void;
 }
@@ -75,8 +76,69 @@ const studentNavigationGroups: NavGroup[] = [
   },
 ];
 
+const teacherAdminNavigationGroups: NavGroup[] = [
+  {
+    title: 'OVERVIEW',
+    items: [
+      { icon: LayoutDashboard, label: 'Dashboard', href: '/teacher-admin' }
+    ]
+  },
+  {
+    title: 'TEACHERS',
+    items: [
+      { icon: GraduationCap, label: 'Teachers Directory', href: '/teacher-admin/teachers' },
+    ]
+  },
+  {
+    title: 'LOANS & FINANCING',
+    items: [
+      { icon: FileText, label: 'Loan Applications', href: '/teacher-admin/loans' }
+    ]
+  },
+  {
+    title: 'SUPPORT',
+    items: [
+      { icon: HelpCircle, label: 'Support Tickets', href: '/teacher-admin/support' },
+    ]
+  },
+];
+
+const schoolAdminNavigationGroups: NavGroup[] = [
+  {
+    title: 'OVERVIEW',
+    items: [
+      { icon: LayoutDashboard, label: 'Dashboard', href: '/school-admin' }
+    ]
+  },
+  {
+    title: 'SCHOOLS',
+    items: [
+      { icon: Building2, label: 'School Directory', href: '/school-admin/schools' },
+    ]
+  },
+  {
+    title: 'STUDENTS',
+    items: [
+      { icon: GraduationCap, label: 'Students Directory', href: '/school-admin/students' },
+    ]
+  },
+  {
+    title: 'LOANS & FINANCING',
+    items: [
+      { icon: FileText, label: 'Loan Applications', href: '/school-admin/loans' }
+    ]
+  },
+  {
+    title: 'SUPPORT',
+    items: [
+      { icon: HelpCircle, label: 'Support Tickets', href: '/school-admin/support' },
+    ]
+  },
+];
+
 const adminNavigationGroups: NavGroup[] = [
   {
+     title: 'OVERVIEW',
     items: [
       { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' }
     ]
@@ -84,7 +146,8 @@ const adminNavigationGroups: NavGroup[] = [
   {
     title: 'STUDENTS',
     items: [
-      { icon: Users, label: 'Student Directory', href: '/admin/students' },
+      { icon: GraduationCap, label: 'Students Directory', href: '/admin/students' },
+      // { icon: Users, label: 'Parents Direcstory', href: '/admin/parents' },
       { icon: Building2, label: 'School Verification', href: '/admin/schools' },
     ]
   },
@@ -109,11 +172,17 @@ const adminNavigationGroups: NavGroup[] = [
   },
 ];
 
-export function Sidebar({ className, isAdmin = false, isOpen = false, onClose }: SidebarProps) {
+export function Sidebar({ className, isAdmin = false, isTeacherAdmin = false, isSchoolAdmin = false, isOpen = false, onClose }: SidebarProps) {
   const [isDark, setIsDark] = useState(false);
   const {logout} = useAuthStore()
   const pathname = usePathname();
-  const navigationGroups = isAdmin ? adminNavigationGroups : studentNavigationGroups;
+  const navigationGroups = isTeacherAdmin
+    ? teacherAdminNavigationGroups
+    : isSchoolAdmin
+      ? schoolAdminNavigationGroups
+      : isAdmin
+        ? adminNavigationGroups
+        : studentNavigationGroups;
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
@@ -181,11 +250,11 @@ export function Sidebar({ className, isAdmin = false, isOpen = false, onClose }:
               )}
               <div className="space-y-1">
                 {group.items.map((item, itemIndex) => {
-                  const isActive = (item.href === '/dashboard' || item.href === '/admin')
-                    ? pathname === item.href || 
+                  const isActive = (item.href === '/dashboard' || item.href === '/admin' || item.href === '/teacher-admin' || item.href === '/school-admin')
+                    ? pathname === item.href ||
                       (item.href === '/dashboard' && (
-                        pathname.startsWith('/dashboard/loans') || 
-                        pathname.startsWith('/dashboard/timeline') || 
+                        pathname.startsWith('/dashboard/loans') ||
+                        pathname.startsWith('/dashboard/timeline') ||
                         pathname.startsWith('/dashboard/transactions') ||
                         pathname.startsWith('/dashboard/apply-loan') ||
                         pathname.startsWith('/dashboard/view-payment-plan')
@@ -199,15 +268,22 @@ export function Sidebar({ className, isAdmin = false, isOpen = false, onClose }:
                         (pathname.startsWith('/admin/students/') &&
                           ['recently-active', 'all-active-students', 'all-overdue-students', 'all-completed-students', 'student-profile'].some(sub => pathname.startsWith('/admin/students/' + sub)))
                       : item.href === '/admin/schools'
-                        ? pathname === '/admin/schools' ||
-                          ['all-active-schools', 'all-pending-schools', 'all-verified-schools'].some(sub => pathname.startsWith('/admin/schools/' + sub))
+                        ? pathname === '/admin/schools' || pathname.startsWith('/admin/schools/')
                         : item.href === '/admin/loans'
                           ? pathname === '/admin/loans' ||
                             ['all-loans', 'all-pending-loans', 'all-approved-loan', 'all-rejected-loan'].some(sub => pathname.startsWith('/admin/loans/' + sub))
                           : item.href === '/admin/support'
                             ? pathname === '/admin/support' ||
                               ['all-ticket', 'all-open-ticket', 'all-resolved-ticket', 'all-closed-ticket'].some(sub => pathname.startsWith('/admin/tickets/' + sub))
-                            : pathname === item.href || pathname.startsWith((item.href ?? '') + '/');
+                            : item.href === '/school-admin/schools'
+                              ? pathname === '/school-admin/schools' || pathname.startsWith('/school-admin/schools/')
+                              : item.href === '/school-admin/students'
+                                ? pathname === '/school-admin/students' || pathname.startsWith('/school-admin/students/')
+                                : item.href === '/school-admin/loans'
+                                  ? pathname === '/school-admin/loans' || pathname.startsWith('/school-admin/loans/')
+                                  : item.href === '/school-admin/support'
+                                    ? pathname === '/school-admin/support' || pathname.startsWith('/school-admin/support/')
+                                    : pathname === item.href || pathname.startsWith((item.href ?? '') + '/');
                   return (
                     <div key={itemIndex} className="group relative">
                       <Link

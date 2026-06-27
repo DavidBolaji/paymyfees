@@ -26,9 +26,18 @@ const baseEnvSchema = {
   GOOGLE_PRIVATE_KEY: z.string().optional(),
   GOOGLE_SHEET_ID: z.string().optional(),
   
-  // Payment Gateway - Paystack
-  PAYSTACK_SECRET_KEY: z.string().optional(),
-  PAYSTACK_PUBLIC_KEY: z.string().optional(),
+  // Payment Gateway - Embedly
+  EMBEDLY_API_KEY: z.string().optional(),
+  EMBEDLY_ORG_ID: z.string().optional(),
+  EMBEDLY_WEBHOOK_SECRET: z.string().optional(),
+  EMBEDLY_ENV: z.enum(['staging', 'production']).default('staging'),
+  EMBEDLY_NGN_CURRENCY_ID: z.string().optional(),
+  EMBEDLY_CUSTOMER_TYPE_ID: z.string().optional(),
+  EMBEDLY_COUNTRY_ID: z.string().optional(),
+  // PayMyFees destination bank account (for loan repayments via Embedly payout)
+  PMF_DESTINATION_BANK_CODE: z.string().optional(),
+  PMF_DESTINATION_ACCOUNT_NO: z.string().optional(),
+  PMF_DESTINATION_ACCOUNT_NAME: z.string().optional(),
   
   // Payment Gateway - Flutterwave
   FLUTTERWAVE_SECRET_KEY: z.string().optional(),

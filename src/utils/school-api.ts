@@ -14,6 +14,9 @@ export interface RegisterSchoolPayload {
   schoolEmail?: string;
   schoolPhone?: string;
   website?: string;
+  schoolType?: string;
+  yearEstablished?: number;
+  registrationNumber?: string;
   contactPersonName?: string;
   contactPersonPosition?: string;
   contactPersonEmail?: string;
@@ -35,6 +38,9 @@ export interface UpdateSchoolPayload {
   schoolEmail?: string;
   schoolPhone?: string;
   website?: string;
+  schoolType?: string;
+  yearEstablished?: number;
+  registrationNumber?: string;
   contactPersonName?: string;
   contactPersonPosition?: string;
   contactPersonEmail?: string;

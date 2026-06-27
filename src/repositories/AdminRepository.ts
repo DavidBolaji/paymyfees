@@ -4,8 +4,9 @@
  */
 
 import { prisma } from '@/src/database/prisma';
-import { Installment, LoanStatus, PaymentStatus, SupportTicketStatus, UserRole, VerificationStatus } from '@prisma/client';
+import { Installment, LoanStatus, NotificationType, PaymentStatus, SupportTicketStatus, UserRole, VerificationStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { MailService } from '@/src/services/MailService';
 
 export interface IAdminRepository {
   getAnalytics(): Promise<any>;
@@ -36,6 +37,18 @@ export interface IAdminRepository {
   flagAccount(userId: string, adminId: string, reason: string, notes: string): Promise<any>;
   getPendingVerificationSchools(page: number, limit: number): Promise<any>;
   requestAdditionalDocuments(schoolId: string, adminId: string, data: any): Promise<any>;
+  getTeacherLoans(page: number, limit: number, statuses?: string[]): Promise<any>;
+  getTeacherUsers(page: number, limit: number): Promise<any>;
+  getTeacherDetails(userId: string): Promise<any>;
+  getSchoolLoans(page: number, limit: number, statuses?: string[]): Promise<any>;
+  getSchoolUserList(page: number, limit: number, status?: string): Promise<any>;
+  getSchoolUserDetails(userId: string): Promise<any>;
+  getSchoolSupportTickets(page: number, limit: number, status?: string): Promise<any>;
+  getSchoolAdminDashboardStats(): Promise<any>;
+  getTeacherSupportTickets(page: number, limit: number, status?: string): Promise<any>;
+  getTeacherAdminDashboardStats(): Promise<any>;
+  getSchoolsStats(): Promise<any>;
+  updateStudent(userId: string, data: any): Promise<any>;
 }
 
 export class AdminRepository implements IAdminRepository {
@@ -259,7 +272,7 @@ export class AdminRepository implements IAdminRepository {
       updateData.rejectionReason = reason;
     }
 
-    const [loan] = await Promise.all([
+    const ops: Promise<any>[] = [
       prisma.loan.update({
         where: { id: loanId },
         data: updateData,
@@ -280,7 +293,14 @@ export class AdminRepository implements IAdminRepository {
           reason
         }
       })
-    ]);
+    ];
+
+    // Delete all installments when a loan is rejected
+    if (status === LoanStatus.REJECTED) {
+      ops.push(prisma.installment.deleteMany({ where: { loanId } }));
+    }
+
+    const [loan] = await Promise.all(ops);
 
     return loan;
   }
@@ -291,10 +311,7 @@ export class AdminRepository implements IAdminRepository {
   async processDisbursement(loanId: string, adminId: string): Promise<any> {
     const loan = await prisma.loan.findUnique({
       where: { id: loanId },
-      include: {
-        school: true,
-        installments: { select: { id: true }, take: 1 },
-      }
+      include: { school: true },
     });
 
     if (!loan) {
@@ -304,16 +321,36 @@ export class AdminRepository implements IAdminRepository {
     const disbursementDate = new Date();
     const disbursementReference = `DISB-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-    const [updatedLoan, disbursement] = await Promise.all([
-      prisma.loan.update({
+    // Calculate installment schedule anchored to disbursement date
+    const firstPaymentDate = new Date(disbursementDate);
+    firstPaymentDate.setDate(firstPaymentDate.getDate() + 30);
+    const monthlyPayment = Number(loan.monthlyPayment);
+    const installmentsData = Array.from({ length: loan.repaymentMonths }, (_, i) => {
+      const dueDate = new Date(firstPaymentDate);
+      dueDate.setMonth(dueDate.getMonth() + i);
+      return {
+        loanId,
+        installmentNumber: i + 1,
+        amount: monthlyPayment,
+        dueDate,
+        status: 'PENDING' as const,
+        daysOverdue: 0,
+        lateFee: 0,
+      };
+    });
+
+    const [updatedLoan, disbursement] = await prisma.$transaction(async (tx) => {
+      const updated = await tx.loan.update({
         where: { id: loanId },
         data: {
           status: LoanStatus.DISBURSED,
           amountDisbursed: loan.loanAmount,
           disbursementDate,
+          firstPaymentDate,
         }
-      }),
-      prisma.disbursement.create({
+      });
+
+      const disb = await tx.disbursement.create({
         data: {
           disbursementReference,
           loanId,
@@ -326,39 +363,23 @@ export class AdminRepository implements IAdminRepository {
           disbursedAt: disbursementDate,
           confirmedAt: disbursementDate,
         }
-      }),
-      prisma.loanStatusHistory.create({
+      });
+
+      await tx.loanStatusHistory.create({
         data: {
           loanId,
           newStatus: LoanStatus.DISBURSED,
           changedBy: adminId,
           reason: 'Disbursement processed by admin'
         }
-      })
-    ]);
-
-    // Create installments if none exist yet (anchored to disbursement date)
-    if (loan.installments.length === 0) {
-      const monthlyPayment = Number(loan.monthlyPayment);
-      const firstPaymentDate = new Date(disbursementDate);
-      firstPaymentDate.setDate(firstPaymentDate.getDate() + 30);
-
-      const installmentsData = Array.from({ length: loan.repaymentMonths }, (_, i) => {
-        const dueDate = new Date(firstPaymentDate);
-        dueDate.setMonth(dueDate.getMonth() + i);
-        return {
-          loanId,
-          installmentNumber: i + 1,
-          amount: monthlyPayment,
-          dueDate,
-          status: 'PENDING' as const,
-          daysOverdue: 0,
-          lateFee: 0,
-        };
       });
 
-      await prisma.installment.createMany({ data: installmentsData });
-    }
+      // Always delete any stale installments and create fresh ones anchored to disbursement date
+      await tx.installment.deleteMany({ where: { loanId } });
+      await tx.installment.createMany({ data: installmentsData });
+
+      return [updated, disb];
+    });
 
     return { loan: updatedLoan, disbursement };
   }
@@ -770,9 +791,24 @@ export class AdminRepository implements IAdminRepository {
   }
 
   /**
+   * Get stats specific to the school verification page
+   */
+  async getSchoolsStats(): Promise<any> {
+    const [pendingSchoolsCount, underReviewCount, verifiedSchoolsCount, rejectedSchoolsCount] =
+      await Promise.all([
+        prisma.schoolProfile.count({ where: { isVerified: false } }),
+        prisma.schoolVerification.count({ where: { status: VerificationStatus.PENDING } }),
+        prisma.schoolProfile.count({ where: { isVerified: true } }),
+        prisma.schoolVerification.count({ where: { status: VerificationStatus.REJECTED } }),
+      ]);
+    return { pendingSchoolsCount, underReviewCount, verifiedSchoolsCount, rejectedSchoolsCount };
+  }
+
+  /**
    * Get dashboard stats for new admin dashboard
    */
   async getDashboardStats(): Promise<any> {
+    const now = new Date();
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
@@ -783,10 +819,19 @@ export class AdminRepository implements IAdminRepository {
       totalTicketsToday, totalPlatformTickets, resolvedTicketsCount, closedTicketsCount,
     ] = await Promise.all([
       prisma.user.count({
-        where: { role: { in: ['PARENT', 'STUDENT'] }, isActive: true }
+        where: { role: { in: [UserRole.PARENT, UserRole.STUDENT] } }
       }),
-      prisma.loan.count({ where: { status: LoanStatus.ACTIVE } }),
-      prisma.installment.count({ where: { daysOverdue: { gt: 0 } } }),
+      prisma.loan.findMany({
+        where: { status: { in: [LoanStatus.ACTIVE, LoanStatus.DISBURSED] } },
+        distinct: ['userId'],
+        select: { userId: true },
+      }).then(r => r.length),
+      prisma.installment.count({
+        where: {
+          dueDate: { lt: now },
+          status: { notIn: [PaymentStatus.PAID, PaymentStatus.CANCELLED] },
+        }
+      }),
       prisma.supportTicket.count({ where: { status: SupportTicketStatus.OPEN } }),
       prisma.loan.count({ where: { status: LoanStatus.COMPLETED } }),
       prisma.schoolProfile.count({ where: { isVerified: false } }),
@@ -794,7 +839,7 @@ export class AdminRepository implements IAdminRepository {
       prisma.schoolProfile.count({ where: { isVerified: true } }),
       prisma.schoolVerification.count({ where: { status: VerificationStatus.REJECTED } }),
       prisma.loan.count(),
-      prisma.loan.count({ where: { status: LoanStatus.PENDING } }),
+      prisma.loan.count({ where: { status: { in: [LoanStatus.PENDING, LoanStatus.UNDER_REVIEW] } } }),
       prisma.loan.count({ where: { status: { in: [LoanStatus.APPROVED, LoanStatus.ACTIVE, LoanStatus.DISBURSED, LoanStatus.COMPLETED] } } }),
       prisma.loan.count({ where: { status: LoanStatus.REJECTED } }),
       prisma.supportTicket.count({ where: { createdAt: { gte: todayStart } } }),
@@ -803,18 +848,13 @@ export class AdminRepository implements IAdminRepository {
       prisma.supportTicket.count({ where: { status: SupportTicketStatus.CLOSED } }),
     ]);
 
-    // Compute average first response time in minutes from firstResponseAt
-    const ticketsWithResponse = await prisma.supportTicket.findMany({
-      where: { firstResponseAt: { not: null } },
-      select: { createdAt: true, firstResponseAt: true },
-    });
-    let avgFirstResponseMins = 0;
-    if (ticketsWithResponse.length > 0) {
-      const totalMins = ticketsWithResponse.reduce((sum, t) => {
-        return sum + (t.firstResponseAt!.getTime() - t.createdAt.getTime()) / 60000;
-      }, 0);
-      avgFirstResponseMins = Math.round(totalMins / ticketsWithResponse.length);
-    }
+    // Compute average first response time in minutes using DB-level aggregation
+    const avgResult = await prisma.$queryRaw<[{ avg_mins: number | null }]>`
+      SELECT AVG(TIMESTAMPDIFF(SECOND, createdAt, firstResponseAt) / 60.0) AS avg_mins
+      FROM support_tickets
+      WHERE firstResponseAt IS NOT NULL
+    `;
+    const avgFirstResponseMins = Math.round(avgResult[0]?.avg_mins ?? 0);
 
     return {
       activeStudentCount, activeLoansCount, overdueCount, openTicketsCount, completedLoansCount,
@@ -1030,8 +1070,7 @@ export class AdminRepository implements IAdminRepository {
           user: { select: { id: true, fullName: true } },
           installments: {
             where: overdueInstallmentFilter,
-            orderBy: { dueDate: 'asc' },
-            take: 1
+            orderBy: { dueDate: 'asc' }
           }
         }
       }),
@@ -1044,6 +1083,8 @@ export class AdminRepository implements IAdminRepository {
         const daysOverdue = earliest
           ? Math.floor((now.getTime() - new Date(earliest.dueDate).getTime()) / 86400000)
           : 0;
+        // Sum all overdue instalments for this loan
+        const overdueTotal = loan.installments.reduce((sum: number, inst: any) => sum + Number(inst.amount), 0);
         return {
           installmentId: earliest?.id ?? null,
           loanId: loan.id,
@@ -1051,7 +1092,8 @@ export class AdminRepository implements IAdminRepository {
           userId: loan.userId,
           studentName: loan.user.fullName,
           school: loan.schoolName,
-          outstanding: Number(loan.outstandingBalance),
+          outstanding: overdueTotal,
+          totalOutstanding: Number(loan.outstandingBalance),
           status: 'delayed',
           delayCount: `Delayed for ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''}`,
           daysOverdue,
@@ -1094,7 +1136,7 @@ export class AdminRepository implements IAdminRepository {
         orderBy: { transactionDate: 'desc' },
         take: 10
       }),
-      prisma.document.findMany({ where: { userId } })
+      prisma.document.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 50 })
     ]);
 
     if (!user) throw new Error('Student not found');
@@ -1302,6 +1344,9 @@ export class AdminRepository implements IAdminRepository {
         schoolEmail: s.schoolEmail,
         schoolPhone: s.schoolPhone,
         website: s.website,
+        schoolType: s.schoolType,
+        yearEstablished: s.yearEstablished,
+        registrationNumber: s.registrationNumber,
         contactPersonName: s.contactPersonName,
         applicationCount: s.loans.length,
         dateSubmitted: s.createdAt,
@@ -1322,16 +1367,54 @@ export class AdminRepository implements IAdminRepository {
    * Request additional documents from a school
    */
   async requestAdditionalDocuments(schoolId: string, adminId: string, data: any): Promise<any> {
-    const { documents, instructions, channels } = data;
+    const { documents, instructions, channels = [], targetUserId, targetUserEmail, targetUserName } = data;
+    const message = `Additional documents required: ${documents}. ${instructions ? `Instructions: ${instructions}` : 'Please submit the requested documents promptly.'}`;
 
+    // Always create a school support message (visible in the school dashboard)
     await prisma.schoolSupportMessage.create({
-      data: {
-        schoolId,
-        message: `Additional documents required: ${documents}. Instructions: ${instructions || 'Please submit the requested documents promptly.'}`,
-        priority: 'high',
-        isRead: false
-      }
+      data: { schoolId, message, priority: 'high', isRead: false },
     });
+
+    // Prefer the explicitly passed student (loan applicant); fall back to school owner
+    let recipientId: string | null = targetUserId || null;
+    let recipientEmail: string | null = targetUserEmail || null;
+    let recipientName: string = targetUserName || 'User';
+
+    if (!recipientId || !recipientEmail) {
+      const school = await prisma.schoolProfile.findUnique({
+        where: { id: schoolId },
+        select: { userId: true, user: { select: { email: true, fullName: true } } },
+      });
+      recipientId = recipientId || school?.userId || null;
+      recipientEmail = recipientEmail || school?.user?.email || null;
+      recipientName = recipientName !== 'User' ? recipientName : (school?.user?.fullName || 'User');
+    }
+
+    if (recipientId) {
+      // In-app notification
+      if (channels.includes('in_app')) {
+        await prisma.notification.create({
+          data: {
+            userId: recipientId,
+            type: NotificationType.INFO,
+            title: 'Additional Documents Required',
+            message,
+            isRead: false,
+          },
+        });
+      }
+
+      // Email notification
+      if (channels.includes('email') && recipientEmail) {
+        const mailService = new MailService();
+        await mailService.sendDocumentRequestEmail(
+          recipientEmail,
+          recipientName,
+          documents,
+          instructions || '',
+        ).catch(err => console.error('Document request email failed:', err));
+      }
+    }
 
     await prisma.auditLog.create({
       data: {
@@ -1339,8 +1422,8 @@ export class AdminRepository implements IAdminRepository {
         action: 'REQUEST_DOCUMENTS',
         entity: 'school',
         entityId: schoolId,
-        newValues: { documents, instructions, channels }
-      }
+        newValues: { documents, instructions, channels, targetUserId },
+      },
     });
 
     return { success: true };
@@ -1406,5 +1489,555 @@ export class AdminRepository implements IAdminRepository {
         performedBy: adminId
       }
     });
+  }
+
+  /**
+   * Get loans for users with TEACHER role
+   */
+  async getTeacherLoans(page: number, limit: number, statuses?: string[]): Promise<any> {
+    const skip = (page - 1) * limit;
+    const where: any = {
+      user: { role: UserRole.TEACHER },
+      ...(statuses?.length === 1
+        ? { status: statuses[0] as LoanStatus }
+        : statuses && statuses.length > 1
+          ? { status: { in: statuses as LoanStatus[] } }
+          : {}),
+    };
+
+    const [loans, total] = await Promise.all([
+      prisma.loan.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, fullName: true, email: true, phone: true, country: true, city: true, isActive: true } },
+          school: { select: { schoolName: true, isVerified: true } },
+        },
+      }),
+      prisma.loan.count({ where }),
+    ]);
+
+    return {
+      loans: loans.map((l: any) => ({
+        id: l.id,
+        loanNumber: l.loanNumber,
+        teacherName: l.user.fullName,
+        // Aliases used by LoanDetailDrawer while detail fetch is in progress
+        userName: l.user.fullName,
+        userEmail: l.user.email,
+        userPhone: l.user.phone,
+        userCountry: l.user.country,
+        userCity: l.user.city,
+        userIsActive: l.user.isActive,
+        userId: l.userId,
+        schoolName: l.school?.schoolName ?? l.schoolName,
+        schoolIsVerified: l.school?.isVerified ?? false,
+        userPreviousLoans: 0,
+        loanAmount: Number(l.loanAmount),
+        repaymentMonths: l.repaymentMonths,
+        status: l.status,
+        applicationDate: l.applicationDate,
+        createdAt: l.createdAt,
+      })),
+      pagination: {
+        page, limit, total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrevious: page > 1,
+      },
+    };
+  }
+
+  /**
+   * Get single teacher details (user + teacherProfile + loans)
+   */
+  async getTeacherDetails(userId: string): Promise<any> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { teacherProfile: true },
+    });
+
+    if (!user) throw new Error('Teacher not found');
+
+    const loans = await prisma.loan.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        installments: { orderBy: { installmentNumber: 'asc' } },
+        documents: { select: { id: true, documentType: true, fileName: true, fileUrl: true, fileSize: true } },
+        school: { select: { schoolName: true } },
+      },
+    });
+
+    return {
+      user: {
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+      },
+      teacherProfile: user.teacherProfile,
+      loans: loans.map((l: any) => ({
+        id: l.id,
+        loanNumber: l.loanNumber,
+        loanAmount: Number(l.loanAmount),
+        totalAmount: Number(l.totalAmount),
+        amountRepaid: Number(l.amountRepaid),
+        outstandingBalance: Number(l.outstandingBalance),
+        status: l.status,
+        applicationDate: l.applicationDate,
+        disbursementDate: l.disbursementDate,
+        schoolName: l.school?.schoolName ?? l.schoolName,
+        installments: l.installments.map((i: any) => ({ ...i, amount: Number(i.amount) })),
+        documents: l.documents,
+      })),
+    };
+  }
+
+  /**
+   * Get users with TEACHER role and their profiles
+   */
+  async getTeacherUsers(page: number, limit: number): Promise<any> {
+    const skip = (page - 1) * limit;
+    const where = { role: UserRole.TEACHER };
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: { teacherProfile: true },
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return {
+      teachers: users.map((u: any) => ({
+        id: u.id,
+        fullName: u.fullName,
+        email: u.email,
+        phone: u.phone,
+        isActive: u.isActive,
+        createdAt: u.createdAt,
+        staffId: u.teacherProfile?.staffId ?? null,
+        subject: u.teacherProfile?.subject ?? null,
+        schoolName: u.teacherProfile?.schoolName ?? null,
+        employmentStatus: u.teacherProfile?.employmentStatus ?? null,
+      })),
+      pagination: {
+        page, limit, total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrevious: page > 1,
+      },
+    };
+  }
+
+  /**
+   * Get loans for users with SCHOOL role
+   */
+  async getSchoolLoans(page: number, limit: number, statuses?: string[]): Promise<any> {
+    const skip = (page - 1) * limit;
+    const where: any = {
+      user: { role: UserRole.SCHOOL },
+      ...(statuses?.length === 1
+        ? { status: statuses[0] as LoanStatus }
+        : statuses && statuses.length > 1
+          ? { status: { in: statuses as LoanStatus[] } }
+          : {}),
+    };
+
+    const [loans, total] = await Promise.all([
+      prisma.loan.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, fullName: true, email: true, phone: true, country: true, city: true, isActive: true } },
+          school: { select: { schoolName: true, isVerified: true } },
+        },
+      }),
+      prisma.loan.count({ where }),
+    ]);
+
+    return {
+      loans: loans.map((l: any) => ({
+        id: l.id,
+        loanNumber: l.loanNumber,
+        userName: l.user.fullName,
+        userEmail: l.user.email,
+        userPhone: l.user.phone,
+        userCountry: l.user.country,
+        userCity: l.user.city,
+        userIsActive: l.user.isActive,
+        userId: l.userId,
+        schoolName: l.school?.schoolName ?? l.schoolName,
+        schoolIsVerified: l.school?.isVerified ?? false,
+        userPreviousLoans: 0,
+        loanAmount: Number(l.loanAmount),
+        repaymentMonths: l.repaymentMonths,
+        status: l.status,
+        applicationDate: l.applicationDate,
+        createdAt: l.createdAt,
+      })),
+      pagination: {
+        page, limit, total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrevious: page > 1,
+      },
+    };
+  }
+
+  /**
+   * Get users with SCHOOL role as a list (for school-admin students/users page)
+   */
+  async getSchoolUserList(page: number, limit: number, status?: string): Promise<any> {
+    const skip = (page - 1) * limit;
+    const loanWhere: any = {
+      user: { role: UserRole.SCHOOL },
+      ...(status ? { status: status as LoanStatus } : {}),
+    };
+
+    const [loans, total] = await Promise.all([
+      prisma.loan.findMany({
+        where: loanWhere,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        distinct: ['userId'],
+        include: {
+          user: {
+            select: { id: true, fullName: true, email: true, isActive: true, createdAt: true },
+          },
+          payments: { select: { paymentDate: true }, orderBy: { paymentDate: 'desc' }, take: 1 },
+          school: { select: { schoolName: true } },
+        },
+      }),
+      prisma.loan.count({ where: loanWhere }),
+    ]);
+
+    return {
+      students: loans.map((l: any) => ({
+        userId: l.userId,
+        loanId: l.id,
+        loanNumber: l.loanNumber,
+        studentName: l.user.fullName,
+        school: l.school?.schoolName ?? l.schoolName,
+        status: l.status,
+        lastActivity: l.payments[0]?.paymentDate || l.updatedAt,
+        date: l.createdAt,
+      })),
+      pagination: {
+        page, limit, total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrevious: page > 1,
+      },
+    };
+  }
+
+  /**
+   * Get single SCHOOL user details (user + schoolProfile + loan + documents)
+   */
+  async getSchoolUserDetails(userId: string): Promise<any> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { schoolProfile: true },
+    });
+
+    if (!user) throw new Error('School user not found');
+
+    const loan = await prisma.loan.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        installments: { orderBy: { installmentNumber: 'asc' } },
+        school: { select: { schoolName: true } },
+      },
+    });
+
+    const documents = await prisma.document.findMany({ where: { userId } });
+
+    return {
+      user: {
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        phone: user.phone,
+        isActive: user.isActive,
+        country: user.country,
+        city: user.city,
+        createdAt: user.createdAt,
+      },
+      schoolProfile: user.schoolProfile,
+      loan: loan ? {
+        id: loan.id,
+        loanNumber: loan.loanNumber,
+        loanAmount: Number(loan.loanAmount),
+        amountRepaid: Number(loan.amountRepaid),
+        remainingAmount: Math.max(0, Number(loan.loanAmount) - Number(loan.amountRepaid)),
+        paidAmount: Number(loan.amountRepaid),
+        status: loan.status,
+        applicationDate: loan.applicationDate,
+        disbursementDate: loan.disbursementDate,
+        schoolName: loan.school?.schoolName ?? loan.schoolName,
+        installments: loan.installments.map((i: any) => ({ ...i, amount: Number(i.amount) })),
+      } : null,
+      documents,
+    };
+  }
+
+  /**
+   * Get support tickets from SCHOOL role users
+   */
+  async getSchoolSupportTickets(page: number, limit: number, status?: string): Promise<any> {
+    const skip = (page - 1) * limit;
+    const where: any = {
+      user: { role: UserRole.SCHOOL },
+      ...(status ? { status: status as SupportTicketStatus } : {}),
+    };
+
+    const [tickets, total] = await Promise.all([
+      prisma.supportTicket.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          user: { select: { id: true, fullName: true, email: true, phone: true, role: true } },
+          messages: { orderBy: { createdAt: 'desc' }, take: 1 },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.supportTicket.count({ where }),
+    ]);
+
+    return {
+      tickets,
+      pagination: {
+        page, limit, total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrevious: page > 1,
+      },
+    };
+  }
+
+  /**
+   * Dashboard stats scoped to SCHOOL role users
+   */
+  async getSchoolAdminDashboardStats(): Promise<any> {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const schoolUserFilter = { user: { role: UserRole.SCHOOL } };
+
+    const [
+      totalSchoolsCount,
+      pendingSchoolsCount,
+      verifiedSchoolsCount,
+      totalLoansCount,
+      pendingLoansCount,
+      approvedLoansCount,
+      rejectedLoansCount,
+      activeLoansCount,
+      completedLoansCount,
+      overdueCount,
+      activeStudentCount,
+      openTicketsCount,
+      totalTicketsToday,
+      totalPlatformTickets,
+      resolvedTicketsCount,
+    ] = await Promise.all([
+      prisma.schoolProfile.count(),
+      prisma.schoolProfile.count({ where: { isVerified: false } }),
+      prisma.schoolProfile.count({ where: { isVerified: true } }),
+      prisma.loan.count({ where: schoolUserFilter }),
+      prisma.loan.count({ where: { ...schoolUserFilter, status: LoanStatus.PENDING } }),
+      prisma.loan.count({ where: { ...schoolUserFilter, status: { in: [LoanStatus.APPROVED, LoanStatus.ACTIVE, LoanStatus.DISBURSED, LoanStatus.COMPLETED] } } }),
+      prisma.loan.count({ where: { ...schoolUserFilter, status: LoanStatus.REJECTED } }),
+      prisma.loan.count({ where: { ...schoolUserFilter, status: LoanStatus.ACTIVE } }),
+      prisma.loan.count({ where: { ...schoolUserFilter, status: LoanStatus.COMPLETED } }),
+      prisma.installment.count({ where: { loan: schoolUserFilter, daysOverdue: { gt: 0 } } }),
+      prisma.user.count({ where: { role: UserRole.SCHOOL, isActive: true } }),
+      prisma.supportTicket.count({ where: { user: { role: UserRole.SCHOOL }, status: SupportTicketStatus.OPEN } }),
+      prisma.supportTicket.count({ where: { user: { role: UserRole.SCHOOL }, createdAt: { gte: todayStart } } }),
+      prisma.supportTicket.count({ where: { user: { role: UserRole.SCHOOL } } }),
+      prisma.supportTicket.count({ where: { user: { role: UserRole.SCHOOL }, status: SupportTicketStatus.RESOLVED } }),
+    ]);
+
+    const ticketsWithResponse = await prisma.supportTicket.findMany({
+      where: { user: { role: UserRole.SCHOOL }, firstResponseAt: { not: null } },
+      select: { createdAt: true, firstResponseAt: true },
+    });
+    let avgFirstResponseMins = 0;
+    if (ticketsWithResponse.length > 0) {
+      const totalMins = ticketsWithResponse.reduce((sum, t) => {
+        return sum + (t.firstResponseAt!.getTime() - t.createdAt.getTime()) / 60000;
+      }, 0);
+      avgFirstResponseMins = Math.round(totalMins / ticketsWithResponse.length);
+    }
+
+    return {
+      totalSchoolsCount,
+      pendingSchoolsCount,
+      verifiedSchoolsCount,
+      activeStudentCount,
+      activeLoansCount,
+      overdueCount,
+      completedLoansCount,
+      loans: {
+        total: totalLoansCount,
+        pending: pendingLoansCount,
+        approved: approvedLoansCount,
+        rejected: rejectedLoansCount,
+      },
+      tickets: {
+        totalToday: totalTicketsToday,
+        open: openTicketsCount,
+        resolved: resolvedTicketsCount,
+        total: totalPlatformTickets,
+        avgFirstResponseMins,
+      },
+    };
+  }
+
+  /**
+   * Get support tickets from TEACHER role users
+   */
+  async getTeacherSupportTickets(page: number, limit: number, status?: string): Promise<any> {
+    const skip = (page - 1) * limit;
+    const where: any = {
+      user: { role: UserRole.TEACHER },
+      ...(status ? { status: status as SupportTicketStatus } : {}),
+    };
+
+    const [tickets, total] = await Promise.all([
+      prisma.supportTicket.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          user: { select: { id: true, fullName: true, email: true, phone: true, role: true } },
+          messages: { orderBy: { createdAt: 'desc' }, take: 1 },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.supportTicket.count({ where }),
+    ]);
+
+    return {
+      tickets,
+      pagination: {
+        page, limit, total,
+        totalPages: Math.ceil(total / limit),
+        hasNext: page < Math.ceil(total / limit),
+        hasPrevious: page > 1,
+      },
+    };
+  }
+
+  /**
+   * Dashboard stats scoped to TEACHER role users
+   */
+  async getTeacherAdminDashboardStats(): Promise<any> {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const teacherFilter = { user: { role: UserRole.TEACHER } };
+
+    const [
+      totalLoansCount, pendingLoansCount, approvedLoansCount, rejectedLoansCount,
+      openTicketsCount, totalTicketsToday, totalPlatformTickets, resolvedTicketsCount,
+    ] = await Promise.all([
+      prisma.loan.count({ where: teacherFilter }),
+      prisma.loan.count({ where: { ...teacherFilter, status: LoanStatus.PENDING } }),
+      prisma.loan.count({ where: { ...teacherFilter, status: { in: [LoanStatus.APPROVED, LoanStatus.ACTIVE, LoanStatus.DISBURSED, LoanStatus.COMPLETED] } } }),
+      prisma.loan.count({ where: { ...teacherFilter, status: LoanStatus.REJECTED } }),
+      prisma.supportTicket.count({ where: { user: { role: UserRole.TEACHER }, status: SupportTicketStatus.OPEN } }),
+      prisma.supportTicket.count({ where: { user: { role: UserRole.TEACHER }, createdAt: { gte: todayStart } } }),
+      prisma.supportTicket.count({ where: { user: { role: UserRole.TEACHER } } }),
+      prisma.supportTicket.count({ where: { user: { role: UserRole.TEACHER }, status: SupportTicketStatus.RESOLVED } }),
+    ]);
+
+    const ticketsWithResponse = await prisma.supportTicket.findMany({
+      where: { user: { role: UserRole.TEACHER }, firstResponseAt: { not: null } },
+      select: { createdAt: true, firstResponseAt: true },
+    });
+    let avgFirstResponseMins = 0;
+    if (ticketsWithResponse.length > 0) {
+      const totalMins = ticketsWithResponse.reduce((sum, t) => {
+        return sum + (t.firstResponseAt!.getTime() - t.createdAt.getTime()) / 60000;
+      }, 0);
+      avgFirstResponseMins = Math.round(totalMins / ticketsWithResponse.length);
+    }
+
+    return {
+      loans: {
+        total: totalLoansCount,
+        pending: pendingLoansCount,
+        approved: approvedLoansCount,
+        rejected: rejectedLoansCount,
+      },
+      tickets: {
+        totalToday: totalTicketsToday,
+        open: openTicketsCount,
+        resolved: resolvedTicketsCount,
+        total: totalPlatformTickets,
+        avgFirstResponseMins,
+      },
+    };
+  }
+
+  /**
+   * Update student profile (user with role PARENT)
+   */
+  async updateStudent(userId: string, data: any): Promise<any> {
+    const updatableFields = ['fullName', 'email', 'phone', 'gender', 'dob', 'country', 'city', 'address'];
+    const updateData: any = {};
+
+    // Only allow specific fields to be updated
+    updatableFields.forEach(field => {
+      if (data[field] !== undefined) {
+        if (field === 'dob') {
+          updateData[field] = new Date(data[field]);
+        } else {
+          updateData[field] = data[field];
+        }
+      }
+    });
+
+    // Update the user
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      include: {
+        wallet: true,
+        loans: {
+          include: {
+            installments: true,
+            school: true,
+          },
+        },
+      },
+    });
+
+    return {
+      id: updatedUser.id,
+      fullName: updatedUser.fullName,
+      email: updatedUser.email,
+      phone: updatedUser.phone,
+      gender: updatedUser.gender,
+      dob: updatedUser.dob,
+      country: updatedUser.country,
+      city: updatedUser.city,
+      address: updatedUser.address,
+    };
   }
 }

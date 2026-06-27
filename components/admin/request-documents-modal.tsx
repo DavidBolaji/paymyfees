@@ -21,9 +21,9 @@ const DOCUMENT_TYPES = [
 ];
 
 const CHANNELS = [
-  { id: 'email', label: 'Email Notification' },
-  { id: 'in_app', label: 'In App Notification' },
-  { id: 'sms', label: 'SMS' },
+  { id: 'email', label: 'Email Notification', disabled: false },
+  { id: 'in_app', label: 'In App Notification', disabled: false },
+  { id: 'sms', label: 'SMS (not available)', disabled: true },
 ];
 
 export function RequestDocumentsModal({ isOpen, onClose, onConfirm, loading }: RequestDocumentsModalProps) {
@@ -90,12 +90,13 @@ export function RequestDocumentsModal({ isOpen, onClose, onConfirm, loading }: R
             <label className="font-semibold text-[#292929]">Send Notification</label>
             <div className="space-y-2">
               {CHANNELS.map((ch) => (
-                <label key={ch.id} className="flex items-center gap-2 cursor-pointer">
+                <label key={ch.id} className={`flex items-center gap-2 ${ch.disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'}`}>
                   <input
                     type="checkbox"
                     checked={channels.includes(ch.id)}
-                    onChange={() => toggleChannel(ch.id)}
-                    className="w-4 h-4 text-[#00296B] border-gray-300 rounded"
+                    onChange={() => !ch.disabled && toggleChannel(ch.id)}
+                    disabled={ch.disabled}
+                    className="w-4 h-4 text-[#00296B] border-gray-300 rounded disabled:cursor-not-allowed"
                   />
                   <span className="text-sm text-[#292929]">{ch.label}</span>
                 </label>

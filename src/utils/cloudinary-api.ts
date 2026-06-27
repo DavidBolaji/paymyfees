@@ -3,6 +3,19 @@
  * Client-side utilities for Cloudinary uploads
  */
 
+/**
+ * Determine the correct Cloudinary resource_type for a file.
+ * PDFs, DOCX, and all non-image/video files must use "raw" — if uploaded
+ * as "image" or "auto" Cloudinary may route them through the image pipeline
+ * and block delivery.
+ */
+export function getCloudinaryResourceType(file: File): 'image' | 'video' | 'raw' {
+  const { type } = file;
+  if (type.startsWith('image/')) return 'image';
+  if (type.startsWith('video/')) return 'video';
+  return 'raw';
+}
+
 export interface CloudinaryUploadResult {
   public_id: string;
   secure_url: string;

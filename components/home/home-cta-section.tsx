@@ -4,6 +4,7 @@ import { HomeGradientWrapper } from "./home-gradient-wrapper";
 import { useRouter } from "next/navigation";
 
 export function HomeCtaSection() {
+  const router = useRouter();
   return (
     <section id="cta" className="bg-white px-6 py-[4.375rem] md:px-10 xl:px-[11.25rem]">
       <div className="mx-auto max-w-[1512px]">
@@ -34,7 +35,6 @@ export function HomeCtaSection() {
                 // backdropFilter: "blur(6px)",
               }}
               onClick={() => {
-                const router = useRouter()
                 router.push("/auth/register");
               }}
             >

@@ -93,8 +93,8 @@ export function DataTable({
   const endIndex = isServerPaginated ? Math.min(startIndex + data.length, total) : Math.min(clientStart + displayData.length, filteredData.length);
   const displayTotal = isServerPaginated ? total : filteredData.length;
 
-  const emptyRowsCount = itemsPerPage;
-  const fillerRowsCount = displayData.length > 0 && displayData.length < emptyRowsCount ? emptyRowsCount - displayData.length : 0;
+  const emptyRowsCount = isEmpty ? 1 : itemsPerPage;
+  const fillerRowsCount = displayData.length > 0 && displayData.length < itemsPerPage ? itemsPerPage - displayData.length : 0;
   const emptyRows = Array(emptyRowsCount).fill(null);
   const fillerRows = Array(fillerRowsCount).fill(null);
 
@@ -271,7 +271,7 @@ export function DataTable({
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto flex-grow" style={{ minHeight: '330px' }}>
+      <div className="overflow-x-auto flex-grow" style={!isEmpty ? { minHeight: '330px' } : undefined}>
         <table className="w-full min-w-[600px]">
           <thead className="bg-gray-50">
             <tr>

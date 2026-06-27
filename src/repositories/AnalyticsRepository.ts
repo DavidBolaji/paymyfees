@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '@/src/database/prisma';
-import { LoanStatus, TransactionType, TransactionStatus, Installment, Transaction } from '@prisma/client';
+import { LoanStatus, TransactionType, TransactionStatus, Installment } from '@prisma/client';
 
 export interface AnalyticsData {
   walletBalance: number;
@@ -61,23 +61,17 @@ export class AnalyticsRepository implements IAnalyticsRepository {
    * Get comprehensive analytics for a user
    */
   async getAnalyticsByUserId(userId: string, loanId?: string): Promise<AnalyticsData> {
-    // Get wallet data
-    const wallet = await this.getWalletData(userId);
-    
-    // Get active loan data — use specified loan if provided
-    const activeLoan = loanId
-      ? await this.getLoanDataById(loanId, userId)
-      : await this.getActiveLoanData(userId);
-    
-    // Get repayment data
+    // Run independent queries in parallel
+    const [wallet, activeLoan, fundingHistory, engagementScore] = await Promise.all([
+      this.getWalletData(userId),
+      loanId ? this.getLoanDataById(loanId, userId) : this.getActiveLoanData(userId),
+      this.getFundingHistory(userId),
+      this.calculateEngagementScore(userId),
+    ]);
+
+    // Repayment data depends on activeLoan.id, run after
     const repaymentData = await this.getRepaymentData(userId, activeLoan?.id);
-    
-    // Get funding history
-    const fundingHistory = await this.getFundingHistory(userId);
-    
-    // Calculate engagement score
-    const engagementScore = await this.calculateEngagementScore(userId);
-    
+
     // Get timeline chart data
     const timelineChart = this.calculateTimelineChart(repaymentData.progress);
     
@@ -260,25 +254,19 @@ export class AnalyticsRepository implements IAnalyticsRepository {
    * Get funding history statistics
    */
   private async getFundingHistory(userId: string) {
-    const fundingTransactions = await prisma.transaction.findMany({
+    const result = await prisma.transaction.aggregate({
       where: {
         userId,
         type: TransactionType.CREDIT,
         status: TransactionStatus.COMPLETED,
       },
-      select: {
-        amount: true,
-      },
+      _count: { id: true },
+      _sum: { amount: true },
     });
 
-    const totalAmount = fundingTransactions.reduce(
-      (sum: number, transaction) => sum + Number(transaction.amount),
-      0
-    );
-
     return {
-      count: fundingTransactions.length,
-      totalAmount,
+      count: result._count.id,
+      totalAmount: Number(result._sum.amount ?? 0),
     };
   }
 
@@ -384,36 +372,26 @@ export class AnalyticsRepository implements IAnalyticsRepository {
    * Based on on-time payments and payment history
    */
   private async calculatePaymentConsistency(userId: string): Promise<number> {
-    // Get all installments for user's loans
-    const installments = await prisma.installment.findMany({
-      where: {
-        loan: {
-          userId,
-        },
-      },
-    });
+    const [total, overdueCount, paidCount] = await Promise.all([
+      prisma.installment.count({ where: { loan: { userId } } }),
+      prisma.installment.count({ where: { loan: { userId }, status: 'OVERDUE' } }),
+      prisma.installment.count({ where: { loan: { userId }, status: 'PAID' } }),
+    ]);
 
-    if (installments.length === 0) {
+    if (total === 0) {
       return 100; // No loans yet, perfect score
     }
 
-    // Calculate on-time payment rate
-    const paidInstallments = installments.filter((inst: Installment) => inst.status === 'PAID');
-    const overdueInstallments = installments.filter((inst: Installment) => inst.status === 'OVERDUE');
-    
-    // Score based on payment record
     let score = 100;
-    
-    // Deduct points for overdue payments
-    if (overdueInstallments.length > 0) {
-      const overdueRate = overdueInstallments.length / installments.length;
-      score -= overdueRate * 50; // Up to 50 points deduction for overdue payments
+
+    if (overdueCount > 0) {
+      const overdueRate = overdueCount / total;
+      score -= overdueRate * 50;
     }
 
-    // Bonus for having paid installments
-    if (paidInstallments.length > 0) {
-      const paidRate = paidInstallments.length / installments.length;
-      score = score * (0.5 + paidRate * 0.5); // Adjust score based on paid rate
+    if (paidCount > 0) {
+      const paidRate = paidCount / total;
+      score = score * (0.5 + paidRate * 0.5);
     }
 
     return Math.max(0, Math.min(100, Math.round(score)));
@@ -427,7 +405,7 @@ export class AnalyticsRepository implements IAnalyticsRepository {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // Get recent wallet transactions
+    // Get recent wallet transactions — only fetch type field needed for scoring
     const recentTransactions = await prisma.transaction.findMany({
       where: {
         userId,
@@ -436,6 +414,7 @@ export class AnalyticsRepository implements IAnalyticsRepository {
         },
         status: TransactionStatus.COMPLETED,
       },
+      select: { type: true },
     });
 
     if (recentTransactions.length === 0) {
@@ -446,8 +425,8 @@ export class AnalyticsRepository implements IAnalyticsRepository {
     let score = Math.min(50, recentTransactions.length * 5); // Up to 50 points for frequency
 
     // Bonus for variety of transaction types
-    const creditCount = recentTransactions.filter((t: Transaction) => t.type === TransactionType.CREDIT).length;
-    const debitCount = recentTransactions.filter((t: Transaction) => t.type === TransactionType.DEBIT).length;
+    const creditCount = recentTransactions.filter((t) => t.type === TransactionType.CREDIT).length;
+    const debitCount = recentTransactions.filter((t) => t.type === TransactionType.DEBIT).length;
     
     if (creditCount > 0 && debitCount > 0) {
       score += 30; // Bonus for both types of transactions
@@ -463,23 +442,16 @@ export class AnalyticsRepository implements IAnalyticsRepository {
    * Based on notification read rate
    */
   private async calculateNotificationEngagement(userId: string): Promise<number> {
-    const notifications = await prisma.notification.findMany({
-      where: {
-        userId,
-      },
-      select: {
-        isRead: true,
-      },
-    });
+    const [total, readCount] = await Promise.all([
+      prisma.notification.count({ where: { userId } }),
+      prisma.notification.count({ where: { userId, isRead: true } }),
+    ]);
 
-    if (notifications.length === 0) {
+    if (total === 0) {
       return 50; // Default score if no notifications
     }
 
-    const readCount = notifications.filter((n: any) => n.isRead).length;
-    const readRate = readCount / notifications.length;
-
-    return Math.round(readRate * 100);
+    return Math.round((readCount / total) * 100);
   }
 
   /**

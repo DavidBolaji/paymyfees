@@ -5,9 +5,24 @@ import { Plus } from "lucide-react";
 
 const faqs = [
   {
-    question: "Who can apply?",
+    question: "How can I support PayMyFees if I don't need funding?",
     answer:
-      "Any parent, guardian, or student currently enrolled in an accredited institution can apply. Teachers and school staff are also eligible for salary-backed products.",
+      "You can help by referring friends, share our platform with your school administration, or join our partner investment programme.",
+  },
+  {
+    question: "What about interest and repayment?",
+    answer:
+      "We offer a transparent interest rate of 2.5% per month, clearly disclosed upfront before you accept any offer. Your repayment is spread across manageable monthly instalments over your selected tenure, with no hidden fees.",
+  },
+  {
+    question: "How do you assess applications?",
+    answer:
+      "Our proprietary assessment model looks at important factors like your employment status, income, school enrolment records, previous term receipts, and repayment history. This allows us to offer a fairer and more accessible alternative to traditional credit checks.",
+  },
+  {
+    question: "What makes PayMyFees different from banks?",
+    answer:
+      "Unlike traditional banks, PayMyFees is built exclusively for education financing. We offer faster approvals, a transparent 2.5% monthly interest rate, and repayment plans aligned with school terms designed to better support families and schools.",
   },
   {
     question: "Is my data safe?",
@@ -15,34 +30,19 @@ const faqs = [
       "Absolutely. We use bank-grade encryption and comply with the Nigeria Data Protection Regulation (NDPR) to ensure your personal and financial information is always secure.",
   },
   {
+    question: "Who can apply?",
+    answer:
+      "Parents, guardians, and students enrolled in accredited institutions are welcome to apply. We also support schools with tailored financing solutions, and offer salary-backed products for teachers and school staff.",
+  },
+  {
     question: "How can schools partner with PayMyFees?",
     answer:
-      "Schools can sign up as institutional partners through our partner portal. Once verified, your students and staff gain access to our full suite of financing products.",
-  },
-  {
-    question: "What makes PayMyFees different from banks?",
-    answer:
-      "Unlike banks, we are purpose-built for education finance — offering faster approvals, competitive rates, and repayment schedules aligned with school terms, not arbitrary bank deadlines.",
-  },
-  {
-    question: "How can I support PayMyFees if I don't need funding?",
-    answer:
-      "You can help by referring friends, sharing our platform with your school administration, or joining our partner investment programme.",
-  },
-  {
-    question: "How do you assess applications?",
-    answer:
-      "We use a proprietary model that considers employment status, income, school enrollment records, and repayment history — making it fairer and more accessible than traditional credit checks.",
+      "Schools can easily join as institutional partners via our partner portal. After verification, your students and staff can access our financing products, while your school enjoys more reliable fee collection and better cash flow management.",
   },
   {
     question: "Is PayMyFees available nationwide?",
     answer:
-      "Yes. PayMyFees is available across all 36 states and the FCT. We work with both public and private institutions wherever they are located.",
-  },
-  {
-    question: "What about interest and repayment?",
-    answer:
-      "Interest rates are competitive and fully disclosed before you accept any offer. Repayments are structured in monthly installments over your chosen tenure, with no hidden fees.",
+      "Yes, PayMyFees is available across all 36 states and the FCT. We work with both public and private institutions wherever they are located, making education financing accessible nationwide.",
   },
 ];
 
@@ -108,9 +108,7 @@ export function HomeFaqSection() {
           <h2 className="text-[1.5rem] font-extrabold leading-[105%] tracking-[0] text-[#191919] md:text-[2.125rem]">
             Frequently Asked Questions (FAQs)
           </h2>
-          <p className="mt-[0.625rem] text-[0.9375rem] font-medium leading-[120%] tracking-[0] text-[#7C7C7C] md:text-[1.0625rem]">
-            Clear answers to common questions about tuition financing, on how PayMyFees works
-          </p>
+          
         </div>
 
         {/* Two-column accordion grid */}

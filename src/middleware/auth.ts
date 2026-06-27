@@ -162,12 +162,12 @@ export function verifyRefreshToken(token: string): AuthUser {
 /**
  * Middleware for parent-only routes
  */
-export const requireParent = requireRole(UserRole.PARENT, UserRole.STUDENT);
+export const requireParent = requireRole(UserRole.PARENT, UserRole.STUDENT, UserRole.TEACHER);
 
 /**
  * Middleware for student-only routes
  */
-export const requireStudent = requireRole(UserRole.STUDENT, UserRole.PARENT, UserRole.SCHOOL);
+export const requireStudent = requireRole(UserRole.STUDENT, UserRole.PARENT, UserRole.SCHOOL, UserRole.TEACHER);
 
 /**
  * Middleware for school-only routes
@@ -178,6 +178,21 @@ export const requireSchool = requireRole(UserRole.SCHOOL);
  * Middleware for admin-only routes
  */
 export const requireAdmin = requireRole(UserRole.ADMIN);
+
+/**
+ * Middleware for teacher admin routes
+ */
+export const requireTeacherAdmin = requireRole(UserRole.TEACHER_ADMIN);
+
+/**
+ * Middleware for school admin routes
+ */
+export const requireSchoolAdmin = requireRole(UserRole.SCHOOL_ADMIN);
+
+/**
+ * Middleware for admin or teacher admin routes
+ */
+export const requireAdminOrTeacherAdmin = requireRole(UserRole.ADMIN, UserRole.TEACHER_ADMIN);
 
 /**
  * Middleware for parent or admin routes

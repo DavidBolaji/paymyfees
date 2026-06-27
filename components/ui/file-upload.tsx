@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, forwardRef, useImperativeHandle } from '
 import { X, FileText, CheckCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DocumentIcon } from '@/assets/icons/DocumentIcon';
-import { CloudinaryUploadResult, uploadToCloudinary } from '@/src/utils/cloudinary-api';
+import { CloudinaryUploadResult, uploadToCloudinary, getCloudinaryResourceType } from '@/src/utils/cloudinary-api';
 
 
 export interface UploadedFile {
@@ -28,6 +28,7 @@ interface FileUploadProps {
   className?: string;
   folder?: string; // Cloudinary folder
   autoUpload?: boolean; // Auto upload to Cloudinary on file select
+  initialFiles?: UploadedFile[]; // Pre-populate from cached store state
 }
 
 export interface FileUploadRef {
@@ -44,9 +45,10 @@ export const FileUpload = forwardRef<FileUploadRef, FileUploadProps>(({
   maxFiles = 10,
   className,
   folder = 'school-documents',
-  autoUpload = false
+  autoUpload = false,
+  initialFiles,
 }, ref) => {
-  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [files, setFiles] = useState<UploadedFile[]>(initialFiles ?? []);
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
@@ -86,7 +88,10 @@ export const FileUpload = forwardRef<FileUploadRef, FileUploadProps>(({
     onFilesChange(updatedFiles);
 
     try {
-      const result = await uploadToCloudinary(file.file, { folder });
+      const result = await uploadToCloudinary(file.file, {
+        folder,
+        resourceType: getCloudinaryResourceType(file.file),
+      });
       
       // Update file with cloudinary result
       updatedFiles[fileIndex] = {

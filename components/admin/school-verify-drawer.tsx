@@ -92,12 +92,12 @@ export function SchoolVerifyDrawer({ isOpen, onClose, school, onApproved }: Scho
                       { label: 'School Name', value: school.schoolName },
                       { label: 'Status', value: <StatusBadge status={school.status === 'verified' ? 'APPROVED' : 'PENDING'} /> },
                       { label: 'Location', value: school.location || 'N/A' },
-                      { label: 'School Type', value: 'N/A' },
+                      { label: 'School Type', value: school.schoolType || 'N/A' },
                       { label: 'Website', value: school.website || 'N/A' },
                       { label: 'Contact Email', value: school.schoolEmail || 'N/A' },
                       { label: 'Contact Phone', value: school.schoolPhone || 'N/A' },
-                      { label: 'Year Established', value: 'N/A' },
-                      { label: 'Registration Number', value: 'N/A' },
+                      { label: 'Year Established', value: school.yearEstablished?.toString() || 'N/A' },
+                      { label: 'Registration Number', value: school.registrationNumber || 'N/A' },
                     ].map(item => (
                       <div key={item.label} className="flex justify-between items-center">
                         <span className="text-sm text-gray-500">{item.label}</span>

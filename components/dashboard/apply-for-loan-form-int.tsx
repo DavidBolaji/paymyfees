@@ -1,14 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { FileUpload } from '@/components/ui/file-upload';
+import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormInput, FormSelect } from '@/components/ui/form-input';
-import { EMPLOYMENT_STATUS_OPTIONS, PROGRAM_OPTIONS, validateLoanApplication, type LoanApplicationIntFormData } from '@/data';
+import { EMPLOYMENT_STATUS_OPTIONS, PROGRAM_OPTIONS, COUNTRIES, validateLoanIntApplication, type LoanApplicationIntFormData } from '@/data';
 import { applyForLoan } from '@/src/utils/loan-api';
+import { LoanAgreementModal, type AgreementMeta, type LoanAgreementSummary } from './loan-agreement-modal';
+import useAuthStore from '@/src/authStore';
+import { CloudinaryUploadResult } from '@/src/utils/cloudinary-api';
+import { SuccessModal } from '../ui/success-modal';
+import { ResidencyStatus } from '@prisma/client';
+import { SchoolSelector } from './school-selector';
+import RegistrationModal from './registration-modal';
 
 interface RepaymentPlan {
   months: number;
@@ -42,7 +49,20 @@ interface FormErrors {
 }
 
 
+const paymentFrequencyOptions = [
+  { value: '', label: 'Select Payment Frequency' },
+  { value: 'Weekly', label: 'Weekly' },
+  { value: 'Bi-weekly', label: 'Bi-weekly' },
+  { value: 'Monthly', label: 'Monthly' },
+  { value: 'Annually', label: 'Annually' },
+];
+
 export function ApplyForLoanFormInt() {
+  const { user } = useAuthStore();
+  const fileUploadRef = useRef<any>(null);
+  const [successModal, setSuccessModal] = useState({ open: false, title: '', message: '' });
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [schoolId, setSchoolId] = useState('');
   // Form state
   const [formData, setFormData] = useState<Partial<LoanApplicationIntFormData>>({
     selectedPlan: 6,
@@ -71,6 +91,7 @@ export function ApplyForLoanFormInt() {
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [agreementSummary, setAgreementSummary] = useState<LoanAgreementSummary | null>(null);
 
   // Calculate repayment plans
   const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
@@ -147,8 +168,19 @@ export function ApplyForLoanFormInt() {
     handleInputChange('loanAmount', amount);
   };
 
+  const handleMonthlyNetIncomeChange = (value: string) => {
+    const numericValue = value.replace(/[₦,]/g, '');
+    const amount = parseInt(numericValue) || 0;
+    handleInputChange('monthlyNetIncome', amount);
+  };
+
+  const handleSchoolChange = (id: string, name: string) => {
+    setSchoolId(id);
+    handleInputChange('schoolName', name);
+  };
+
   const validateForm = (): boolean => {
-    const result = validateLoanApplication(formData);
+    const result = validateLoanIntApplication(formData);
 
     if (!result.isValid) {
       const formErrors: FormErrors = {};
@@ -173,60 +205,100 @@ export function ApplyForLoanFormInt() {
     return true;
   };
 
+  const RESET_FORM: Partial<LoanApplicationIntFormData> = {
+    selectedPlan: 6, loanAmount: 0, schoolName: '', academicSession: '', term: '',
+    countryOfStudy: '', programCourseOfStudy: '', employmentStatus: '', companyName: '',
+    jobTitleRole: '', monthlyNetIncome: 0, paymentFrequency: '', accountHolderName: '',
+    bankName: '', accountNumber: '', countryOfBankAccount: '', uploadedFiles: [],
+    consents: { schoolDetails: false, directPayment: false, terms: false },
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
+    if (!selectedPlanData) return;
 
-    if (!validateForm()) {
-      return;
-    }
+    const interestRates: Record<number, number> = {
+      1: 0.05, 2: 0.08, 3: 0.10, 4: 0.12, 5: 0.15, 6: 0.18,
+      7: 0.20, 8: 0.22, 9: 0.25, 10: 0.28, 11: 0.30, 12: 0.32,
+    };
+    const months = formData.selectedPlan ?? 6;
+    const rate = interestRates[months] ?? 0.35;
+    const monthlyRatePct = ((rate / months) * 100).toFixed(1);
 
+    setAgreementSummary({
+      borrowerName: user?.fullName ?? 'Applicant',
+      studentName: user?.fullName ?? 'Applicant',
+      institutionName: formData.schoolName ?? '',
+      loanAmount: formData.loanAmount ?? 0,
+      loanTenure: months,
+      monthlyRepayment: selectedPlanData.monthlyAmount,
+      totalRepayment: selectedPlanData.totalAmount,
+      interestRateLabel: `${monthlyRatePct}% per month (${(rate * 100).toFixed(0)}% total)`,
+    });
+  };
+
+  const executeSubmit = async (meta: AgreementMeta) => {
     setIsSubmitting(true);
+    let cloudinaryResults: CloudinaryUploadResult[];
 
     try {
-      console.log('Form submitted:', formData);
-      const result = await applyForLoan(formData);
+      // Step 1: Handle file uploads
+      if (formData.uploadedFiles && formData.uploadedFiles.length > 0) {
+        const alreadyUploaded = (formData.uploadedFiles as UploadedFile[]).filter(
+          (f): f is UploadedFile & { cloudinaryResult: CloudinaryUploadResult } =>
+            f.uploaded === true && f.cloudinaryResult !== undefined
+        );
 
-      if (!result.success) {
-        // Show error message from API
-        alert(result.error || 'Failed to submit application. Please try again.');
-        return;
+        if (alreadyUploaded.length === formData.uploadedFiles.length) {
+          cloudinaryResults = alreadyUploaded.map(f => f.cloudinaryResult);
+        } else if (fileUploadRef.current?.uploadAllFiles) {
+          cloudinaryResults = await fileUploadRef.current.uploadAllFiles();
+        } else {
+          cloudinaryResults = alreadyUploaded.map(f => f.cloudinaryResult);
+        }
+
+        if (!cloudinaryResults || cloudinaryResults.length === 0) {
+          throw new Error('Please wait for all files to finish uploading.');
+        }
+      } else {
+        throw new Error('Please upload at least one document.');
       }
 
-      console.log(result.data);
-      // Handle successful submission
-      alert('Loan application submitted successfully!');
+      // Step 2: Normalize files + build payload
+      const normalizedFiles = cloudinaryResults.map((result) => ({
+        url: result.secure_url || result.url,
+        name: result.original_filename || result.public_id,
+        size: result.bytes,
+        type: result.format || result.resource_type,
+      }));
 
-      // Reset form
-      setFormData({
-        selectedPlan: 6,
-        loanAmount: 0,
-        schoolName: '',
-        academicSession: '',
-        term: '',
-        countryOfStudy: '',
-        programCourseOfStudy: '',
-        employmentStatus: '',
-        companyName: '',
-        jobTitleRole: '',
-        monthlyNetIncome: 0,
-        paymentFrequency: '',
-        accountHolderName: '',
-        bankName: '',
-        accountNumber: '',
-        countryOfBankAccount: '',
-        uploadedFiles: [],
-        consents: {
-          schoolDetails: false,
-          directPayment: false,
-          terms: false
-        }
-      });
+      const payload = {
+        ...formData,
+        studentId: user!.id,
+        repaymentMonths: formData.selectedPlan,
+        uploadedFiles: normalizedFiles,
+        residencyStatus: ResidencyStatus.INTERNATIONAL,
+        agreementMeta: meta,
+        // Strip optional enum fields if empty so Zod receives undefined not ""
+        paymentFrequency: formData.paymentFrequency || undefined,
+        companyName: formData.companyName || undefined,
+        jobTitleRole: formData.jobTitleRole || undefined,
+        monthlyNetIncome: formData.monthlyNetIncome || undefined,
+      };
 
+      const result = await applyForLoan(payload);
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to submit application. Please try again.');
+      }
+
+      setAgreementSummary(null);
+      setSuccessModal({ open: true, title: 'Application Submitted!', message: 'Your loan application has been submitted successfully. We will review and get back to you shortly.' });
+      setFormData(RESET_FORM);
+      setSchoolId('');
     } catch (error: any) {
       console.error('Submission error:', error);
-      // Display the actual error message
-      const errorMessage = error.message || 'Failed to submit application. Please try again.';
-      alert(errorMessage);
+      throw error;
     } finally {
       setIsSubmitting(false);
     }
@@ -234,31 +306,8 @@ export function ApplyForLoanFormInt() {
 
   const handleCancel = () => {
     if (confirm('Are you sure you want to cancel? All form data will be lost.')) {
-      setFormData({
-        selectedPlan: 6,
-        loanAmount: 0,
-        schoolName: '',
-        academicSession: '',
-        term: '',
-        countryOfStudy: '',
-        programCourseOfStudy: '',
-        employmentStatus: '',
-        companyName: '',
-        jobTitleRole: '',
-        monthlyNetIncome: 0,
-        paymentFrequency: '',
-        accountHolderName: '',
-        bankName: '',
-        accountNumber: '',
-        countryOfBankAccount: '',
-
-        uploadedFiles: [],
-        consents: {
-          schoolDetails: false,
-          directPayment: false,
-          terms: false
-        }
-      });
+      setFormData(RESET_FORM);
+      setSchoolId('');
       setErrors({});
     }
   };
@@ -266,7 +315,6 @@ export function ApplyForLoanFormInt() {
   const isFormValid = () => {
     return formData.schoolName &&
       formData.academicSession &&
-      formData.term &&
       formData.loanAmount &&
       formData.loanAmount > 0 &&
       formData.uploadedFiles &&
@@ -276,6 +324,7 @@ export function ApplyForLoanFormInt() {
       formData.consents?.terms &&
       formData.countryOfStudy &&
       formData.programCourseOfStudy &&
+      formData.employmentStatus &&
       formData.accountHolderName &&
       formData.bankName &&
       formData.accountNumber &&
@@ -283,6 +332,7 @@ export function ApplyForLoanFormInt() {
   };
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="space-y-8">
 
 
@@ -295,20 +345,16 @@ export function ApplyForLoanFormInt() {
             </h3>
 
             <div className="space-y-4">
-              <FormInput
-                label="School Name"
-                placeholder="Enter School Name"
-                value={formData.schoolName || ''}
-                onChange={(e) => handleInputChange('schoolName', e.target.value)}
+              <SchoolSelector
+                value={schoolId}
+                onChange={handleSchoolChange}
+                onRegisterClick={() => setShowRegisterModal(true)}
                 error={errors.schoolName}
               />
 
               <FormSelect
                 label="Country of Study"
-                options={[{
-                  label: "Nigeria",
-                  value: "Nigeria"
-                }]}
+                options={COUNTRIES}
                 value={formData.countryOfStudy || ''}
                 onChange={(e) => handleInputChange('countryOfStudy', e.target.value)}
                 error={errors.countryOfStudy}
@@ -388,17 +434,17 @@ export function ApplyForLoanFormInt() {
               <FormInput
                 label="Monthly Net Income"
                 value={formData.monthlyNetIncome ? `₦${formData.monthlyNetIncome.toLocaleString()}` : ''}
-                onChange={(e) => handleLoanAmountChange(e.target.value)}
+                onChange={(e) => handleMonthlyNetIncomeChange(e.target.value)}
                 placeholder="₦0"
                 error={errors.monthlyNetIncome}
               />
 
               <FormSelect
-                label="Academic Session"
-                options={academicSessionOptions}
-                value={formData.academicSession || ''}
-                onChange={(e) => handleInputChange('academicSession', e.target.value)}
-                error={errors.academicSession}
+                label="Payment Frequency"
+                options={paymentFrequencyOptions}
+                value={formData.paymentFrequency || ''}
+                onChange={(e) => handleInputChange('paymentFrequency', e.target.value)}
+                error={errors.paymentFrequency}
               />
 
             </div>
@@ -479,14 +525,16 @@ export function ApplyForLoanFormInt() {
               Upload Files
             </h3>
             <p className="mb-4 text-[#7C7C7C] text-sm">
-              Upload Bvn, Nin, Salary slips, Bank statement and other supporting docs
+              Upload Bvn, Nin, Salary slips, Bank statement, Proof of address, School fees invoice / offer letter, School fees receipts for the last two (2) terms, Recent 3 months Bank statement, Passport photograph (Parent/Guardian), Passport photograph (Student) and other supporting docs
             </p>
 
             <FileUpload
+              ref={fileUploadRef}
               onFilesChange={(files) => handleInputChange('uploadedFiles', files)}
               acceptedTypes={['.pdf', '.png', '.jpg', '.jpeg']}
               maxFileSize={10}
               maxFiles={5}
+              autoUpload={true}
             />
 
             {errors.uploadedFiles && (
@@ -511,12 +559,12 @@ export function ApplyForLoanFormInt() {
                 error={errors.accountHolderName}
               />
 
-              <FormSelect
+              <FormInput
                 label="Bank Name"
-                options={academicSessionOptions}
+                placeholder="Enter bank name"
                 value={formData.bankName || ''}
                 onChange={(e) => handleInputChange('bankName', e.target.value)}
-                error={errors.academicSession}
+                error={errors.bankName}
               />
 
               <FormInput
@@ -529,25 +577,12 @@ export function ApplyForLoanFormInt() {
 
               <FormSelect
                 label="Country of Bank Account"
-                options={[{
-                  label: "United States",
-                  value: "United States"
-                }]}
+                options={COUNTRIES}
                 value={formData.countryOfBankAccount || ''}
                 onChange={(e) => handleInputChange('countryOfBankAccount', e.target.value)}
                 error={errors.countryOfBankAccount}
               />
 
-              <FormSelect
-                label="Select Currency"
-                options={[{
-                  label: "$",
-                  value: "dollar"
-                }]}
-                value={formData.academicSession || ''}
-                onChange={(e) => handleInputChange('academicSession', e.target.value)}
-                error={errors.academicSession}
-              />
 
             </div>
           </div>
@@ -624,11 +659,36 @@ export function ApplyForLoanFormInt() {
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
-              Submit Loan Application
+              Review
             </>
           )}
         </button>
       </div>
     </form>
+    <LoanAgreementModal
+      isOpen={!!agreementSummary}
+      onClose={() => setAgreementSummary(null)}
+      onAccept={executeSubmit}
+      summary={agreementSummary ?? {
+        borrowerName: '', studentName: '', institutionName: '',
+        loanAmount: 0, loanTenure: 1, monthlyRepayment: 0, totalRepayment: 0,
+      }}
+      isSubmitting={isSubmitting}
+    />
+    <RegistrationModal
+      isOpen={showRegisterModal}
+      onClose={() => setShowRegisterModal(false)}
+      onSuccess={() => {
+        setShowRegisterModal(false);
+        setSuccessModal({ open: true, title: 'School Registered', message: 'Your school has been registered successfully.' });
+      }}
+    />
+    <SuccessModal
+      isOpen={successModal.open}
+      onClose={() => setSuccessModal({ open: false, title: '', message: '' })}
+      title={successModal.title}
+      message={successModal.message}
+    />
+  </>
   );
 }

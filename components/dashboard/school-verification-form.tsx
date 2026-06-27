@@ -18,6 +18,12 @@ interface FormErrors {
     academicSession?: string;
     academicLevel?: string;
     address?: string;
+    schoolPhone?: string;
+    schoolEmail?: string;
+    schoolType?: string;
+    website?: string;
+    yearEstablished?: string;
+    registrationNumber?: string;
     uploadedFiles?: string;
     consents?: {
         terms?: string
@@ -31,7 +37,7 @@ export const academicSessionOptions = [
     { value: '2023/2024', label: '2023/2024' }
 ];
 
-export function SchoolVerificationForm() {
+export function SchoolVerificationForm({ onSuccess }: { onSuccess?: () => void }) {
     const { registerSchool } = useSchoolProfile();
     const fileUploadRef = useRef<any>(null);
     // Form state
@@ -39,7 +45,13 @@ export function SchoolVerificationForm() {
         schoolName: '',
         academicLevel: '',
         address: '',
+        schoolPhone: '',
+        schoolEmail: '',
         academicSession: '',
+        schoolType: '',
+        website: '',
+        yearEstablished: '',
+        registrationNumber: '',
         uploadedFiles: [],
         consents: {
             terms: true
@@ -50,6 +62,15 @@ export function SchoolVerificationForm() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [uploadProgress, setUploadProgress] = useState<string>('');
 
+
+    const schoolTypeOptions = [
+        { value: '', label: 'Select School Type' },
+        { value: 'Primary', label: 'Primary' },
+        { value: 'Secondary', label: 'Secondary' },
+        { value: 'Tertiary', label: 'Tertiary' },
+        { value: 'Vocational', label: 'Vocational' },
+        { value: 'International', label: 'International' },
+    ];
 
     // Academic session options
     const academicLevelOptions = [
@@ -134,8 +155,14 @@ export function SchoolVerificationForm() {
             const payload: RegisterSchoolPayload = {
                 schoolName: formData.schoolName!,
                 schoolAddress: formData.address!,
+                schoolPhone: formData.schoolPhone!,
+                schoolEmail: formData.schoolEmail!,
                 academicLevel: formData.academicLevel!,
                 currentAcademicSession: formData.academicSession!,
+                schoolType: formData.schoolType!,
+                website: formData.website!,
+                yearEstablished: parseInt(formData.yearEstablished!),
+                registrationNumber: formData.registrationNumber!,
             };
             // Register school
             const school = await registerSchool(payload);
@@ -178,12 +205,7 @@ export function SchoolVerificationForm() {
             }
 
             setUploadProgress('');
-            alert('School registered successfully!');
-
-
-            // Handle successful submission
-            console.log('Form submitted successfully:', formData);
-            alert('school registration completed successfully!');
+            onSuccess?.();
 
             // Reset form
             setFormData({
@@ -191,6 +213,12 @@ export function SchoolVerificationForm() {
                 academicSession: '',
                 academicLevel: '',
                 address: '',
+                schoolPhone: '',
+                schoolEmail: '',
+                schoolType: '',
+                website: '',
+                yearEstablished: '',
+                registrationNumber: '',
                 uploadedFiles: [],
                 consents: {
                     terms: false
@@ -211,7 +239,13 @@ export function SchoolVerificationForm() {
                 schoolName: '',
                 academicLevel: '',
                 address: '',
+                schoolPhone: '',
+                schoolEmail: '',
                 academicSession: '',
+                schoolType: '',
+                website: '',
+                yearEstablished: '',
+                registrationNumber: '',
                 uploadedFiles: [],
                 consents: {
                     terms: false
@@ -226,6 +260,12 @@ export function SchoolVerificationForm() {
             formData.academicSession &&
             formData.academicLevel &&
             formData.address &&
+            formData.schoolPhone &&
+            formData.schoolEmail &&
+            formData.schoolType &&
+            formData.website &&
+            formData.yearEstablished &&
+            formData.registrationNumber &&
             formData.uploadedFiles &&
             formData.uploadedFiles.length > 0 &&
             formData.consents?.terms;
@@ -266,6 +306,55 @@ export function SchoolVerificationForm() {
                                 value={formData.address || ''}
                                 onChange={(e) => handleInputChange('address', e.target.value)}
                                 error={errors.address}
+                            />
+
+                            <FormInput
+                                label="School Phone Number"
+                                placeholder="Enter School Phone Number"
+                                value={formData.schoolPhone || ''}
+                                onChange={(e) => handleInputChange('schoolPhone', e.target.value)}
+                                error={errors.schoolPhone}
+                            />
+
+                            <FormInput
+                                label="School Email"
+                                placeholder="Enter School Email Address"
+                                value={formData.schoolEmail || ''}
+                                onChange={(e) => handleInputChange('schoolEmail', e.target.value)}
+                                error={errors.schoolEmail}
+                            />
+
+                            <FormSelect
+                                label="School Type"
+                                options={schoolTypeOptions}
+                                value={formData.schoolType || ''}
+                                onChange={(e) => handleInputChange('schoolType', e.target.value)}
+                                error={errors.schoolType}
+                            />
+
+                            <FormInput
+                                label="Website"
+                                placeholder="https://schoolwebsite.com"
+                                value={formData.website || ''}
+                                onChange={(e) => handleInputChange('website', e.target.value)}
+                                error={errors.website}
+                            />
+
+                            <FormInput
+                                label="Year Established"
+                                placeholder="e.g. 1995"
+                                type="number"
+                                value={formData.yearEstablished || ''}
+                                onChange={(e) => handleInputChange('yearEstablished', e.target.value)}
+                                error={errors.yearEstablished}
+                            />
+
+                            <FormInput
+                                label="Registration Number"
+                                placeholder="e.g. CAC/BN/1234567"
+                                value={formData.registrationNumber || ''}
+                                onChange={(e) => handleInputChange('registrationNumber', e.target.value)}
+                                error={errors.registrationNumber}
                             />
 
                             <FormSelect

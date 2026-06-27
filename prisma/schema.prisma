@@ -11,9 +11,25 @@ model User {
   id                   String                @id @default(uuid()) @db.Char(36)
   email                String                @unique @db.VarChar(255)
   phone                String?               @unique @db.VarChar(20)
-  password             String                @db.VarChar(255)
+  password             String?               @db.VarChar(255)
   role                 UserRole
   fullName             String                @db.VarChar(255)
+  firstName            String?               @db.VarChar(100)
+  lastName             String?               @db.VarChar(100)
+  middleName           String?               @db.VarChar(100)
+  dob                  DateTime?             @db.Date
+  address              String?               @db.VarChar(500)
+  city                 String?               @db.VarChar(100)
+  // NIN and BVN are NOT stored raw — they are passed through to Embedly for
+  // verification only, then discarded. Only the verified status is persisted.
+  // This is required for compliance with the Nigeria Data Protection Act 2023
+  // and CBN KYC guidelines (biometric data minimisation principle).
+  ninVerified          Boolean               @default(false)
+  bvnVerified          Boolean               @default(false)
+  kycVerifiedAt        DateTime?
+  bankCode             String?               @db.VarChar(20)
+  bankAccountNumber    String?               @db.VarChar(20)
+  bankAccountName      String?               @db.VarChar(255)
   profileImage         String?               @db.VarChar(500)
   emailVerified        Boolean               @default(false)
   phoneVerified        Boolean               @default(false)
@@ -22,18 +38,24 @@ model User {
   twoFactorEnabled          Boolean               @default(false)
   twoFactorSecret           String?               @db.VarChar(255)
   lastLogin                 DateTime?
+  embedlyCustomerId         String?               @db.VarChar(255)
+  googleId                  String?               @unique @db.VarChar(255)
+  googleProfileComplete     Boolean               @default(false)
   loanEligibilitySuspended  Boolean               @default(false)
   frozenUntil               DateTime?
   createdAt                 DateTime              @default(now())
   updatedAt                 DateTime              @updatedAt
   country                   String                @db.VarChar(255)
   residencyStatus           ResidencyStatus       @default(LOCAL)
+  gender                    Gender?
   auditLogs            AuditLog[]
   documents            Document[]
   loans                Loan[]
   notificationSettings NotificationSettings?
   notifications        Notification[]
   parentProfile        ParentProfile?
+  studentProfiles      StudentProfile[]
+  teacherProfile       TeacherProfile?
   payments             Payment[]
   schoolProfile        SchoolProfile[]
   supportTickets       SupportTicket[]
@@ -44,6 +66,7 @@ model User {
   @@index([email])
   @@index([phone])
   @@index([role])
+  @@index([googleId])
   @@index([createdAt])
   @@map("users")
 }
@@ -64,6 +87,9 @@ model ParentProfile {
   ninVerified        Boolean    @default(false)
   employmentStatus   String?    @db.VarChar(100)
   employerName       String?    @db.VarChar(255)
+  employmentRole     String?    @db.VarChar(255)
+  employmentType     String?    @db.VarChar(50)
+  lengthOfEmployment String?    @db.VarChar(50)
   monthlyIncome      Decimal?   @db.Decimal(15, 2)
   creditScore        Int?
   totalLoans         Int        @default(0)
@@ -84,6 +110,40 @@ model ParentProfile {
   @@map("parent_profiles")
 }
 
+model StudentProfile {
+  id           String    @id @default(uuid()) @db.Char(36)
+  parentId     String    @db.Char(36)
+  studentName  String    @db.VarChar(255)
+  dateOfBirth  DateTime? @db.Date
+  relationship String    @db.VarChar(100)
+  classLevel   String    @db.VarChar(100)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  parent       User      @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  loans        Loan[]
+
+  @@index([parentId])
+  @@map("student_profiles")
+}
+
+model TeacherProfile {
+  id               String    @id @default(uuid()) @db.Char(36)
+  userId           String    @unique @db.Char(36)
+  schoolName       String?   @db.VarChar(255)
+  schoolEmail      String?   @db.VarChar(255)
+  schoolAddress    String?   @db.VarChar(500)
+  registrationNumber String? @db.VarChar(100)
+  subject          String?   @db.VarChar(255)
+  employmentStatus String?   @db.VarChar(100)
+  staffId          String?   @db.VarChar(100)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("teacher_profiles")
+}
+
 model SchoolProfile {
   id                     String                      @id @default(uuid()) @db.Char(36)
   userId                 String                      @db.Char(36)
@@ -96,6 +156,9 @@ model SchoolProfile {
   schoolEmail            String?                     @db.VarChar(255)
   schoolPhone            String?                     @db.VarChar(20)
   website                String?                     @db.VarChar(255)
+  schoolType             String?                     @db.VarChar(100)
+  yearEstablished        Int?
+  registrationNumber     String?                     @db.VarChar(100)
   contactPersonName      String?                     @db.VarChar(255)
   contactPersonPosition  String?                     @db.VarChar(100)
   contactPersonEmail     String?                     @db.VarChar(255)
@@ -131,6 +194,7 @@ model Loan {
   loanNumber           String                @unique @db.VarChar(50)
   userId               String                @db.Char(36)
   schoolId             String                @db.Char(36)
+  studentProfileId     String?               @db.Char(36)
   loanAmount           Decimal               @db.Decimal(15, 2)
   interestRate         Decimal               @db.Decimal(5, 2)
   totalInterest        Decimal               @db.Decimal(15, 2)
@@ -173,12 +237,14 @@ model Loan {
   statusHistory        LoanStatusHistory[]
   school               SchoolProfile         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentProfile       StudentProfile?       @relation(fields: [studentProfileId], references: [id])
   payments             Payment[]
   fundingDetails       SchoolFundingDetails?
   verification         SchoolVerification?
 
   @@index([userId])
   @@index([schoolId])
+  @@index([studentProfileId])
   @@index([status])
   @@index([loanNumber])
   @@index([applicationDate])
@@ -413,16 +479,19 @@ model Document {
 }
 
 model Wallet {
-  id               String        @id @default(uuid()) @db.Char(36)
-  userId           String        @unique @db.Char(36)
-  balance          Decimal       @default(0.00) @db.Decimal(15, 2)
-  currency         String        @default("NGN") @db.VarChar(3)
-  dailyLimit       Decimal?      @db.Decimal(15, 2)
-  monthlyLimit     Decimal?      @db.Decimal(15, 2)
-  autoDebitEnabled Boolean       @default(false)
-  isActive         Boolean       @default(true)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  id                   String        @id @default(uuid()) @db.Char(36)
+  userId               String        @unique @db.Char(36)
+  balance              Decimal       @default(0.00) @db.Decimal(15, 2)
+  currency             String        @default("NGN") @db.VarChar(3)
+  dailyLimit           Decimal?      @db.Decimal(15, 2)
+  monthlyLimit         Decimal?      @db.Decimal(15, 2)
+  autoDebitEnabled     Boolean       @default(false)
+  isActive             Boolean       @default(true)
+  embedlyWalletId      String?       @db.VarChar(255)
+  virtualAccountNumber String?       @db.VarChar(20)
+  virtualAccountBank   String?       @db.VarChar(100)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
   transactions     Transaction[]
   user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -739,6 +808,8 @@ enum UserRole {
   ADMIN
   TEACHER
   STUDENT
+  SCHOOL_ADMIN
+  TEACHER_ADMIN
 }
 
 enum LoanStatus {
@@ -781,6 +852,7 @@ enum PaymentMethod {
 
 enum PaymentStatus {
   PENDING
+  PROCESSING
   PAID
   OVERDUE
   FAILED
@@ -826,4 +898,10 @@ enum SupportTicketPriority {
 enum ResidencyStatus {
   LOCAL
   INTERNATIONAL
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
 }

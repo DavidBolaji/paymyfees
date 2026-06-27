@@ -12,10 +12,12 @@ import { formatCurrency } from '@/lib/utils';
 const STATUS_MAP: Record<string, string> = {
   DISBURSED: 'ongoing',
   ACTIVE: 'ongoing',
-  PENDING: 'ongoing',
+  PENDING: 'pending',
+  UNDER_REVIEW: 'pending',
   APPROVED: 'pending',
   COMPLETED: 'completed',
   DEFAULTED: 'cancelled',
+  REJECTED: 'cancelled',
   CANCELLED: 'cancelled',
 };
 

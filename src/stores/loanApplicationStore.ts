@@ -19,6 +19,20 @@ export interface LoanApplicationFormState {
     directPayment: boolean;
     terms: boolean;
   };
+  studentProfileId?: string;
+  newStudentProfile?: {
+    studentName: string;
+    dateOfBirth?: string;
+    relationship: string;
+    classLevel: string;
+  };
+  parentDetails?: {
+    employmentStatus?: string;
+    employmentRole?: string;
+    employmentType?: 'Business' | 'Employee';
+    monthlyNetIncome?: number;
+    lengthOfEmployment?: string;
+  };
 }
 
 interface LoanApplicationStore {

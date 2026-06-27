@@ -12,6 +12,7 @@ import { BackNavigation } from '@/components/dashboard/back-navigation';
 import { ApplicationStatus } from '@/components/dashboard/application-status';
 import { LoanHistory } from '@/components/dashboard/loan-history';
 import { CheckSquareIcon } from '@/assets/icons/CheckSquareIcon';
+import { LoanAgreementModal, type AgreementMeta, type LoanAgreementSummary } from '@/components/dashboard/loan-agreement-modal';
 import useAuthStore from '@/src/authStore';
 import { api } from '@/src/lib/api';
 
@@ -25,7 +26,7 @@ interface RepaymentPlan {
 
 const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
   if (amount <= 0) return [];
-  const monthlyInterestRate = 0.02;
+  const monthlyInterestRate = 0.025; // 2.5% per month
   const plans: RepaymentPlan[] = [];
   for (let months = 1; months <= 12; months++) {
     const totalAmount = amount * (1 + monthlyInterestRate * months);
@@ -114,6 +115,7 @@ export default function SchoolApplyFundingPage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [agreementSummary, setAgreementSummary] = useState<LoanAgreementSummary | null>(null);
 
   const [consents, setConsents] = useState({
     schoolDetails: false,
@@ -205,14 +207,26 @@ export default function SchoolApplyFundingPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
+    const selectedPlanData = repaymentPlans.find(p => p.months === selectedPlan);
+    setAgreementSummary({
+      borrowerName: user?.fullName ?? user?.schoolProfile?.schoolName ?? 'Applicant',
+      studentName: formData.schoolName,
+      institutionName: formData.schoolName,
+      loanAmount: parseInt(formData.amount),
+      loanTenure: selectedPlan ?? 1,
+      monthlyRepayment: selectedPlanData?.monthlyAmount ?? 0,
+      totalRepayment: selectedPlanData?.totalAmount ?? 0,
+    });
+  };
+
+  const executeSubmit = async (meta: AgreementMeta) => {
     try {
       setIsSubmitting(true);
 
-      // Upload files first
       const uploadResults = await fileUploadRef.current?.uploadAllFiles() ?? [];
 
       const payload = {
@@ -223,22 +237,24 @@ export default function SchoolApplyFundingPage() {
         documents: uploadResults,
         userId: user?.id,
         consents,
+        agreementMeta: meta,
       };
 
       const response = await api.post('/api/loans/school-funding', payload);
-
       const data = await response.json();
 
       if (data.success) {
+        setAgreementSummary(null);
         setConsents({ schoolDetails: false, directPayment: false, terms: false });
         setSelectedPlan(null);
         router.push('/school-dashboard/wallet?funding_applied=true');
       } else {
-        setErrors({ submit: data.message || 'Submission failed. Please try again.' });
+        throw new Error(data.message || 'Submission failed. Please try again.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Funding application error:', err);
-      setErrors({ submit: 'An error occurred. Please try again.' });
+      setErrors({ submit: err?.message || 'An error occurred. Please try again.' });
+      throw err;
     } finally {
       setIsSubmitting(false);
     }
@@ -591,6 +607,17 @@ export default function SchoolApplyFundingPage() {
       <div className={activeTab === 'history' ? 'py-8' : 'hidden'}>
         <LoanHistory />
       </div>
+
+      <LoanAgreementModal
+        isOpen={!!agreementSummary}
+        onClose={() => setAgreementSummary(null)}
+        onAccept={executeSubmit}
+        summary={agreementSummary ?? {
+          borrowerName: '', studentName: '', institutionName: '',
+          loanAmount: 0, loanTenure: 1, monthlyRepayment: 0, totalRepayment: 0,
+        }}
+        isSubmitting={isSubmitting}
+      />
     </div>
   );
 }

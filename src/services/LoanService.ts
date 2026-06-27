@@ -30,10 +30,11 @@ interface UploadedFileData {
  * Loan Service Interface
  */
 export interface ILoanService {
-  createLocalLoan(input: Omit<LocalLoanInput, 'userId' | 'schoolId'> & { 
-    userId: string; 
+  createLocalLoan(input: Omit<LocalLoanInput, 'userId' | 'schoolId'> & {
+    userId: string;
     schoolId: string;
     uploadedFiles?: UploadedFileData[];
+    studentProfileId?: string;
   }): Promise<LoanDTO>;
   createInternationalLoan(input: Omit<InternationalLoanInput, 'userId' | 'schoolId'> & { 
     userId: string; 
@@ -116,10 +117,11 @@ export class LoanService implements ILoanService {
   /**
    * Create a local student loan application
    */
-  async createLocalLoan(input: Omit<LocalLoanInput, 'userId' | 'schoolId'> & { 
-    userId: string; 
+  async createLocalLoan(input: Omit<LocalLoanInput, 'userId' | 'schoolId'> & {
+    userId: string;
     schoolId: string;
     uploadedFiles?: UploadedFileData[];
+    studentProfileId?: string;
   }): Promise<LoanDTO> {
     console.log({ msg: 'Creating local loan application', userId: input.userId });
 
@@ -127,7 +129,7 @@ export class LoanService implements ILoanService {
     const loanCalculation = this.calculateLoan(input.loanAmount, input.repaymentMonths);
 
     // Generate loan number
-    const loanNumber = `LOAN-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    const loanNumber = `PMF-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
 
     // Create loan with transaction
     const loan = await executeTransaction(async (tx) => {
@@ -146,15 +148,13 @@ export class LoanService implements ILoanService {
         academicSession: input.academicSession,
         term: input.term,
         residencyStatus: ResidencyStatus.LOCAL,
+        studentProfileId: input.studentProfileId,
         status: LoanStatus.PENDING,
         amountDisbursed: 0,
         amountRepaid: 0,
         outstandingBalance: loanCalculation.totalAmount,
         applicationDate: new Date(),
       });
-
-      // Create installments
-      await this.createInstallments(tx, newLoan.id, loanCalculation.monthlyPayment, input.repaymentMonths);
 
       // Save uploaded documents
       if (input.uploadedFiles && input.uploadedFiles.length > 0) {
@@ -221,9 +221,6 @@ export class LoanService implements ILoanService {
         applicationDate: new Date(),
       });
 
-      // Create installments
-      await this.createInstallments(tx, newLoan.id, loanCalculation.monthlyPayment, input.repaymentMonths);
-
       // Save uploaded documents
       if (input.uploadedFiles && input.uploadedFiles.length > 0) {
         await this.saveDocuments(tx, newLoan.id, input.userId, input.uploadedFiles);
@@ -269,32 +266,6 @@ export class LoanService implements ILoanService {
     });
 
     console.log({ msg: 'Documents saved successfully', count: documents.length });
-  }
-
-  /**
-   * Create loan installments
-   */
-  private async createInstallments(tx: any, loanId: string, monthlyPayment: number, repaymentMonths: number): Promise<void> {
-    const installments = [];
-    let firstPaymentDate = new Date();
-    firstPaymentDate.setDate(firstPaymentDate.getDate() + 30); // First payment due in 30 days
-
-    for (let i = 0; i < repaymentMonths; i++) {
-      const dueDate = new Date(firstPaymentDate);
-      dueDate.setMonth(dueDate.getMonth() + i);
-
-      installments.push({
-        loanId,
-        installmentNumber: i + 1,
-        amount: monthlyPayment,
-        dueDate,
-        status: 'PENDING' as any,
-        daysOverdue: 0,
-        lateFee: 0,
-      });
-    }
-
-    await tx.installment.createMany({ data: installments });
   }
 
   /**
@@ -347,7 +318,7 @@ export class LoanService implements ILoanService {
       filters.residencyStatus = residencyStatus;
     }
 
-    const { loans, total } = await this.loanRepository.findByUserId(
+    const result = await this.loanRepository.findByUserId(
       userId,
       filters,
       {
@@ -355,6 +326,9 @@ export class LoanService implements ILoanService {
         limit: pagination?.limit || 10,
       }
     );
+
+    const loans = result?.loans ?? [];
+    const total = result?.total ?? 0;
 
     return {
       loans: loans.map(loan => toLoanDTO(loan)),
@@ -398,14 +372,14 @@ export class LoanService implements ILoanService {
 
   /**
    * Calculate loan details
-   * Uses 2% per month interest rate (24% per annum)
+   * Uses 2.5% per month interest rate (30% per annum)
    */
   calculateLoan(loanAmount: number, repaymentMonths: number): LoanCalculation {
-    // Interest rate is 2% per month (24% per annum)
-    const monthlyInterestRate = 0.02;
-    const annualInterestRate = monthlyInterestRate * 12; // 0.24 (24%)
+    // Interest rate is 2.5% per month (30% per annum)
+    const monthlyInterestRate = 0.025;
+    const annualInterestRate = monthlyInterestRate * 12; // 0.30 (30%)
 
-    // Calculate total interest: 2% per month * number of months
+    // Calculate total interest: .52% per month * number of months
     const totalInterestRate = monthlyInterestRate * repaymentMonths;
     const totalInterest = loanAmount * totalInterestRate;
 

@@ -61,7 +61,7 @@ export interface PaymentPlan {
   planDuration: string;
   totalTuition: number;
   schoolName: string;
-  currentStatus: 'active' | 'overdue' | 'completed';
+  currentStatus: 'active' | 'overdue' | 'completed' | 'rejected';
   paymentsCompleted: number;
   totalPayments: number;
   progress: number;

@@ -1,6 +1,6 @@
 /**
  * Payment Method Service
- * Business logic for managing saved payment methods with Paystack
+ * Business logic for managing saved payment methods with Embedly Cards
  */
 
 import {
@@ -9,7 +9,7 @@ import {
   PaymentMethodDTO,
   CreatePaymentMethodInput,
 } from '@/src/repositories/PaymentMethodRepository';
-import { PaystackService, IPaystackService } from '@/src/services/PaystackService';
+import { EmbedlyCardsService, IEmbedlyCardsService } from '@/src/services/EmbedlyCardsService';
 import { ValidationError, NotFoundError, PaymentError } from '@/src/types/errors';
 import { executeWalletOperation } from '@/src/database/prisma';
 import { TransactionType, TransactionStatus } from '@prisma/client';
@@ -64,46 +64,39 @@ export interface IPaymentMethodService {
  */
 export class PaymentMethodService implements IPaymentMethodService {
   private paymentMethodRepository: IPaymentMethodRepository;
-  private paystackService: IPaystackService;
+  private embedlyCardsService: IEmbedlyCardsService;
 
   constructor(
     paymentMethodRepository?: IPaymentMethodRepository,
-    paystackService?: IPaystackService
+    embedlyCardsService?: IEmbedlyCardsService
   ) {
     this.paymentMethodRepository = paymentMethodRepository || new PaymentMethodRepository();
-    this.paystackService = paystackService || new PaystackService();
+    this.embedlyCardsService = embedlyCardsService || new EmbedlyCardsService();
   }
 
   /**
-   * Initialize card addition flow
-   * Creates a small verification payment to tokenize the card
+   * Initialize card addition flow via Embedly
+   * Redirects user to Embedly hosted card entry form for tokenization
    */
   async initializeCardAddition(input: AddCardInput): Promise<{ paymentUrl: string; reference: string }> {
     console.log({ msg: 'Initializing card addition', userId: input.userId });
 
-    // Use a small verification amount (50 NGN = 5000 kobo)
-    const verificationAmount = input.amount || 50;
+    const verificationAmount = input.amount || 50; // NGN (not kobo)
     const reference = `CARD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-    // Initialize payment with Paystack to tokenize the card
-    const paymentResult = await this.paystackService.initializePayment({
-      email: input.userEmail,
-      amount: PaystackService.toKobo(verificationAmount),
+    const result = await this.embedlyCardsService.tokenizeCard({
+      userId: input.userId,
+      userEmail: input.userEmail,
+      amount: verificationAmount,
       reference,
-      currency: 'NGN',
-      callbackUrl: `${process.env.NEXT_PUBLIC_APP_URL}/wallet/payment-callback?type=card_addition`,
-      metadata: {
-        userId: input.userId,
-        purpose: 'card_tokenization',
-        verificationAmount,
-      },
+      redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/wallet/payment-callback?type=card_addition`,
     });
 
     console.log({ msg: 'Card addition initialized', userId: input.userId, reference });
 
     return {
-      paymentUrl: paymentResult.authorizationUrl,
-      reference: paymentResult.reference,
+      paymentUrl: result.paymentUrl,
+      reference: result.reference,
     };
   }
 
@@ -195,33 +188,28 @@ export class PaymentMethodService implements IPaymentMethodService {
   }
 
   /**
-   * Charge a saved card using Paystack's charge authorization
-   * This allows charging without redirecting the user
+   * Charge a saved card using Embedly card token
    */
   async chargeSavedCard(input: ChargeSavedCardInput): Promise<{ reference: string; amount: number }> {
     console.log({ msg: 'Charging saved card', userId: input.userId, amount: input.amount });
 
-    // Validate amount
     if (input.amount <= 0) {
       throw new ValidationError('Amount must be greater than zero');
     }
 
-    // Get payment method
     const paymentMethod = await this.getPaymentMethodById(input.paymentMethodId, input.userId);
 
     if (!paymentMethod.isActive) {
       throw new ValidationError('Payment method is not active');
     }
 
-    // Generate unique reference
     const reference = `WF-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
     try {
-      // Charge the authorization using Paystack
-      const chargeResult = await this.chargeAuthorization({
-        authorizationCode: paymentMethod.authorizationCode,
-        email: input.userEmail,
-        amount: input.amount,
+      const chargeResult = await this.embedlyCardsService.chargeCard({
+        cardToken: paymentMethod.authorizationCode,
+        userEmail: input.userEmail,
+        amount: input.amount, // NGN, not kobo
         reference,
         currency: input.currency || 'NGN',
         metadata: {
@@ -231,142 +219,51 @@ export class PaymentMethodService implements IPaymentMethodService {
         },
       });
 
-      // If charge is successful, fund the wallet directly
-      if (chargeResult.success) {
-        // Fund wallet using database transaction
-        await executeWalletOperation(async (tx) => {
-          // Get wallet
-          const wallet = await tx.wallet.findUnique({
-            where: { userId: input.userId },
-          });
-
-          if (!wallet) {
-            throw new NotFoundError('Wallet not found');
-          }
-
-          const balanceBefore = Number(wallet.balance);
-          const balanceAfter = balanceBefore + input.amount;
-
-          // Update wallet balance
-          await tx.wallet.update({
-            where: { userId: input.userId },
-            data: {
-              balance: { increment: input.amount },
-            },
-          });
-
-          // Create transaction record
-          await tx.transaction.create({
-            data: {
-              transactionReference: reference,
-              userId: input.userId,
-              walletId: wallet.id,
-              type: TransactionType.CREDIT,
-              amount: input.amount,
-              balanceBefore,
-              balanceAfter,
-              description: input.note || 'Wallet funding via saved card',
-              paymentMethod: 'CARD' as any,
-              status: TransactionStatus.COMPLETED,
-              gatewayReference: reference,
-              transactionDate: new Date(),
-              metadata: {
-                paymentMethodId: input.paymentMethodId,
-                cardLast4: paymentMethod.last4,
-                cardBrand: paymentMethod.brand,
-              },
-            },
-          });
-        });
-
-        console.log({ msg: 'Saved card charged successfully', reference, amount: input.amount });
-
-        return {
-          reference,
-          amount: input.amount,
-        };
-      } else {
+      if (!chargeResult.success) {
         throw new PaymentError('Card charge failed', reference);
       }
+
+      // Fund wallet on successful charge
+      await executeWalletOperation(async (tx) => {
+        const wallet = await tx.wallet.findUnique({ where: { userId: input.userId } });
+        if (!wallet) throw new NotFoundError('Wallet not found');
+
+        const balanceBefore = Number(wallet.balance);
+        const balanceAfter = balanceBefore + input.amount;
+
+        await tx.wallet.update({
+          where: { userId: input.userId },
+          data: { balance: { increment: input.amount } },
+        });
+
+        await tx.transaction.create({
+          data: {
+            transactionReference: reference,
+            userId: input.userId,
+            walletId: wallet.id,
+            type: TransactionType.CREDIT,
+            amount: input.amount,
+            balanceBefore,
+            balanceAfter,
+            description: input.note || 'Wallet funding via saved card',
+            paymentMethod: 'CARD' as any,
+            status: TransactionStatus.COMPLETED,
+            gatewayReference: chargeResult.transactionId ?? reference,
+            transactionDate: new Date(),
+            metadata: {
+              paymentMethodId: input.paymentMethodId,
+              cardLast4: paymentMethod.last4,
+              cardBrand: paymentMethod.brand,
+            },
+          },
+        });
+      });
+
+      console.log({ msg: 'Saved card charged successfully', reference, amount: input.amount });
+      return { reference, amount: input.amount };
     } catch (error) {
       console.error('Error charging saved card:', error);
       throw error;
-    }
-  }
-
-  /**
-   * Charge authorization using Paystack API
-   * Private method to handle the actual API call
-   */
-  private async chargeAuthorization(params: {
-    authorizationCode: string;
-    email: string;
-    amount: number;
-    reference: string;
-    currency: string;
-    metadata?: Record<string, any>;
-  }): Promise<{ success: boolean; reference: string; message: string }> {
-    const secretKey = process.env.PAYSTACK_SECRET_KEY || '';
-    if (!secretKey) {
-      throw new PaymentError('Paystack secret key is not configured', params.reference);
-    }
-
-    const url = 'https://api.paystack.co/transaction/charge_authorization';
-    const payload = {
-      authorization_code: params.authorizationCode,
-      email: params.email,
-      amount: PaystackService.toKobo(params.amount),
-      reference: params.reference,
-      currency: params.currency,
-      metadata: params.metadata,
-    };
-
-    console.log('Charging authorization:', {
-      reference: params.reference,
-      amount: params.amount,
-      email: params.email,
-      last4: params.authorizationCode.slice(-4),
-    });
-
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${secretKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Paystack charge authorization failed:', errorData);
-        throw new PaymentError(
-          `Card charge failed: ${errorData.message || response.statusText}`,
-          params.reference
-        );
-      }
-
-      const data = await response.json();
-
-      if (!data.status) {
-        throw new PaymentError(`Card charge failed: ${data.message}`, params.reference);
-      }
-
-      console.log({ msg: 'Authorization charged successfully', reference: params.reference });
-
-      return {
-        success: true,
-        reference: data.data.reference,
-        message: data.message,
-      };
-    } catch (error) {
-      if (error instanceof PaymentError) {
-        throw error;
-      }
-
-      console.error('Error charging authorization:', error);
-      throw new PaymentError('Failed to charge card. Please try again.', params.reference);
     }
   }
 }

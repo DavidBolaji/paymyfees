@@ -109,12 +109,11 @@ export const fetchLoanHistory = async (
     if (data.success) {
       return data.data;
     } else {
-      console.error("Failed to fetch loan history:", data.message);
-      return { loans: [], pagination: undefined };
+      throw new Error(data.message || 'Failed to fetch loan history');
     }
   } catch (error) {
     console.error("Error fetching loan history:", error);
-    return { loans: [], pagination: undefined };
+    throw error; // propagate so useLoan doesn't clear the cached store
   }
 };
 

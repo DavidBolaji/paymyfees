@@ -457,6 +457,11 @@ export class AdminController {
     return NextResponse.json({ success: true, data }, { status: 200 });
   }
 
+  async getSchoolsStats(_req: Request): Promise<NextResponse> {
+    const data = await this.adminService.getSchoolsStats();
+    return NextResponse.json({ success: true, data }, { status: 200 });
+  }
+
   async getStudents(req: Request): Promise<NextResponse> {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get('page') || '1');
@@ -531,5 +536,119 @@ export class AdminController {
     const data = await req.json();
     await this.adminService.requestAdditionalDocuments(schoolId, adminId, data);
     return NextResponse.json({ success: true, message: 'Document request sent' }, { status: 200 });
+  }
+
+  async getTeacherLoans(req: Request): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const statusParam = searchParams.get('status') || undefined;
+    const statuses = statusParam ? statusParam.split(',').map(s => s.trim()) : undefined;
+    const result = await this.adminService.getTeacherLoans(page, limit, statuses);
+    return NextResponse.json(
+      { success: true, data: result.loans, metadata: { pagination: result.pagination } },
+      { status: 200 }
+    );
+  }
+
+  async getTeacherUsers(req: Request): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const result = await this.adminService.getTeacherUsers(page, limit);
+    return NextResponse.json(
+      { success: true, data: result.teachers, metadata: { pagination: result.pagination } },
+      { status: 200 }
+    );
+  }
+
+  async getTeacherDetails(_req: Request, userId: string): Promise<NextResponse> {
+    const result = await this.adminService.getTeacherDetails(userId);
+    return NextResponse.json({ success: true, data: result }, { status: 200 });
+  }
+
+  async getSchoolLoans(req: Request): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const statusParam = searchParams.get('status') || undefined;
+    const statuses = statusParam ? statusParam.split(',').map(s => s.trim()) : undefined;
+    const result = await this.adminService.getSchoolLoans(page, limit, statuses);
+    return NextResponse.json(
+      { success: true, data: result.loans, metadata: { pagination: result.pagination } },
+      { status: 200 }
+    );
+  }
+
+  async getSchoolUserList(req: Request): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const status = searchParams.get('status') || undefined;
+    const result = await this.adminService.getSchoolUserList(page, limit, status);
+    return NextResponse.json(
+      { success: true, data: result.students, metadata: { pagination: result.pagination } },
+      { status: 200 }
+    );
+  }
+
+  async getSchoolUserDetails(_req: Request, userId: string): Promise<NextResponse> {
+    const result = await this.adminService.getSchoolUserDetails(userId);
+    return NextResponse.json({ success: true, data: result }, { status: 200 });
+  }
+
+  async getSchoolSupportTickets(req: Request): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const status = searchParams.get('status') || undefined;
+    const result = await this.adminService.getSchoolSupportTickets(page, limit, status);
+    return NextResponse.json(
+      { success: true, data: result.tickets, metadata: { pagination: result.pagination } },
+      { status: 200 }
+    );
+  }
+
+  async getSchoolAdminDashboardStats(_req: Request): Promise<NextResponse> {
+    const result = await this.adminService.getSchoolAdminDashboardStats();
+    return NextResponse.json({ success: true, data: result }, { status: 200 });
+  }
+
+  async getTeacherSupportTickets(req: Request): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const status = searchParams.get('status') || undefined;
+    const result = await this.adminService.getTeacherSupportTickets(page, limit, status);
+    return NextResponse.json(
+      { success: true, data: result.tickets, metadata: { pagination: result.pagination } },
+      { status: 200 }
+    );
+  }
+
+  async getTeacherAdminDashboardStats(_req: Request): Promise<NextResponse> {
+    const result = await this.adminService.getTeacherAdminDashboardStats();
+    return NextResponse.json({ success: true, data: result }, { status: 200 });
+  }
+
+  /**
+   * PATCH /api/admin/students/[userId]
+   * Update student profile
+   */
+  async updateStudent(req: Request, userId: string): Promise<NextResponse> {
+    try {
+      const body = await req.json();
+      const result = await this.adminService.updateStudent(userId, body);
+      return NextResponse.json(
+        { success: true, data: result, message: 'Student profile updated successfully' },
+        { status: 200 }
+      );
+    } catch (error: any) {
+      console.error('Error updating student:', error);
+      return NextResponse.json(
+        { success: false, message: error.message || 'Failed to update student' },
+        { status: error.status || 500 }
+      );
+    }
   }
 }

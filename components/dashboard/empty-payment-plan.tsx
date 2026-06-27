@@ -4,8 +4,28 @@
 import { SentIcon } from '@/assets/icons/SentIcon';
 import Link from 'next/link';
 
-export function EmptyPaymentPlan() {
+interface EmptyPaymentPlanProps {
+  reason?: 'no_loan' | 'approved_pending' | string;
+}
 
+export function EmptyPaymentPlan({ reason = 'no_loan' }: EmptyPaymentPlanProps) {
+  const getContent = () => {
+    if (reason === 'approved_pending') {
+      return {
+        title: 'Loan Awaiting Disbursement',
+        message: 'Your loan has been approved and is awaiting disbursement. Your payment plan will appear here once your loan is disbursed.',
+        showApplyButton: false
+      };
+    }
+    // default 'no_loan'
+    return {
+      title: 'You do not have any active payment plan',
+      message: 'In other to have a repayment plan you need to apply for a loan first, to apply for loan, click on the button below.',
+      showApplyButton: true
+    };
+  };
+
+  const content = getContent();
 
   return (
     <div className="space-y-6">
@@ -24,22 +44,24 @@ export function EmptyPaymentPlan() {
               <div className="flex justify-center items-center bg-blue-50 mb-3 rounded-full w-16 h-16">
                 <SentIcon size={40} />
               </div>
-              
+
               <h3 className="mb-1 font-semibold text-[#191919] text-[1.6875rem]">
-               You do not have any active payment plan
+               {content.title}
               </h3>
-              
+
               <p className="mb-4 max-w-md text-[#5F5F5F] text-[1.075rem] leading-relaxed">
-               In other to have a repayment plan you need to apply for a loan first, to apply for loan, click on the button below.
+               {content.message}
               </p>
-      
-              <Link href="/dashboard/apply-loan" className="flex justify-center items-center gap-2 bg-[#00296B] hover:bg-[#002561] px-8 py-3 rounded-lg min-w-[200px] font-medium text-white transition-colors"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-               Apply for loan
-              </Link>
+
+              {content.showApplyButton && (
+                <Link href="/dashboard/apply-loan" className="flex justify-center items-center gap-2 bg-[#00296B] hover:bg-[#002561] px-8 py-3 rounded-lg min-w-[200px] font-medium text-white transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                 Apply for loan
+                </Link>
+              )}
             </div>
     </div>
   );

@@ -27,6 +27,7 @@ import { prisma } from '@/src/database/prisma';
 import { UserRole } from '@prisma/client';
 import { MailService, IMailService } from '@/src/services/MailService';
 import { createVerification, getUserByToken, verifyToken, createPasswordResetToken, verifyPasswordResetToken } from '@/src/utils/verification';
+import { EmbedlyService } from '@/src/services/EmbedlyService';
 
 /**
  * Auth Service Interface
@@ -55,20 +56,15 @@ export class AuthService implements IAuthService {
 
   /**
    * Register a new user
-   * Creates user account with hashed password and initial profile
+   * Creates user account with hashed password and initial profile.
+   * Embedly customer + wallet provisioning is awaited synchronously —
+   * if it fails, the user record is rolled back and an error is returned.
    */
   async register(input: CreateUserInput): Promise<AuthResponse> {
-    try {
-      console.log({
-        message: 'User registration started',
-        email: input.email,
-        role: input.role,
-        mode: input.mode
-      });
-    } catch (loggingError) {
-      // Fallback to simple console logging if structured logging fails
-      console.info(`User registration started for ${input.email} with role ${input.role} and mode ${input.mode}`);
-    }
+    console.info(`User registration started for ${input.email} with role ${input.role} and mode ${input.mode}`);
+
+    // Derive fullName for backward compat
+    const fullName = `${input.firstName} ${input.lastName}`.trim();
 
     // Hash password
     const hashedPassword = await this.hashPassword(input.password);
@@ -82,21 +78,31 @@ export class AuthService implements IAuthService {
       const newUser = await tx.user.create({
         data: {
           email: normalizedEmail,
+          phone: input.phone || null,
           password: hashedPassword,
-          country: input.country,
+          country: input.country || 'Nigeria',
           role: input.role,
-          fullName: input.fullName,
+          fullName,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          middleName: input.middleName || null,
+          dob: input.dob ? new Date(input.dob) : null,
+          address: input.address || null,
+          city: input.city || null,
+          gender: input.gender,
           profileImage: input.profileImage,
           emailVerified: false,
         },
       });
 
-      // Create wallet for all users
-      await tx.wallet.create({
-        data: {
-          userId: newUser.id,
-        },
-      });
+      // Create wallet for all non-ADMIN users
+      if (input.role !== UserRole.ADMIN) {
+        await tx.wallet.create({
+          data: {
+            userId: newUser.id,
+          },
+        });
+      }
 
       // Create role-specific profile
       if (input.role === UserRole.PARENT) {
@@ -109,8 +115,14 @@ export class AuthService implements IAuthService {
         await tx.schoolProfile.create({
           data: {
             userId: newUser.id,
-            schoolName: input.schoolName || input.fullName,
+            schoolName: input.schoolName || fullName,
             isPrimary: true,
+          },
+        });
+      } else if (input.role === UserRole.TEACHER) {
+        await tx.teacherProfile.create({
+          data: {
+            userId: newUser.id,
           },
         });
       }
@@ -118,14 +130,32 @@ export class AuthService implements IAuthService {
       return newUser;
     });
 
-    try {
-      console.log({
-        message: 'User registered successfully',
-        userId: user.id
-      });
-    } catch (loggingError) {
-      console.info(`User registered successfully with ID ${user.id}`);
+    // ── Provision Embedly customer + wallet (synchronous, blocking) ───────────
+    // All Embedly steps must succeed before the verification OTP is sent.
+    // On failure, the user record is deleted (cascades to wallet + profile).
+    if (user.role !== UserRole.ADMIN) {
+      try {
+        await this.provisionEmbedly({
+          id: user.id,
+          email: user.email,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          middleName: input.middleName,
+          phone: input.phone || null,
+          dob: input.dob,
+          address: input.address,
+          city: input.city,
+        });
+      } catch (err) {
+        // Rollback: delete user (ON DELETE CASCADE removes wallet + profiles)
+        await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
+        const detail = err instanceof Error ? err.message : String(err);
+        console.error({ message: 'Embedly provisioning failed — user rolled back', userId: user.id, detail });
+        throw new Error(`Registration failed: could not provision payment account. ${detail}`);
+      }
     }
+
+    console.info(`User registered successfully with ID ${user.id}`);
 
     // Generate verification token or OTP based on mode
     try {
@@ -220,6 +250,14 @@ export class AuthService implements IAuthService {
       throw new UnauthorizedError('Invalid email or password');
     }
 
+    // Check if password exists (Google-only users have no password)
+    if (!user.password) {
+      console.warn('Login failed: Google-only user', { email: normalizedEmail });
+      throw new UnauthorizedError(
+        'This account was created with Google Sign-In. Please use "Continue with Google" to sign in.'
+      );
+    }
+
     // Verify password
     const isPasswordValid = await this.verifyPassword(input.password, user.password);
 
@@ -272,18 +310,62 @@ export class AuthService implements IAuthService {
     await this.userRepository.updateLastLogin(user.id);
     console.log('User logged in successfully', { userId: user.id });
 
-    // Auto-repair: ensure wallet and role-specific profile exist (in case they were missing)
+    // Auto-repair: ensure wallet, role-specific profile, and Embedly provisioning are complete
     const existingUserDTO = await this.userRepository.getUserById(user.id);
-    if (!existingUserDTO?.wallet) {
-      await prisma.wallet.create({ data: { userId: user.id } }).catch(() => {/* already exists */});
+
+    // Ensure local wallet exists for all non-ADMIN roles
+    const needsWallet = user.role !== UserRole.ADMIN;
+    if (needsWallet && !existingUserDTO?.wallet) {
+      await prisma.wallet.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, balance: 0, currency: 'NGN' },
+        update: {},
+      }).catch(() => {});
+      console.log({ message: 'Auto-created missing wallet on login', userId: user.id, role: user.role });
     }
+
+    // Ensure school profile exists for school accounts
     if (user.role === UserRole.SCHOOL) {
       const hasSchoolProfile = existingUserDTO?.schoolProfile != null;
       if (!hasSchoolProfile) {
         await prisma.schoolProfile.create({
           data: { userId: user.id, schoolName: user.fullName, isPrimary: true },
-        }).catch(() => {/* already exists */});
+        }).catch(() => {});
       }
+    }
+
+    // Ensure teacher profile exists for teacher accounts
+    if (user.role === UserRole.TEACHER) {
+      const hasTeacherProfile = await prisma.teacherProfile.findUnique({ where: { userId: user.id } });
+      if (!hasTeacherProfile) {
+        await prisma.teacherProfile.create({ data: { userId: user.id } }).catch(() => {});
+      }
+    }
+
+    // Re-trigger Embedly provisioning only when the virtual account is still missing.
+    // provisionEmbedly is idempotent but skipping the call on already-provisioned
+    // users avoids two unnecessary DB reads on every login.
+    const hasVirtualAccount = !!(existingUserDTO?.wallet as any)?.virtualAccountNumber;
+    if (needsWallet && !hasVirtualAccount) {
+      this.provisionEmbedly({
+        id: user.id,
+        email: user.email,
+        firstName: (user as any).firstName || user.fullName.split(' ')[0] || 'User',
+        lastName: (user as any).lastName || user.fullName.split(' ').slice(1).join(' ') || user.fullName.split(' ')[0] || 'User',
+        middleName: (user as any).middleName ?? undefined,
+        phone: user.phone,
+        dob: (user as any).dob ? new Date((user as any).dob).toISOString().split('T')[0] : undefined,
+        address: (user as any).address ?? undefined,
+        city: (user as any).city ?? undefined,
+        // NIN/BVN will be read from DB inside provisionEmbedly via existing select
+      }).catch((err) => {
+        console.error({
+          message: 'Embedly re-provisioning on login failed (non-blocking)',
+          userId: user.id,
+          role: user.role,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
     }
 
     // Generate tokens
@@ -523,6 +605,18 @@ export class AuthService implements IAuthService {
   }
 
   /**
+   * Generate a unique placeholder Nigerian phone number from a user ID.
+   * Used when the user has no phone — avoids Embedly "already exists" collisions
+   * that happen when every phoneless user shares the same fallback number.
+   */
+  private placeholderPhone(userId: string): string {
+    // Take 8 digits from the UUID (strip hyphens, use last 8 hex chars → decimal)
+    const hex = userId.replace(/-/g, '').slice(-8);
+    const num = parseInt(hex, 16) % 100_000_000; // 8-digit number
+    return `080${String(num).padStart(8, '0')}`;  // e.g. 08012345678
+  }
+
+  /**
    * Hash password using bcrypt
    */
   private async hashPassword(password: string): Promise<string> {
@@ -531,9 +625,152 @@ export class AuthService implements IAuthService {
   }
 
   /**
+   * Provision Embedly customer + virtual wallet for a user.
+   * Safe to call multiple times — handles partial provisioning:
+   *   - No customer yet         → create customer + wallet
+   *   - Customer exists, no VA  → create wallet only (skips customer step)
+   *   - Both exist              → no-op
+   *
+   * Throws on unrecoverable failure so the caller can rollback if needed.
+   */
+  async provisionEmbedly(user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    middleName?: string;
+    phone: string | null;
+    dob?: string;
+    address?: string;
+    city?: string;
+  }): Promise<void> {
+    // Read current state from DB
+    const existing = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { embedlyCustomerId: true, fullName: true },
+    });
+    const existingWallet = await prisma.wallet.findUnique({
+      where: { userId: user.id },
+      select: { virtualAccountNumber: true },
+    });
+
+    const embedlyCustomerId: string | null = (existing as any)?.embedlyCustomerId ?? null;
+    const hasVirtualAccount: boolean = !!existingWallet?.virtualAccountNumber;
+
+    // Fully provisioned — nothing to do
+    if (embedlyCustomerId && hasVirtualAccount) {
+      console.log({ message: 'Embedly already fully provisioned', userId: user.id });
+      return;
+    }
+
+    const embedlyService = new EmbedlyService();
+
+    // Sanitize names for Embedly (letters only, min 2 chars)
+    const sanitizeName = (raw: string): string =>
+      raw.replace(/[^a-zA-Z\s-]/g, '').trim().slice(0, 50) || 'User';
+
+    const firstName = sanitizeName(user.firstName).length >= 2
+      ? sanitizeName(user.firstName)
+      : 'User';
+    const lastName = sanitizeName(user.lastName).length >= 2
+      ? sanitizeName(user.lastName)
+      : firstName;
+    const middleName = user.middleName ? sanitizeName(user.middleName) : undefined;
+    const fullName = existing?.fullName || `${firstName} ${lastName}`;
+
+    // Resolve lookup IDs dynamically so staging/prod IDs are always correct
+    const [customerTypeId, countryId, currencyId] = await Promise.all([
+      embedlyService.fetchCustomerTypeId(),
+      embedlyService.fetchCountryId(),
+      embedlyService.fetchCurrencyId(),
+    ]);
+
+    // ── Step 1: Resolve Embedly customer ID ────────────────────────────────────
+    let customerId = embedlyCustomerId;
+    if (!customerId) {
+      try {
+        const result = await embedlyService.createCustomer({
+          firstName,
+          lastName,
+          middleName,
+          emailAddress: user.email,
+          mobileNumber: user.phone ?? this.placeholderPhone(user.id),
+          dob: user.dob || '1990-01-01',
+          customerTypeId,
+          address: user.address || 'Nigeria',
+          city: user.city || 'Lagos',
+          countryId,
+        });
+        customerId = result.embedlyCustomerId;
+        console.log({ message: 'Embedly customer created', userId: user.id, customerId });
+      } catch (err: any) {
+        // createCustomer already tries findCustomerByEmail internally.
+        // One more direct lookup before giving up.
+        console.warn({ message: 'createCustomer threw, attempting direct email lookup', userId: user.id, error: err?.message });
+        customerId = await embedlyService.findCustomerByEmail(user.email).catch(() => null);
+        if (!customerId) {
+          throw new Error(`Embedly customer creation failed and lookup exhausted: ${err?.message ?? 'unknown'}`);
+        }
+      }
+
+      // Persist the resolved customer ID
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { embedlyCustomerId: customerId },
+      });
+    } else {
+      console.log({ message: 'Embedly customer already in DB, skipping creation', userId: user.id, customerId });
+    }
+
+    // ── Step 2: Create Embedly wallet + virtual account if missing ─────────────
+    if (!hasVirtualAccount) {
+      // Ensure local wallet record exists before updating it
+      await prisma.wallet.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, balance: 0, currency: 'NGN' },
+        update: {},
+      });
+
+      let walletResult = null;
+      try {
+        walletResult = await embedlyService.createWallet({
+          customerId,
+          currencyId,
+          name: `${fullName} Wallet`,
+        });
+      } catch (err: any) {
+        // createWallet already tries findWalletByCustomerId internally.
+        // One more direct lookup before giving up.
+        console.warn({ message: 'createWallet threw, attempting direct wallet lookup', userId: user.id, error: err?.message });
+        walletResult = await embedlyService.findWalletByCustomerId(customerId).catch(() => null);
+        if (!walletResult) {
+          throw new Error(`Embedly wallet creation failed and lookup exhausted: ${err?.message ?? 'unknown'}`);
+        }
+      }
+
+      await prisma.wallet.update({
+        where: { userId: user.id },
+        data: {
+          embedlyWalletId: walletResult.embedlyWalletId,
+          virtualAccountNumber: walletResult.virtualAccountNumber,
+          virtualAccountBank: walletResult.virtualAccountBank,
+        } as any,
+      });
+
+      console.log({
+        message: 'Embedly wallet provisioned',
+        userId: user.id,
+        customerId,
+        virtualAccountNumber: walletResult.virtualAccountNumber,
+      });
+    }
+  }
+
+  /**
    * Verify password against hash
    */
-  private async verifyPassword(password: string, hash: string): Promise<boolean> {
+  private async verifyPassword(password: string, hash: string | null): Promise<boolean> {
+    if (!hash) return false;
     return await bcrypt.compare(password, hash);
   }
 

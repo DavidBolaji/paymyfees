@@ -43,7 +43,10 @@ export interface CreateLoanData {
   bankName?: string;
   accountNumber?: string;
   countryOfBankAccount?: string;
-  
+
+  // Student profile (optional, for parent loans)
+  studentProfileId?: string;
+
   status: LoanStatus;
   outstandingBalance: number;
   amountDisbursed: number;
@@ -127,6 +130,9 @@ export class LoanRepository implements ILoanRepository {
         school: {
           select: { id: true, schoolName: true, isVerified: true }
         },
+        studentProfile: {
+          select: { id: true, studentName: true, dateOfBirth: true, relationship: true, classLevel: true }
+        },
         installments: {
           orderBy: { installmentNumber: 'asc' },
         },
@@ -206,6 +212,9 @@ export class LoanRepository implements ILoanRepository {
             disbursedAt: true,
             transferReference: true,
           },
+        },
+        studentProfile: {
+          select: { id: true, studentName: true, dateOfBirth: true, relationship: true, classLevel: true }
         },
       },
     });
@@ -344,10 +353,20 @@ export class LoanRepository implements ILoanRepository {
       userEmail: loan.user?.email,
       userPhone: loan.user?.phone,
       userCountry: loan.user?.country,
-      userCity: loan.user?.parentProfile?.city,
+      userCity: loan.user?.parentProfile?.city ?? loan.user?.city ?? null,
       userIsActive: loan.user?.isActive,
       schoolIsVerified: loan.school?.isVerified,
       userPreviousLoans: loan.user?.parentProfile?.completedLoans ?? 0,
+
+      // Student profile (optional)
+      studentProfileId: loan.studentProfileId,
+      studentProfile: loan.studentProfile ? {
+        id: loan.studentProfile.id,
+        studentName: loan.studentProfile.studentName,
+        dateOfBirth: loan.studentProfile.dateOfBirth,
+        relationship: loan.studentProfile.relationship,
+        classLevel: loan.studentProfile.classLevel,
+      } : null,
       
       // International student specific fields
       countryOfStudy: loan.countryOfStudy,

@@ -8,6 +8,8 @@ export interface WalletBalance {
   balance: number;
   currency: string;
   lastUpdated: string;
+  virtualAccountNumber: string | null;
+  virtualAccountBank: string | null;
 }
 
 export interface WalletTransaction {
@@ -122,22 +124,26 @@ const useWalletStore = create<WalletState>()(
       fetchWalletBalance: async (loanId?: string) => {
         try {
           set({ isLoading: true, error: null });
-          
+
           const url = loanId ? `/api/wallet/balance?loanId=${encodeURIComponent(loanId)}` : '/api/wallet/balance';
           const response = await api.get(url);
-          
+
           if (!response.ok) {
             throw new Error('Failed to fetch wallet balance');
           }
-          
+
           const data = await response.json();
-          
+
           if (data.success) {
+            const virtualAccountNumber = data.data.virtualAccountNumber ?? null;
+
             set({
               balance: {
                 balance: data.data.balance,
                 currency: data.data.currency,
-                lastUpdated: data.data.lastUpdated
+                lastUpdated: data.data.lastUpdated,
+                virtualAccountNumber,
+                virtualAccountBank: data.data.virtualAccountBank ?? null,
               },
               stats: {
                 walletBalance: data.data.balance,
@@ -146,6 +152,28 @@ const useWalletStore = create<WalletState>()(
                 fundingHistory: data.data.fundingHistory,
               }
             });
+
+            // Auto-provision Embedly if virtual account is missing
+            if (!virtualAccountNumber) {
+              api.post('/api/wallet/provision', {})
+                .then((r) => r.json())
+                .then((provisionData) => {
+                  if (provisionData.success && provisionData.data?.virtualAccountNumber) {
+                    set((state) => ({
+                      balance: state.balance
+                        ? {
+                            ...state.balance,
+                            virtualAccountNumber: provisionData.data.virtualAccountNumber,
+                            virtualAccountBank: provisionData.data.virtualAccountBank,
+                          }
+                        : state.balance,
+                    }));
+                  }
+                })
+                .catch(() => {
+                  // Non-fatal: provisioning may fail if Embedly is unavailable
+                });
+            }
           } else {
             throw new Error(data.message || 'Failed to fetch wallet balance');
           }

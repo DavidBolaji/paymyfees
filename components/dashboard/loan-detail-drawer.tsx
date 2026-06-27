@@ -15,6 +15,8 @@ interface LoanDetailDrawerProps {
   onApprove?: () => void;
   onReject?: () => void;
   onRefresh?: () => void;
+  userLabel?: string;
+  loansBasePath?: string;
 }
 
 function fmt(n: number) {
@@ -82,7 +84,7 @@ function Row({ label, value, valueClass }: { label: string; value: string; value
   );
 }
 
-export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, onRefresh }: LoanDetailDrawerProps) {
+export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, onRefresh, userLabel = 'Student Information', loansBasePath = '/api/admin/loans' }: LoanDetailDrawerProps) {
   const [detail, setDetail] = useState<any>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [note, setNote] = useState('');
@@ -103,7 +105,7 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
   useEffect(() => {
     if (!isOpen || !loan?.id) return;
     setLoadingDetail(true);
-    api.get(`/api/admin/loans/${loan.id}`)
+    api.get(`${loansBasePath}/${loan.id}`)
       .then(r => r.json())
       .then((d: any) => { if (d.success) setDetail(d.data); })
       .catch(console.error)
@@ -114,7 +116,7 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
     if (!detail?.id) return;
     try {
       setApproving(true);
-      const res = await api.patch(`/api/admin/loans/${detail.id}/status`, {
+      const res = await api.patch(`${loansBasePath}/${detail.id}/status`, {
         status: 'APPROVED',
         reason: note.trim() || undefined,
       }).then(r => r.json());
@@ -132,7 +134,7 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
     if (!detail?.id) return;
     try {
       setDisbursing(true);
-      const res = await api.post(`/api/admin/loans/${detail.id}/disburse`)
+      const res = await api.post(`${loansBasePath}/${detail.id}/disburse`)
         .then(r => r.json());
       if (res.success) {
         setSuccessMessage({ title: 'Loan Disbursed', message: 'Funds have been successfully disbursed to the school.' });
@@ -147,7 +149,7 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
     if (!detail?.id) return;
     try {
       setRejecting(true);
-      const res = await api.patch(`/api/admin/loans/${detail.id}/status`, {
+      const res = await api.patch(`${loansBasePath}/${detail.id}/status`, {
         status: 'REJECTED',
         reason: note.trim() || 'Rejected by admin',
       }).then(r => r.json());
@@ -169,10 +171,14 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
         documents: data.documents,
         instructions: data.instructions,
         channels: data.channels,
+        // Pass student info so backend sends to the loan applicant
+        targetUserId: detail.userId,
+        targetUserEmail: detail.userEmail,
+        targetUserName: detail.userName,
       }).then(r => r.json());
       if (res.success !== false) {
         setShowReqDocs(false);
-        setSuccessMessage({ title: 'Documents Requested', message: 'A document request has been sent to the school.' });
+        setSuccessMessage({ title: 'Documents Requested', message: 'A document request has been sent to the applicant.' });
         setShowSuccess(true);
       }
     } catch (e) { console.error(e); } finally { setReqDocsLoading(false); }
@@ -224,19 +230,39 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
                   </div>
                 ) : (
                   <>
-                    {/* Student Information */}
+                    {/* User Information */}
                     <div>
                       <p className="font-semibolds text-[#191919] text-xl mb-5 inline-block">
-                        Student Information
+                        {userLabel}
                       </p>
                       <div className="space-y-4">
-                        <Row label="Student Name:" value={l?.userName || '—'} valueClass="text-[#00296B] font-semibold" />
+                        <Row label={userLabel === 'Teacher Information' ? 'Teacher Name:' : 'Applicant Name:'} value={l?.userName || '—'} valueClass="text-[#00296B] font-semibold" />
+                        <Row label="Email:" value={l?.userEmail || '—'} />
+                        <Row label="Phone:" value={l?.userPhone || '—'} />
                         <Row label="School:" value={l?.schoolName || '—'} />
                         <Row label="Program / Level:" value={l?.programCourseOfStudy || l?.academicSession || '—'} />
                         <Row label="Country:" value={l?.userCountry || '—'} />
                         <Row label="City:" value={l?.userCity || '—'} />
                         <Row label="Account Status:" value={accountStatus} />
                       </div>
+
+                      {/* Student Profile — shown only when loan has one */}
+                      {l?.studentProfile && (
+                        <div className="mt-5 pt-4 border-t border-gray-100">
+                          <p className="text-sm font-semibold text-[#191919] mb-3">Student Profile</p>
+                          <div className="space-y-3">
+                            <Row label="Student Name:" value={l.studentProfile.studentName || '—'} valueClass="text-[#00296B] font-semibold" />
+                            <Row
+                              label="Date of Birth:"
+                              value={l.studentProfile.dateOfBirth
+                                ? new Date(l.studentProfile.dateOfBirth).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+                                : '—'}
+                            />
+                            <Row label="Relationship:" value={l.studentProfile.relationship || '—'} />
+                            <Row label="Class / Level:" value={l.studentProfile.classLevel || '—'} />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Loan & Disbursement Context */}

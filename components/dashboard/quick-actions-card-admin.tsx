@@ -22,7 +22,7 @@ const QUICK_ACTIONS = [
     id: 'school-verification',
     label: 'School Verification',
     icon: BuildingIcon,
-    href: '/admin/schools/verification',
+    href: '/admin/schools',
   },
 ];
 

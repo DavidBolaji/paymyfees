@@ -5,6 +5,7 @@ import { Toaster } from "react-hot-toast";
 import "./globals.css";
 import "react-phone-input-2/lib/style.css";
 import AuthGate from "@/providers/query-provider";
+import { NextAuthSessionProvider } from "@/providers/session-provider";
 
 export const metadata = {
   title: "PayMyFees – School Fee Loans & Installment Payments",
@@ -101,12 +102,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthGate>
-          <NavigationProvider>
-            {children}
-          </NavigationProvider>
-          <Toaster position="bottom-left" reverseOrder={false} />
-        </AuthGate>
+        <NextAuthSessionProvider>
+          <AuthGate>
+            <NavigationProvider>
+              {children}
+            </NavigationProvider>
+            <Toaster position="bottom-left" reverseOrder={false} />
+          </AuthGate>
+        </NextAuthSessionProvider>
       </body>
     </html>
   );

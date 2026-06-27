@@ -4,10 +4,10 @@ import SmartEducationBadge from "@/assets/images/smart_education_badge.png";
 // import rightWaveMetric from "@/assets/images/right-wave-metric.png";
 
 const metricItems = [
-  { label: "Schools Engaged", value: "1,000+" },
-  { label: "Teachers Supported", value: "1,500+" },
-  { label: "Students Catered For", value: "5,000+" },
-  { label: "Tuition Financing Facilitated", value: "₦500M+" },
+  { label: "Schools Engaged", value: "200+" },
+  { label: "Teachers Supported", value: "100+" },
+  { label: "Students Catered For", value: "100+" },
+  { label: "Tuition Financing Facilitated", value: "₦50M+" },
 ];
 
 export function HomeMetricsSection() {

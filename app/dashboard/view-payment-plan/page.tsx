@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import { BackNavigation } from '@/components/dashboard/back-navigation';
 import { ViewPaymentPlan } from '@/components/dashboard/view-payment-plan';
-import { fetchPaymentPlanData } from '@/src/utils/loan-api';
+import { fetchPaymentPlanData, fetchLoanHistory } from '@/src/utils/loan-api';
 import type { PaymentPlan } from '@/data/types';
 import useDashboardStore from '@/src/stores/dashboardStore';
 
 export default function ViewPaymentPlanPage({ basePath = "/dashboard" }: { basePath?: string }) {
   const [paymentPlan, setPaymentPlan] = useState<PaymentPlan | null>(null);
+  const [emptyReason, setEmptyReason] = useState<'no_loan' | 'approved_pending'>('no_loan');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { selectedLoanId } = useDashboardStore();
@@ -18,14 +19,14 @@ export default function ViewPaymentPlanPage({ basePath = "/dashboard" }: { baseP
       try {
         setLoading(true);
         setError(null);
-        
+
         console.log('🔍 Fetching payment plan data...');
-        
+
         // Fetch payment plan data from API
         const planData = await fetchPaymentPlanData(selectedLoanId ?? undefined);
-        
+
         console.log('📊 Payment plan response:', planData);
-        
+
         if (planData) {
           console.log('✅ Payment plan found:', {
             status: planData.currentStatus,
@@ -35,7 +36,15 @@ export default function ViewPaymentPlanPage({ basePath = "/dashboard" }: { baseP
           setPaymentPlan(planData);
         } else {
           console.log('⚠️ No active payment plan found');
-          // No active payment plan found
+          // No active payment plan found - check if there's an APPROVED loan
+          try {
+            const { loans } = await fetchLoanHistory(1, 100);
+            const approvedLoan = loans && loans.some((loan: any) => loan.status === 'APPROVED');
+            setEmptyReason(approvedLoan ? 'approved_pending' : 'no_loan');
+          } catch (err) {
+            console.error('Error checking loan history:', err);
+            setEmptyReason('no_loan');
+          }
           setPaymentPlan(null);
         }
       } catch (error) {
@@ -181,9 +190,9 @@ export default function ViewPaymentPlanPage({ basePath = "/dashboard" }: { baseP
       {/* Back Navigation */}
       <div className='md:pt-0 pt-6' />
       <BackNavigation href={basePath} label="Back to Dashboard" />
-      
+
       {/* Payment Plan Component */}
-      <ViewPaymentPlan paymentPlan={paymentPlan} />
+      <ViewPaymentPlan paymentPlan={paymentPlan} emptyReason={emptyReason} />
     </div>
   );
 }

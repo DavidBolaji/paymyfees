@@ -16,10 +16,12 @@ function SchoolRoleGuard({ children }: { children: React.ReactNode }) {
       router.replace('/admin/dashboard');
     } else if (hasHydrated && user?.role === 'SCHOOL') {
       router.replace('/school-dashboard');
+    } else if (hasHydrated && user?.role === 'TEACHER') {
+      router.replace('/teacher-dashboard');
     }
   }, [hasHydrated, user, router]);
 
-  if (hasHydrated && (user?.role === 'SCHOOL' || user?.role === 'ADMIN')) {
+  if (hasHydrated && (user?.role === 'SCHOOL' || user?.role === 'ADMIN' || user?.role === 'TEACHER')) {
     return null;
   }
 

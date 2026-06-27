@@ -1,13 +1,13 @@
 /**
- * Wallet Service (Updated with Paystack Integration)
- * Business logic for wallet operations including Paystack payment processing
+ * Wallet Service (Updated for Embedly Integration)
+ * Business logic for wallet operations with Embedly virtual account funding
+ * Wallet is funded automatically via Embedly inflow webhook (no checkout flow)
  */
 
 import { WalletRepository, IWalletRepository } from '@/src/repositories/WalletRepository';
 import { TransactionRepository, ITransactionRepository } from '@/src/repositories/TransactionRepository';
-import { PaystackService, IPaystackService } from '@/src/services/PaystackService';
 import { executeWalletOperation, prisma } from '@/src/database/prisma';
-import { ValidationError, NotFoundError, PaymentError } from '@/src/types/errors';
+import { ValidationError, NotFoundError } from '@/src/types/errors';
 import { NotifyService } from '@/src/services/NotifyService';
 
 import { 
@@ -24,6 +24,7 @@ import {
 
 /**
  * Fund Wallet Input Interface
+ * (kept for debitWallet compatibility)
  */
 export interface FundWalletInput {
   userId: string;
@@ -31,20 +32,20 @@ export interface FundWalletInput {
   paymentMethod: PaymentMethod;
   currency?: string;
   note?: string;
-  userEmail: string; // Required for Paystack
+  userEmail: string;
 }
 
 /**
- * Initialize Payment Input
+ * Inflow Webhook Credit Input
  */
-export interface InitializePaymentInput {
-  userId: string;
+export interface HandleInflowWebhookInput {
+  /** Embedly virtual account number that received money */
+  accountNumber: string;
   amount: number;
-  paymentMethod: PaymentMethod;
-  currency?: string;
-  note?: string;
-  userEmail: string;
-  callbackUrl?: string;
+  transactionReference: string;
+  narration?: string;
+  /** ISO timestamp of the inflow event */
+  occurredAt?: string;
 }
 
 /**
@@ -52,11 +53,17 @@ export interface InitializePaymentInput {
  */
 export interface IWalletService {
   getBalance(userId: string): Promise<number>;
-  getWalletDetails(userId: string): Promise<{ balance: number; currency: string; autoDebitEnabled: boolean }>;
+  getWalletDetails(userId: string): Promise<{
+    balance: number;
+    currency: string;
+    autoDebitEnabled: boolean;
+    virtualAccountNumber: string | null;
+    virtualAccountBank: string | null;
+    embedlyWalletId: string | null;
+  }>;
   getUpcomingRepayment(userId: string, loanId?: string): Promise<{ amount: number; dueDate: string } | null>;
   getFundingHistory(userId: string): Promise<{ count: number; period: string } | null>;
-  initializePayment(input: InitializePaymentInput): Promise<{ paymentUrl: string; reference: string; accessCode: string }>;
-  verifyAndFundWallet(reference: string, userId: string): Promise<{ wallet: WalletDTO; transaction: TransactionDTO }>;
+  handleInflowWebhook(input: HandleInflowWebhookInput): Promise<{ wallet: WalletDTO; transaction: TransactionDTO }>;
   debitWallet(input: DebitWalletInput): Promise<{ wallet: WalletDTO; transaction: TransactionDTO }>;
   getTransactions(userId: string, pagination: PaginationParams): Promise<{ transactions: TransactionDTO[]; total: number; page: number; limit: number }>;
   getWalletChartData(userId: string, period?: string): Promise<{ month: string; fundings: number; repayments: number }[]>;
@@ -92,16 +99,13 @@ function toTransactionDTO(transaction: any): TransactionDTO {
 export class WalletService implements IWalletService {
   private walletRepository: IWalletRepository;
   private transactionRepository: ITransactionRepository;
-  private paystackService: IPaystackService;
 
   constructor(
     walletRepository?: IWalletRepository,
-    transactionRepository?: ITransactionRepository,
-    paystackService?: IPaystackService
+    transactionRepository?: ITransactionRepository
   ) {
     this.walletRepository = walletRepository || new WalletRepository();
     this.transactionRepository = transactionRepository || new TransactionRepository();
-    this.paystackService = paystackService || new PaystackService();
   }
 
   /**
@@ -109,27 +113,41 @@ export class WalletService implements IWalletService {
    */
   async getBalance(userId: string): Promise<number> {
     console.log({ msg: 'Getting wallet balance', userId });
-    return await this.walletRepository.getBalance(userId);
+    const wallet = await prisma.wallet.upsert({
+      where: { userId },
+      create: { userId, balance: 0, currency: 'NGN' },
+      update: {},
+    });
+    return Number(wallet.balance);
   }
 
   /**
-   * Get wallet details including auto-debit status
+   * Get wallet details including virtual account details for Embedly
    */
-  async getWalletDetails(userId: string): Promise<{ balance: number; currency: string; autoDebitEnabled: boolean }> {
+  async getWalletDetails(userId: string): Promise<{
+    balance: number;
+    currency: string;
+    autoDebitEnabled: boolean;
+    virtualAccountNumber: string | null;
+    virtualAccountBank: string | null;
+    embedlyWalletId: string | null;
+  }> {
     console.log({ msg: 'Getting wallet details', userId });
-    
-    const wallet = await prisma.wallet.findUnique({
-      where: { userId }
+
+    // Auto-create wallet if missing (safety net for accounts created before wallet creation was enforced)
+    const wallet = await prisma.wallet.upsert({
+      where: { userId },
+      create: { userId, balance: 0, currency: 'NGN' },
+      update: {},
     });
-    
-    if (!wallet) {
-      throw new NotFoundError('Wallet not found');
-    }
     
     return {
       balance: Number(wallet.balance),
       currency: wallet.currency,
-      autoDebitEnabled: wallet.autoDebitEnabled || false
+      autoDebitEnabled: wallet.autoDebitEnabled || false,
+      virtualAccountNumber: (wallet as any).virtualAccountNumber ?? null,
+      virtualAccountBank: (wallet as any).virtualAccountBank ?? null,
+      embedlyWalletId: (wallet as any).embedlyWalletId ?? null,
     };
   }
 
@@ -209,193 +227,105 @@ export class WalletService implements IWalletService {
   }
 
   /**
-   * Initialize payment with Paystack
-   * Creates a pending transaction and returns payment URL
+   * Handle Embedly inflow webhook — credit user wallet when money lands in virtual account
+   * This is the ONLY way wallets get funded (no checkout flow)
+   * Idempotent: duplicate webhook deliveries are safely ignored
    */
-  async initializePayment(input: InitializePaymentInput): Promise<{ paymentUrl: string; reference: string; accessCode: string }> {
-    console.log({ msg: 'Initializing payment', userId: input.userId, amount: input.amount });
+  async handleInflowWebhook(
+    input: HandleInflowWebhookInput
+  ): Promise<{ wallet: WalletDTO; transaction: TransactionDTO }> {
+    const { accountNumber, amount, transactionReference, narration, occurredAt } = input;
+
+    console.log({
+      msg: 'Processing inflow webhook',
+      accountNumber,
+      amount,
+      transactionReference,
+    });
 
     // Validate amount
-    if (input.amount <= 0) {
-      throw new ValidationError('Amount must be greater than zero');
+    if (!amount || amount <= 0) {
+      throw new ValidationError('Invalid inflow amount');
     }
 
-    // Generate unique reference
-    const reference = `WF-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    // ── Idempotency: skip if already processed ─────────────────────────────────
+    const existing = await this.transactionRepository.findByReference(transactionReference).catch(() => null);
+    if (existing && existing.status === TransactionStatus.COMPLETED) {
+      console.log({ msg: 'Duplicate inflow webhook — already processed', transactionReference });
+      const wallet = await this.walletRepository.findByUserId(existing.userId);
+      if (!wallet) throw new NotFoundError('Wallet not found');
+      return { wallet: toWalletDTO(wallet), transaction: toTransactionDTO(existing) };
+    }
 
-    // Create pending transaction in database
-    await executeWalletOperation(async (tx) => {
-      // Get wallet
-      const wallet = await tx.wallet.findUnique({
-        where: { userId: input.userId },
-      });
-
-      if (!wallet) {
-        throw new NotFoundError('Wallet not found');
-      }
-
-      // Create pending transaction
-      await tx.transaction.create({
-        data: {
-          transactionReference: reference,
-          userId: input.userId,
-          walletId: wallet.id,
-          type: TransactionType.CREDIT,
-          amount: input.amount,
-          balanceBefore: Number(wallet.balance),
-          balanceAfter: Number(wallet.balance), // Will be updated on verification
-          description: input.note || 'Wallet funding',
-          paymentMethod: input.paymentMethod,
-          status: TransactionStatus.PENDING,
-          transactionDate: new Date(),
-          metadata: {
-            currency: input.currency || 'NGN',
-            note: input.note,
-          },
-        },
-      });
+    // ── Lookup wallet by virtual account number ───────────────────────────────
+    const wallet = await prisma.wallet.findFirst({
+      where: { virtualAccountNumber: accountNumber } as any,
     });
 
-    // Initialize payment with Paystack
-    const paymentResult = await this.paystackService.initializePayment({
-      email: input.userEmail,
-      amount: PaystackService.toKobo(input.amount),
-      reference,
-      currency: input.currency || 'NGN',
-      callbackUrl: input.callbackUrl,
-      metadata: {
-        userId: input.userId,
-        paymentMethod: input.paymentMethod,
-        note: input.note,
-      },
-    });
-
-    console.log({ 
-      msg: 'Payment initialized successfully', 
-      userId: input.userId, 
-      reference 
-    });
-
-    return {
-      paymentUrl: paymentResult.authorizationUrl,
-      reference: paymentResult.reference,
-      accessCode: paymentResult.accessCode,
-    };
-  }
-
-  /**
-   * Verify payment with Paystack and fund wallet
-   * Updates transaction status and wallet balance
-   */
-  async verifyAndFundWallet(reference: string, userId: string): Promise<{ wallet: WalletDTO; transaction: TransactionDTO }> {
-    console.log({ msg: 'Verifying payment and funding wallet', reference, userId });
-
-    // Find transaction
-    const transaction = await this.transactionRepository.findByReference(reference);
-
-    if (!transaction) {
-      throw new NotFoundError('Transaction not found');
+    if (!wallet) {
+      console.error({ msg: 'No wallet found for virtual account', accountNumber });
+      throw new NotFoundError(`No wallet found for virtual account ${accountNumber}`);
     }
 
-    // Verify transaction belongs to user
-    if (transaction.userId !== userId) {
-      throw new ValidationError('Unauthorized to verify this transaction');
-    }
+    const userId = wallet.userId;
 
-    // If already completed, return existing data
-    if (transaction.status === TransactionStatus.COMPLETED) {
-      const wallet = await this.walletRepository.findByUserId(userId);
-      if (!wallet) {
-        throw new NotFoundError('Wallet not found');
-      }
-      return {
-        wallet: toWalletDTO(wallet),
-        transaction: toTransactionDTO(transaction),
-      };
-    }
-
-    // Verify payment with Paystack
-    const verificationResult = await this.paystackService.verifyPayment(reference);
-
-    if (!verificationResult.success) {
-      // Update transaction status to failed
-      await executeWalletOperation(async (tx) => {
-        return await tx.transaction.update({
-          where: { id: transaction.id },
-          data: {
-            status: TransactionStatus.FAILED,
-            gatewayResponse: verificationResult.gatewayResponse,
-           //@ts-ignore
-            metadata: {
-              ...(transaction.metadata as object),
-              verificationResult,
-            },
-          },
-        });
-      });
-
-      throw new PaymentError('Payment verification failed', reference);
-    }
-
-    // Payment successful - update wallet and transaction
+    // ── Credit wallet atomically ──────────────────────────────────────────────
     const result = await executeWalletOperation(async (tx) => {
-      // Get current wallet
-      const wallet = await tx.wallet.findUnique({
-        where: { userId },
-      });
+      const freshWallet = await tx.wallet.findUnique({ where: { userId } });
+      if (!freshWallet) throw new NotFoundError('Wallet not found');
 
-      if (!wallet) {
-        throw new NotFoundError('Wallet not found');
-      }
-
-      const balanceBefore = Number(wallet.balance);
-      const amount = verificationResult.amount;
+      const balanceBefore = Number(freshWallet.balance);
       const balanceAfter = balanceBefore + amount;
 
-      // Update wallet balance
       const updatedWallet = await tx.wallet.update({
         where: { userId },
-        data: {
-          balance: { increment: amount },
-        },
+        data: { balance: { increment: amount } },
       });
 
-      // Update transaction
-      const updatedTransaction = await tx.transaction.update({
-        where: { id: transaction.id },
+      const transaction = await tx.transaction.create({
         data: {
-          status: TransactionStatus.COMPLETED,
+          transactionReference,
+          userId,
+          walletId: freshWallet.id,
+          type: TransactionType.CREDIT,
           amount,
           balanceBefore,
           balanceAfter,
-          gatewayResponse: verificationResult.gatewayResponse,
-          //@ts-ignore
+          description: narration || 'Wallet funded via bank transfer',
+          paymentMethod: PaymentMethod.BANK_TRANSFER,
+          status: TransactionStatus.COMPLETED,
+          gatewayReference: transactionReference,
+          transactionDate: occurredAt ? new Date(occurredAt) : new Date(),
           metadata: {
-            ...(transaction.metadata as object),
-            verificationResult,
-            paidAt: verificationResult.paidAt,
-            channel: verificationResult.channel,
+            source: 'embedly_inflow_webhook',
+            virtualAccountNumber: accountNumber,
+            narration,
           },
         },
       });
 
       return {
         wallet: toWalletDTO(updatedWallet),
-        transaction: toTransactionDTO(updatedTransaction),
+        transaction: toTransactionDTO(transaction),
       };
     });
 
-    console.log({ 
-      msg: 'Payment verified and wallet funded successfully', 
-      userId, 
-      reference,
-      amount: verificationResult.amount 
+    console.log({
+      msg: 'Wallet funded via inflow webhook',
+      userId,
+      amount,
+      transactionReference,
     });
 
-    // Send wallet funded notification
+    // ── Send notification ──────────────────────────────────────────────────────
     const notify = new NotifyService();
-    const dbUser = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, fullName: true } }).catch(() => null);
-    const formattedAmount = new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(verificationResult.amount);
+    const dbUser = await prisma.user
+      .findUnique({ where: { id: userId }, select: { email: true, fullName: true } })
+      .catch(() => null);
+    const formattedAmount = new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+    }).format(amount);
     notify.send({
       userId,
       type: 'SUCCESS',
@@ -407,7 +337,8 @@ export class WalletService implements IWalletService {
         ? {
             to: dbUser.email,
             fullName: dbUser.fullName,
-            method: (mail) => mail.sendWalletFundedEmail(dbUser.email, dbUser.fullName, +formattedAmount),
+            method: (mail: any) =>
+              mail.sendWalletFundedEmail(dbUser.email, dbUser.fullName, amount),
           }
         : undefined,
     });
@@ -477,11 +408,11 @@ export class WalletService implements IWalletService {
   async getTransactions(userId: string, pagination: PaginationParams): Promise<{ transactions: TransactionDTO[]; total: number; page: number; limit: number }> {
     console.log({ msg: 'Getting wallet transactions', userId });
 
-    const wallet = await this.walletRepository.findByUserId(userId);
-
-    if (!wallet) {
-      throw new NotFoundError('Wallet not found');
-    }
+    const wallet = await prisma.wallet.upsert({
+      where: { userId },
+      create: { userId, balance: 0, currency: 'NGN' },
+      update: {},
+    });
 
     const { transactions, total } = await this.transactionRepository.findByWalletId(
       wallet.id,

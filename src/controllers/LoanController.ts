@@ -57,6 +57,18 @@ export class LoanController {
     const body = await req.json();
     const validatedData = createLoanSchema.parse(body);
 
+    // Log agreement metadata for legal records
+    if (validatedData.agreementMeta) {
+      console.info('[LoanAgreement] User accepted agreement', {
+        userId: user.id,
+        agreementVersion: validatedData.agreementMeta.agreementVersion,
+        acceptedAt: validatedData.agreementMeta.acceptedAt,
+        ip: req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? 'unknown',
+        userAgent: validatedData.agreementMeta.userAgent,
+        consentItems: validatedData.agreementMeta.consentLog.length,
+      });
+    }
+
     // Determine loan type
     const isInternational = validatedData.residencyStatus === ResidencyStatus.INTERNATIONAL;
 
@@ -72,6 +84,37 @@ export class LoanController {
       schoolId, 
       schoolName: validatedData.schoolName 
     });
+
+    // Resolve student profile — create new one if provided, else use existing ID
+    let studentProfileId: string | undefined = (validatedData as any).studentProfileId;
+    if ((validatedData as any).newStudentProfile) {
+      const { studentName, dateOfBirth, relationship, classLevel } = (validatedData as any).newStudentProfile;
+      const createdProfile = await prisma.studentProfile.create({
+        data: {
+          parentId: user.id,
+          studentName,
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+          relationship,
+          classLevel,
+        },
+      });
+      studentProfileId = createdProfile.id;
+    }
+
+    // Update parent employment details if provided
+    if ((validatedData as any).parentDetails) {
+      const pd = (validatedData as any).parentDetails;
+      await prisma.parentProfile.updateMany({
+        where: { userId: user.id },
+        data: {
+          ...(pd.employmentStatus !== undefined && { employmentStatus: pd.employmentStatus }),
+          ...(pd.employmentRole !== undefined && { employmentRole: pd.employmentRole }),
+          ...(pd.employmentType !== undefined && { employmentType: pd.employmentType }),
+          ...(pd.monthlyNetIncome !== undefined && { monthlyIncome: pd.monthlyNetIncome }),
+          ...(pd.lengthOfEmployment !== undefined && { lengthOfEmployment: pd.lengthOfEmployment }),
+        },
+      });
+    }
 
     // Base loan data
     const baseLoanData = {
@@ -105,6 +148,7 @@ export class LoanController {
           ...baseLoanData,
           term: (validatedData as any).term,
           uploadedFiles: (validatedData as any).uploadedFiles,
+          studentProfileId,
         });
 
     // Send in-app + email notification (async, never breaks response)
@@ -330,12 +374,10 @@ export class LoanController {
     statuses: loans.map(l => l.status)
   });
 
-  // Statuses that should show a payment plan (excluding rejected, cancelled, pending)
+  // Only show payment plan for disbursed loans — instalments are calculated from disbursementDate
   const activeStatuses = [
     LoanStatus.ACTIVE,
     LoanStatus.DISBURSED,
-    LoanStatus.APPROVED,
-    LoanStatus.UNDER_REVIEW, // Include under review as it may have installments
   ];
 
   // Filter for loans with payment plans
@@ -464,8 +506,8 @@ private generateVirtualInstallments(loan: any): any[] {
 private transformToPaymentPlan(loan: any): any {
   let installments = loan.installments || [];
 
-  // If no installments exist in DB, generate virtual ones from loan terms
-  if (installments.length === 0 && loan.repaymentMonths > 0 && loan.monthlyPayment) {
+  // Only generate virtual instalments after disbursement — dates are based on disbursementDate
+  if (installments.length === 0 && loan.repaymentMonths > 0 && loan.monthlyPayment && loan.disbursementDate) {
     installments = this.generateVirtualInstallments(loan);
   }
 
@@ -479,8 +521,10 @@ private transformToPaymentPlan(loan: any): any {
     : 0;
 
   // Determine current status
-  let currentStatus: 'active' | 'overdue' | 'completed' = 'active';
-  if (loan.status === 'COMPLETED') {
+  let currentStatus: 'active' | 'overdue' | 'completed' | 'rejected' = 'active';
+  if (loan.status === 'REJECTED') {
+    currentStatus = 'rejected';
+  } else if (loan.status === 'COMPLETED') {
     currentStatus = 'completed';
   } else if (overdueInstallments.length > 0) {
     currentStatus = 'overdue';
