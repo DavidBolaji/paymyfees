@@ -187,6 +187,15 @@ export class AdminRepository implements IAdminRepository {
               isVerified: true
             }
           },
+          studentProfile: {
+            select: {
+              id: true,
+              studentName: true,
+              dateOfBirth: true,
+              relationship: true,
+              classLevel: true
+            }
+          },
           documents: {
             select: {
               id: true,
@@ -221,6 +230,9 @@ export class AdminRepository implements IAdminRepository {
         id: loan.id,
         loanNumber: loan.loanNumber,
         userId: loan.userId,
+        studentName: this.getLoanStudentName(loan),
+        studentProfileId: loan.studentProfileId,
+        studentProfile: loan.studentProfile,
         userName: loan.user.fullName,
         userEmail: loan.user.email,
         userPhone: loan.user.phone,

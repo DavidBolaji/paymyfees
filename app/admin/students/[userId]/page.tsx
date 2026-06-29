@@ -9,6 +9,7 @@ import { FreezeAccountModal } from '@/components/admin/freeze-account-modal';
 import { SuspendLoanModal } from '@/components/admin/suspend-loan-modal';
 import { PaymentReminderModal } from '@/components/admin/payment-reminder-modal';
 import { EditStudentDrawer } from '@/components/admin/edit-student-drawer';
+import { SuccessModal } from '@/components/ui/success-modal';
 import useAuthStore from '@/src/authStore';
 import { api } from '@/src/lib/api';
 
@@ -74,6 +75,13 @@ export default function StudentDetailPage() {
   const [showReminder, setShowReminder] = useState(false);
   const [showFreeze, setShowFreeze] = useState(false);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<{ title: string; message: string } | null>(null);
+
+  const ACTION_LABELS: Record<string, { title: string; message: string }> = {
+    suspend: { title: 'Loan Suspended', message: 'Future loan eligibility has been successfully suspended.' },
+    freeze: { title: 'Account Frozen', message: 'The student account has been temporarily frozen.' },
+    'send-reminder': { title: 'Reminder Sent', message: 'A payment reminder has been sent to the student.' },
+  };
 
   useEffect(() => {
     if (user?.role !== 'ADMIN') { router.push('/dashboard'); return; }
@@ -97,7 +105,18 @@ export default function StudentDetailPage() {
   const postAction = async (path: string, body: any) => {
     try {
       setActionLoading(true);
-      await api.post(`/api/admin/students/${userId}/${path}`, body);
+      const res = await api.post(`/api/admin/students/${userId}/${path}`, body);
+      const json = await res.json();
+      if (json.success === false) {
+        alert(json.message || 'Action failed. Please try again.');
+        return false;
+      }
+      setSuccessMsg(ACTION_LABELS[path] ?? { title: 'Action Successful', message: 'The action was completed successfully.' });
+      return true;
+    } catch (e) {
+      console.error(e);
+      alert('An error occurred. Please try again.');
+      return false;
     } finally {
       setActionLoading(false);
     }
@@ -345,19 +364,19 @@ export default function StudentDetailPage() {
       <SuspendLoanModal
         isOpen={showSuspend}
         onClose={() => setShowSuspend(false)}
-        onConfirm={(d) => { postAction('suspend', d); setShowSuspend(false); }}
+        onConfirm={async (d) => { if (await postAction('suspend', d)) setShowSuspend(false); }}
         loading={actionLoading}
       />
       <PaymentReminderModal
         isOpen={showReminder}
         onClose={() => setShowReminder(false)}
-        onConfirm={(d) => { postAction('send-reminder', d); setShowReminder(false); }}
+        onConfirm={async (d) => { if (await postAction('send-reminder', d)) setShowReminder(false); }}
         loading={actionLoading}
       />
       <FreezeAccountModal
         isOpen={showFreeze}
         onClose={() => setShowFreeze(false)}
-        onConfirm={(d) => { postAction('freeze', d); setShowFreeze(false); }}
+        onConfirm={async (d) => { if (await postAction('freeze', d)) setShowFreeze(false); }}
         loading={actionLoading}
       />
       <EditStudentDrawer
@@ -365,6 +384,12 @@ export default function StudentDetailPage() {
         onClose={() => setShowEditDrawer(false)}
         student={data?.user}
         onSaved={fetchStudent}
+      />
+      <SuccessModal
+        isOpen={!!successMsg}
+        onClose={() => setSuccessMsg(null)}
+        title={successMsg?.title}
+        message={successMsg?.message}
       />
     </>
   );

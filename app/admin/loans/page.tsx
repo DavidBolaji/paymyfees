@@ -10,7 +10,7 @@ import useAuthStore from '@/src/authStore';
 import { api } from '@/src/lib/api';
 
 const TABLE_COLUMNS = [
-  { key: 'userName', label: 'Student Name' },
+  { key: 'studentName', label: 'Student Name' },
   { key: 'schoolName', label: 'School' },
   { key: 'loanNumber', label: 'Application ID' },
   { key: 'status', label: 'Status' },
