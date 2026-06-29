@@ -495,8 +495,10 @@ export class AdminController {
     return NextResponse.json({ success: true, data: result.students, metadata: { pagination: result.pagination } }, { status: 200 });
   }
 
-  async getStudentDetails(_req: Request, userId: string): Promise<NextResponse> {
-    const data = await this.adminService.getStudentDetails(userId);
+  async getStudentDetails(req: Request, userId: string): Promise<NextResponse> {
+    const { searchParams } = new URL(req.url);
+    const loanId = searchParams.get('loanId') || undefined;
+    const data = await this.adminService.getStudentDetails(userId, loanId);
     return NextResponse.json({ success: true, data }, { status: 200 });
   }
 

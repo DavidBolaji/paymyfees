@@ -141,7 +141,7 @@ export default function AdminDashboard() {
           columns={REQUIRING_ACTION_COLUMNS}
           data={formattedRequiringAction}
           viewAllHref="/admin/students/requiring-action"
-          onRowClick={row => router.push(`/admin/students/${row.userId}`)}
+          onRowClick={row => router.push(`/admin/students/${row.userId}${row.loanId ? `?loanId=${row.loanId}` : ''}`)}
           paginationInfo={actionPagination}
           onPageChange={handleActionPageChange}
           isLoading={loading}

@@ -67,7 +67,7 @@ export default function AllCompletedStudentsPage() {
         title="Completed Student Loans"
         columns={COLUMNS}
         data={formatted}
-        onRowClick={row => router.push(`/admin/students/student-profile/${row.userId}`)}
+        onRowClick={row => router.push(`/admin/students/${row.userId}${row.loanId ? `?loanId=${row.loanId}` : ''}`)}
         paginationInfo={pagination}
         onPageChange={fetchStudents}
         isLoading={loading}

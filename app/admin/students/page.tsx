@@ -199,7 +199,7 @@ export default function StudentsPage() {
           columns={TABLE_COLUMNS}
           data={allStudents.map(toRow)}
           viewAllHref="/admin/students/all-active-students"
-          onRowClick={row => router.push(`/admin/students/${row.userId}`)}
+          onRowClick={row => router.push(`/admin/students/${row.userId}${row.loanId ? `?loanId=${row.loanId}` : ''}`)}
           paginationInfo={allPagination}
           onPageChange={fetchAll}
           isLoading={allLoading}
@@ -214,7 +214,7 @@ export default function StudentsPage() {
           columns={TABLE_COLUMNS}
           data={overdueStudents.map(toRow)}
           viewAllHref="/admin/students/all-overdue-students"
-          onRowClick={row => router.push(`/admin/students/student-profile/${row.userId}`)}
+          onRowClick={row => router.push(`/admin/students/${row.userId}${row.loanId ? `?loanId=${row.loanId}` : ''}`)}
           paginationInfo={overduePagination}
           onPageChange={fetchOverdue}
           isLoading={overdueLoading}
@@ -229,7 +229,7 @@ export default function StudentsPage() {
           columns={TABLE_COLUMNS}
           data={completedStudents.map(toRow)}
           viewAllHref="/admin/students/all-completed-students"
-          onRowClick={row => router.push(`/admin/students/student-profile/${row.userId}`)}
+          onRowClick={row => router.push(`/admin/students/${row.userId}${row.loanId ? `?loanId=${row.loanId}` : ''}`)}
           paginationInfo={completedPagination}
           onPageChange={fetchCompleted}
           isLoading={completedLoading}

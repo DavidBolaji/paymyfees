@@ -60,7 +60,7 @@ export default function StudentsRequiringActionPage() {
         title="Students Requiring Action"
         columns={COLUMNS}
         data={formatted}
-        onRowClick={row => router.push(`/admin/students/${row.userId}`)}
+        onRowClick={row => router.push(`/admin/students/${row.userId}${row.loanId ? `?loanId=${row.loanId}` : ''}`)}
         paginationInfo={pagination}
         onPageChange={fetchStudents}
         isLoading={loading}

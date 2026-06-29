@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { Download, FileText, Edit } from 'lucide-react';
 import { BackNavigation } from '@/components/dashboard/back-navigation';
 import { StatusBadge } from '@/components/dashboard/status-badge';
@@ -63,7 +63,9 @@ export default function StudentDetailPage() {
   const { user } = useAuthStore();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const userId = params?.userId as string;
+  const loanId = searchParams.get('loanId');
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
@@ -76,12 +78,13 @@ export default function StudentDetailPage() {
   useEffect(() => {
     if (user?.role !== 'ADMIN') { router.push('/dashboard'); return; }
     if (userId) fetchStudent();
-  }, [user, userId]);
+  }, [user, userId, loanId]);
 
   const fetchStudent = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/api/admin/students/${userId}`);
+      const query = loanId ? `?loanId=${encodeURIComponent(loanId)}` : '';
+      const res = await api.get(`/api/admin/students/${userId}${query}`);
       const json = await res.json();
       setData(json.data);
     } catch (e) {
@@ -176,6 +179,8 @@ export default function StudentDetailPage() {
   }
 
   const { user: student, loan, documents = [] } = data;
+  const beneficiaryName = loan?.studentProfile?.studentName || student.fullName;
+  const beneficiaryId = loan?.studentProfile?.id || userId;
 
 
 
@@ -192,10 +197,10 @@ export default function StudentDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 mb-6">
             {/* Student Information */}
             <SectionCard title="Student Information">
-              <InfoRow label="Student Name" value={student.fullName} />
-              <InfoRow label="Student ID" value={(params?.userId as any)?.split('-')[0]} />
+              <InfoRow label="Student Name" value={beneficiaryName} />
+              <InfoRow label="Student ID" value={beneficiaryId?.split('-')[0]} />
               <InfoRow label="School" value={loan?.schoolName} />
-              <InfoRow label="Program/Course" value={student.programCourseOfStudy} />
+              <InfoRow label="Program/Course" value={loan?.programCourseOfStudy} />
               <InfoRow label="Country" value={student.country} />
               <InfoRow label="City" value={student.city} />
               <InfoRow label="Account Status" value="N/A" />
@@ -210,8 +215,8 @@ export default function StudentDetailPage() {
                   <InfoRow label="Disbursed To:" value={loan.schoolName} />
                   <InfoRow label="Disbursement Date:" value={loan.disbursementDate ? new Date(loan.disbursementDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'} />
                   <InfoRow label="Verification Status" value={<StatusBadge status={STATUS_MAP[loan.status] || 'pending'} />} />
-                  <InfoRow label="Paid Amount" value={`₦${Number(loan.paidAmount || 0).toLocaleString()}`} />
-                  <InfoRow label="Remaining Amount" value={`₦${Number(loan.remainingAmount || 0).toLocaleString()}`} />
+                  <InfoRow label="Paid Amount" value={`₦${Number(loan.amountRepaid || 0).toLocaleString()}`} />
+                  <InfoRow label="Remaining Amount" value={`₦${Number(loan.outstandingBalance || 0).toLocaleString()}`} />
                 </>
               ) : (
                 <p className="text-sm text-[#7C7C7C] py-4">No active loan.</p>
@@ -364,4 +369,3 @@ export default function StudentDetailPage() {
     </>
   );
 }
-

@@ -30,7 +30,7 @@ export interface IAdminRepository {
   getStudentsRequiringAction(page: number, limit: number): Promise<any>;
   getRecentlyActiveStudents(page: number, limit: number): Promise<any>;
   getDelayedPayments(page: number, limit: number): Promise<any>;
-  getStudentDetails(userId: string): Promise<any>;
+  getStudentDetails(userId: string, loanId?: string): Promise<any>;
   suspendLoanEligibility(userId: string, adminId: string, reason: string, duration: string, notes: string): Promise<any>;
   sendPaymentReminder(userId: string, adminId: string, reminderType: string, notes: string, channels: string[]): Promise<any>;
   freezeAccount(userId: string, adminId: string, reason: string, duration: string, notes: string): Promise<any>;
@@ -52,6 +52,10 @@ export interface IAdminRepository {
 }
 
 export class AdminRepository implements IAdminRepository {
+  private getLoanStudentName(loan: any): string {
+    return loan.studentProfile?.studentName || loan.user?.fullName || 'N/A';
+  }
+
   /**
    * Get admin analytics (Optimized for Prisma Accelerate)
    * Reduces 16 queries to 4 queries using groupBy and aggregations
@@ -893,9 +897,9 @@ export class AdminRepository implements IAdminRepository {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        distinct: ['userId'],
         include: {
           user: { select: { id: true, fullName: true, email: true, isActive: true, createdAt: true } },
+          studentProfile: { select: { id: true, studentName: true, dateOfBirth: true, relationship: true, classLevel: true } },
           payments: { select: { paymentDate: true }, orderBy: { paymentDate: 'desc' }, take: 1 }
         }
       }),
@@ -907,7 +911,10 @@ export class AdminRepository implements IAdminRepository {
         userId: l.userId,
         loanId: l.id,
         loanNumber: l.loanNumber,
-        studentName: l.user.fullName,
+        studentName: this.getLoanStudentName(l),
+        studentProfileId: l.studentProfileId,
+        studentProfile: l.studentProfile,
+        userName: l.user.fullName,
         school: l.schoolName,
         totalAmount: Number(l.loanAmount),
         outstandingBalance: Math.max(0, Number(l.loanAmount) - Number(l.amountRepaid)),
@@ -948,6 +955,7 @@ export class AdminRepository implements IAdminRepository {
         orderBy: { updatedAt: 'desc' },
         include: {
           user: { select: { id: true, fullName: true, isActive: true } },
+          studentProfile: { select: { id: true, studentName: true, dateOfBirth: true, relationship: true, classLevel: true } },
           installments: {
             where: { daysOverdue: { gt: 0 } },
             orderBy: { dueDate: 'asc' },
@@ -975,7 +983,10 @@ export class AdminRepository implements IAdminRepository {
           userId: l.userId,
           loanId: l.id,
           loanNumber: l.loanNumber,
-          studentName: l.user.fullName,
+          studentName: this.getLoanStudentName(l),
+          studentProfileId: l.studentProfileId,
+          studentProfile: l.studentProfile,
+          userName: l.user.fullName,
           school: l.schoolName,
           issue,
           status: l.status === LoanStatus.DEFAULTED ? 'pending' : 'pending',
@@ -1005,7 +1016,18 @@ export class AdminRepository implements IAdminRepository {
         orderBy: { paymentDate: 'desc' },
         include: {
           user: { select: { id: true, fullName: true } },
-          loan: { select: { schoolName: true, id: true, loanNumber: true, outstandingBalance: true, amountRepaid: true, totalAmount: true } },
+          loan: {
+            select: {
+              schoolName: true,
+              id: true,
+              loanNumber: true,
+              outstandingBalance: true,
+              amountRepaid: true,
+              totalAmount: true,
+              studentProfileId: true,
+              studentProfile: { select: { id: true, studentName: true, dateOfBirth: true, relationship: true, classLevel: true } }
+            }
+          },
           installment: { select: { installmentNumber: true } }
         }
       }),
@@ -1018,7 +1040,11 @@ export class AdminRepository implements IAdminRepository {
         userId: p.userId,
         loanId: p.loanId,
         loanNumber: p.loan.loanNumber,
-        student: p.user.fullName,
+        student: p.loan.studentProfile?.studentName || p.user.fullName,
+        studentName: p.loan.studentProfile?.studentName || p.user.fullName,
+        studentProfileId: p.loan.studentProfileId,
+        studentProfile: p.loan.studentProfile,
+        userName: p.user.fullName,
         activity: p.installment ? `Loan repayment (#${p.installment.installmentNumber})` : 'Loan repayment',
         amount: Number(p.amount),
         method: p.paymentMethod,
@@ -1068,6 +1094,8 @@ export class AdminRepository implements IAdminRepository {
           schoolName: true,
           outstandingBalance: true,
           user: { select: { id: true, fullName: true } },
+          studentProfileId: true,
+          studentProfile: { select: { id: true, studentName: true, dateOfBirth: true, relationship: true, classLevel: true } },
           installments: {
             where: overdueInstallmentFilter,
             orderBy: { dueDate: 'asc' }
@@ -1090,7 +1118,10 @@ export class AdminRepository implements IAdminRepository {
           loanId: loan.id,
           loanNumber: loan.loanNumber,
           userId: loan.userId,
-          studentName: loan.user.fullName,
+          studentName: this.getLoanStudentName(loan),
+          studentProfileId: loan.studentProfileId,
+          studentProfile: loan.studentProfile,
+          userName: loan.user.fullName,
           school: loan.schoolName,
           outstanding: overdueTotal,
           totalOutstanding: Number(loan.outstandingBalance),
@@ -1112,7 +1143,9 @@ export class AdminRepository implements IAdminRepository {
   /**
    * Get single student details (by userId)
    */
-  async getStudentDetails(userId: string): Promise<any> {
+  async getStudentDetails(userId: string, loanId?: string): Promise<any> {
+    const loanWhere = loanId ? { id: loanId, userId } : { userId };
+
     const [user, loan, transactions, documents] = await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
@@ -1122,9 +1155,10 @@ export class AdminRepository implements IAdminRepository {
         }
       }),
       prisma.loan.findFirst({
-        where: { userId },
+        where: loanWhere,
         orderBy: { createdAt: 'desc' },
         include: {
+          studentProfile: { select: { id: true, studentName: true, dateOfBirth: true, relationship: true, classLevel: true } },
           installments: { orderBy: { installmentNumber: 'asc' } },
           disbursement: true,
           school: { select: { schoolName: true, city: true, country: true } },
@@ -1172,6 +1206,8 @@ export class AdminRepository implements IAdminRepository {
         repaymentMonths: loan.repaymentMonths,
         monthlyPayment: Number(loan.monthlyPayment),
         programCourseOfStudy: loan.programCourseOfStudy,
+        studentProfileId: loan.studentProfileId,
+        studentProfile: loan.studentProfile,
         schoolName: loan.schoolName,
         school: loan.school,
         disbursement: loan.disbursement,

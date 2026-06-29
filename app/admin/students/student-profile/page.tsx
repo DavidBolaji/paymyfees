@@ -64,7 +64,7 @@ export default function StudentsPage() {
   }));
 
   const handleRowClick = (row: any) => {
-    router.push(`/admin/students/student-profile/${row.userId}`);
+    router.push(`/admin/students/${row.userId}${row.loanId ? `?loanId=${row.loanId}` : ''}`);
   };
 
   return (

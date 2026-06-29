@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { Download, FileText, Edit } from 'lucide-react';
 import { BackNavigation } from '@/components/dashboard/back-navigation';
 import { StatusBadge } from '@/components/dashboard/status-badge';
@@ -61,7 +61,9 @@ export default function StudentProfilePage() {
   const { user } = useAuthStore();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const userId = params?.userId as string;
+  const loanId = searchParams.get('loanId');
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
@@ -75,12 +77,13 @@ export default function StudentProfilePage() {
   useEffect(() => {
     if (user?.role !== 'ADMIN') { router.push('/dashboard'); return; }
     if (userId) fetchStudent();
-  }, [user, userId]);
+  }, [user, userId, loanId]);
 
   const fetchStudent = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/api/admin/students/${userId}`);
+      const query = loanId ? `?loanId=${encodeURIComponent(loanId)}` : '';
+      const res = await api.get(`/api/admin/students/${userId}${query}`);
       const json = await res.json();
       setData(json.data);
     } catch (e) {
@@ -190,6 +193,8 @@ export default function StudentProfilePage() {
   }
 
   const { user: student, loan, documents = [] } = data;
+  const beneficiaryName = loan?.studentProfile?.studentName || student.fullName;
+  const beneficiaryId = loan?.studentProfile?.id || userId;
 
   const nextInstallment = loan?.installments?.find((i: any) => !['PAID', 'COMPLETED'].includes(i.status));
 
@@ -203,8 +208,8 @@ export default function StudentProfilePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 mb-6">
             {/* Student Information */}
             <SectionCard title="Student Information">
-              <InfoRow label="Student Name" value={student.fullName} />
-              <InfoRow label="Student ID" value={(params?.userId as any)?.split('-')[0]} />
+              <InfoRow label="Student Name" value={beneficiaryName} />
+              <InfoRow label="Student ID" value={beneficiaryId?.split('-')[0]} />
               <InfoRow label="School" value={loan?.schoolName} />
               <InfoRow label="Phone Number" value={student.phone} />
               <InfoRow label="Country" value={student.country} />

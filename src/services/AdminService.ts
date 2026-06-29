@@ -35,7 +35,7 @@ export interface IAdminService {
   getStudentsRequiringAction(page: number, limit: number): Promise<any>;
   getRecentlyActiveStudents(page: number, limit: number): Promise<any>;
   getDelayedPayments(page: number, limit: number): Promise<any>;
-  getStudentDetails(userId: string): Promise<any>;
+  getStudentDetails(userId: string, loanId?: string): Promise<any>;
   suspendLoanEligibility(userId: string, adminId: string, reason: string, duration: string, notes: string): Promise<any>;
   sendPaymentReminder(userId: string, adminId: string, reminderType: string, notes: string, channels: string[]): Promise<any>;
   freezeAccount(userId: string, adminId: string, reason: string, duration: string, notes: string): Promise<any>;
@@ -265,8 +265,8 @@ export class AdminService implements IAdminService {
     return await this.adminRepository.getDelayedPayments(page, limit);
   }
 
-  async getStudentDetails(userId: string): Promise<any> {
-    return await this.adminRepository.getStudentDetails(userId);
+  async getStudentDetails(userId: string, loanId?: string): Promise<any> {
+    return await this.adminRepository.getStudentDetails(userId, loanId);
   }
 
   async suspendLoanEligibility(userId: string, adminId: string, reason: string, duration: string, notes: string): Promise<any> {
