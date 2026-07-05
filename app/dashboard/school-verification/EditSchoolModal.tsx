@@ -10,6 +10,7 @@ import { uploadSchoolDocuments } from '@/src/utils/document-api';
 interface EditSchoolModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onError?: (message: string) => void;
   uploadProgress?: string;
   initialData: {
     schoolName?: string;
@@ -34,6 +35,7 @@ const academicSessionOptions = [
 export default function EditSchoolModal({
   isOpen,
   onClose,
+  onError,
   initialData,
   onSave,
   schoolId,
@@ -98,7 +100,7 @@ export default function EditSchoolModal({
       onClose();
     } catch (error) {
       console.error('Error saving school details:', error);
-      alert('Failed to save changes. Please try again.');
+      onError?.('Failed to save changes. Please try again.');
     } finally {
       setIsSaving(false);
     }

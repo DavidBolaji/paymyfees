@@ -10,6 +10,7 @@ import { SuspendLoanModal } from '@/components/admin/suspend-loan-modal';
 import { PaymentReminderModal } from '@/components/admin/payment-reminder-modal';
 import { EditStudentDrawer } from '@/components/admin/edit-student-drawer';
 import { SuccessModal } from '@/components/ui/success-modal';
+import { ErrorModal } from '@/components/ui/error-modal';
 import useAuthStore from '@/src/authStore';
 import { api } from '@/src/lib/api';
 
@@ -76,6 +77,7 @@ export default function StudentDetailPage() {
   const [showFreeze, setShowFreeze] = useState(false);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [successMsg, setSuccessMsg] = useState<{ title: string; message: string } | null>(null);
+  const [errorMsg, setErrorMsg] = useState<{ title: string; message: string } | null>(null);
 
   const ACTION_LABELS: Record<string, { title: string; message: string }> = {
     suspend: { title: 'Loan Suspended', message: 'Future loan eligibility has been successfully suspended.' },
@@ -108,14 +110,14 @@ export default function StudentDetailPage() {
       const res = await api.post(`/api/admin/students/${userId}/${path}`, body);
       const json = await res.json();
       if (json.success === false) {
-        alert(json.message || 'Action failed. Please try again.');
+        setErrorMsg({ title: 'Action Failed', message: json.message || 'Action failed. Please try again.' });
         return false;
       }
       setSuccessMsg(ACTION_LABELS[path] ?? { title: 'Action Successful', message: 'The action was completed successfully.' });
       return true;
     } catch (e) {
       console.error(e);
-      alert('An error occurred. Please try again.');
+      setErrorMsg({ title: 'Action Failed', message: 'An error occurred. Please try again.' });
       return false;
     } finally {
       setActionLoading(false);
@@ -390,6 +392,12 @@ export default function StudentDetailPage() {
         onClose={() => setSuccessMsg(null)}
         title={successMsg?.title}
         message={successMsg?.message}
+      />
+      <ErrorModal
+        isOpen={!!errorMsg}
+        onClose={() => setErrorMsg(null)}
+        title={errorMsg?.title}
+        message={errorMsg?.message}
       />
     </>
   );

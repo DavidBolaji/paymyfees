@@ -5,6 +5,7 @@ import useAuthStore from "@/src/authStore";
 // import Image from "next/image";
 // import Logo from "@/assets/images/logo/logo.png";
 import { LoginForm } from "@/components/forms/login-form";
+import { ErrorModal } from "@/components/ui/error-modal";
 import { api } from "@/src/lib/api";
 import { HomeHeader } from "@/components/home/home-header";
 
@@ -17,6 +18,7 @@ interface FormData {
 export default function LoginPage() {
   const [, setIsSubmitting] = useState(false);
   const { login } = useAuthStore();
+  const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
 
   // Handle form submission
   const handleSubmit = async (formData: FormData) => {
@@ -64,12 +66,12 @@ export default function LoginPage() {
         }
       } else {
         // Handle login error
-        alert(data.message || "Login failed. Please try again.");
+        setErrorModal({ title: "Login Failed", message: data.message || "Login failed. Please try again." });
       }
 
     } catch (error) {
       console.error("Login error:", error);
-      alert("An error occurred. Please try again.");
+      setErrorModal({ title: "Login Failed", message: "An error occurred. Please try again." });
     } finally {
       setIsSubmitting(false);
     }
@@ -98,6 +100,12 @@ export default function LoginPage() {
           <LoginForm onSubmit={handleSubmit} />
         </div>
       </div>
+      <ErrorModal
+        isOpen={!!errorModal}
+        onClose={() => setErrorModal(null)}
+        title={errorModal?.title}
+        message={errorModal?.message}
+      />
     </>
   );
 }

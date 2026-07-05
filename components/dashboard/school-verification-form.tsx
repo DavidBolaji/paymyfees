@@ -12,6 +12,7 @@ import { RegisterSchoolPayload } from '@/src/utils/school-api';
 import { CloudinaryUploadResult } from '@/src/utils/cloudinary-api';
 import { uploadSchoolDocuments } from '@/src/utils/document-api';
 import { CheckSquareIcon } from '@/assets/icons/CheckSquareIcon';
+import { ErrorModal } from '@/components/ui/error-modal';
 
 interface FormErrors {
     schoolName?: string;
@@ -61,6 +62,7 @@ export function SchoolVerificationForm({ onSuccess }: { onSuccess?: () => void }
     const [errors, setErrors] = useState<FormErrors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [uploadProgress, setUploadProgress] = useState<string>('');
+    const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
 
 
     const schoolTypeOptions = [
@@ -227,7 +229,7 @@ export function SchoolVerificationForm({ onSuccess }: { onSuccess?: () => void }
 
         } catch (error) {
             console.error('Submission error:', error);
-            alert('Failed to submit application. Please try again.');
+            setErrorModal({ title: 'Submission Failed', message: 'Failed to submit application. Please try again.' });
         } finally {
             setIsSubmitting(false);
         }
@@ -272,6 +274,7 @@ export function SchoolVerificationForm({ onSuccess }: { onSuccess?: () => void }
     };
 
     return (
+        <>
         <form onSubmit={handleSubmit} className="space-y-8">
 
 
@@ -458,5 +461,12 @@ export function SchoolVerificationForm({ onSuccess }: { onSuccess?: () => void }
                 </button>
             </div>
         </form>
+        <ErrorModal
+            isOpen={!!errorModal}
+            onClose={() => setErrorModal(null)}
+            title={errorModal?.title}
+            message={errorModal?.message}
+        />
+        </>
     );
 }

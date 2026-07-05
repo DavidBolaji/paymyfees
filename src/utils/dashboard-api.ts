@@ -13,7 +13,7 @@ export const fetchDashboardStats = async (loanId?: string): Promise<DashboardSta
       console.log(data.data);
       return data.data as DashboardStats;
     } else {
-      alert(data.message || "Failed to fetch dashboard stats.");
+      console.error(data.message || "Failed to fetch dashboard stats.");
       return null;
     }
   } catch (error) {
@@ -31,7 +31,7 @@ export const fetchChartData = async (year: string): Promise<ChartDataItem[] | []
       console.log(data.data);
       return data.data
     } else {
-      alert(data.message || "Failed to fetch dashboard stats.");
+      console.error(data.message || "Failed to fetch dashboard stats.");
       return [];
     }
   } catch (error) {

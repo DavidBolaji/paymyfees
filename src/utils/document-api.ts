@@ -58,13 +58,11 @@ export const uploadSchoolDocuments = async (
     if (data.success) {
       return data.data;
     } else {
-      alert(data.message || "Failed to save documents.");
-      return [];
+      throw new Error(data.message || "Failed to save documents.");
     }
   } catch (error) {
     console.error("Error uploading documents:", error);
-    alert(error instanceof Error ? error.message : 'An error occurred');
-    return [];
+    throw error instanceof Error ? error : new Error('An error occurred');
   }
 };
 
@@ -96,7 +94,7 @@ export const fetchSchoolDocuments = async (schoolId: string): Promise<Document[]
     if (data.success) {
       return data.data;
     } else {
-      alert(data.message || "Failed to fetch documents.");
+      console.error(data.message || "Failed to fetch documents.");
       return [];
     }
   } catch (error) {
@@ -116,12 +114,10 @@ export const deleteDocument = async (documentId: string): Promise<boolean> => {
     if (data.success) {
       return true;
     } else {
-      alert(data.message || "Failed to delete document.");
-      return false;
+      throw new Error(data.message || "Failed to delete document.");
     }
   } catch (error) {
     console.error("Error deleting document:", error);
-    alert(error instanceof Error ? error.message : 'An error occurred');
-    return false;
+    throw error instanceof Error ? error : new Error('An error occurred');
   }
 };

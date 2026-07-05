@@ -14,6 +14,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import ContactSupportModal from './ContactSupportModal';
 import { uploadSchoolDocuments } from '@/src/utils/document-api';
 import ContactSuccessModal from './ContactSuccessModal';
+import { SuccessModal } from '@/components/ui/success-modal';
+import { ErrorModal } from '@/components/ui/error-modal';
 
 export default function SchoolVerificationPage() {
   const {
@@ -35,6 +37,8 @@ export default function SchoolVerificationPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [successModal, setSuccessModal] = useState<{ title: string; message: string } | null>(null);
+  const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
   const [isVerifying,] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
 
@@ -312,6 +316,7 @@ export default function SchoolVerificationPage() {
       <EditSchoolModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onError={(message) => setErrorModal({ title: 'Update Failed', message })}
         initialData={{
           schoolName: currentSchool?.schoolName ?? '',
           academicSession: currentSchool?.currentAcademicSession ?? '',
@@ -335,10 +340,10 @@ export default function SchoolVerificationPage() {
             await fetchAllData();
 
             setUploadProgress('');
-            alert('School details updated successfully!');
+            setSuccessModal({ title: 'School Details Updated', message: 'School details updated successfully.' });
           } catch (error) {
             console.error('Error updating school:', error);
-            alert('Failed to update school details. Please try again.');
+            setErrorModal({ title: 'Update Failed', message: 'Failed to update school details. Please try again.' });
           } finally {
             setUploadProgress('');
           }
@@ -356,6 +361,18 @@ export default function SchoolVerificationPage() {
       <ContactSuccessModal
         isOpen={isSuccessModalOpen}
         onClose={() => setIsSuccessModalOpen(false)}
+      />
+      <SuccessModal
+        isOpen={!!successModal}
+        onClose={() => setSuccessModal(null)}
+        title={successModal?.title}
+        message={successModal?.message}
+      />
+      <ErrorModal
+        isOpen={!!errorModal}
+        onClose={() => setErrorModal(null)}
+        title={errorModal?.title}
+        message={errorModal?.message}
       />
     </>
   );

@@ -832,7 +832,7 @@ export class AdminRepository implements IAdminRepository {
       activeStudentCount, activeLoansCount, overdueCount, openTicketsCount, completedLoansCount,
       pendingSchoolsCount, underReviewCount, verifiedSchoolsCount, rejectedSchoolsCount,
       totalLoansCount, pendingLoansCount, approvedLoansCount, rejectedLoansCount,
-      totalTicketsToday, totalPlatformTickets, resolvedTicketsCount, closedTicketsCount,
+      totalTicketsToday, totalPlatformTickets, resolvedTicketsCount, closedTicketsCount, loanFinancials,
     ] = await Promise.all([
       prisma.user.count({
         where: { role: { in: [UserRole.PARENT, UserRole.STUDENT] } }
@@ -862,6 +862,12 @@ export class AdminRepository implements IAdminRepository {
       prisma.supportTicket.count(),
       prisma.supportTicket.count({ where: { status: SupportTicketStatus.RESOLVED } }),
       prisma.supportTicket.count({ where: { status: SupportTicketStatus.CLOSED } }),
+      prisma.loan.aggregate({
+        _sum: {
+          amountDisbursed: true,
+          amountRepaid: true,
+        },
+      }),
     ]);
 
     // Compute average first response time in minutes using DB-level aggregation
@@ -880,6 +886,8 @@ export class AdminRepository implements IAdminRepository {
         pending: pendingLoansCount,
         approved: approvedLoansCount,
         rejected: rejectedLoansCount,
+        totalDisbursedAmount: Number(loanFinancials._sum.amountDisbursed || 0),
+        totalRepaidAmount: Number(loanFinancials._sum.amountRepaid || 0),
       },
       tickets: {
         totalToday: totalTicketsToday,
@@ -953,8 +961,8 @@ export class AdminRepository implements IAdminRepository {
       OR: [
         { status: LoanStatus.DEFAULTED },
         { installments: { some: { daysOverdue: { gt: 0 } } } },
-        { status: LoanStatus.ACTIVE },
-        { status: LoanStatus.DISBURSED }
+        { status: LoanStatus.PENDING },
+        { status: LoanStatus.UNDER_REVIEW }
       ],
       user: { role: { notIn: [UserRole.SCHOOL, UserRole.ADMIN] as UserRole[] } }
     };
@@ -986,7 +994,7 @@ export class AdminRepository implements IAdminRepository {
           ? 'Payment failed'
           : overdueInst
             ? `Overdue by ${overdueInst.daysOverdue} days`
-            : 'Pending action';
+            : 'Pending review';
         const now = new Date();
         const lastAct = l.payments[0]?.paymentDate || l.updatedAt;
         const diffDays = Math.floor((now.getTime() - new Date(lastAct).getTime()) / (1000 * 60 * 60 * 24));

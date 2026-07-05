@@ -8,6 +8,8 @@ import { api } from "@/src/lib/api";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import useAuthStore from "@/src/authStore";
+import { SuccessModal } from "@/components/ui/success-modal";
+import { ErrorModal } from "@/components/ui/error-modal";
 
 interface UserProfile {
   id: string;
@@ -88,6 +90,8 @@ export default function ProfilePage({ basePath = "/dashboard" }: { basePath?: st
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [isUpdatingAddress, setIsUpdatingAddress] = useState(false);
   const [isUpdatingNotifications, setIsUpdatingNotifications] = useState(false);
+  const [successModal, setSuccessModal] = useState<{ title: string; message: string } | null>(null);
+  const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
 
   useEffect(() => {
     fetchProfile();
@@ -179,15 +183,13 @@ export default function ProfilePage({ basePath = "/dashboard" }: { basePath?: st
         setContact(data.data.phone || "");
         setLocation(data.data.country || "");
         setLanguage(data.data.parentProfile?.language || "English");
-        
-        // Show success message
-        alert("Profile updated successfully!");
+        setSuccessModal({ title: "Profile Updated", message: "Profile updated successfully!" });
       } else {
-        setError(data.message || "Failed to update profile");
+        setErrorModal({ title: "Update Failed", message: data.message || "Failed to update profile" });
       }
     } catch (err) {
       console.error("Error updating profile:", err);
-      setError("Failed to update profile");
+      setErrorModal({ title: "Update Failed", message: "Failed to update profile" });
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -218,15 +220,13 @@ export default function ProfilePage({ basePath = "/dashboard" }: { basePath?: st
         setAddress(data.data.parentProfile?.address || "");
         setCity(data.data.parentProfile?.city || "");
         setPostalCode(data.data.parentProfile?.postalCode || "");
-        
-        // Show success message
-        alert("Address updated successfully!");
+        setSuccessModal({ title: "Address Updated", message: "Address updated successfully!" });
       } else {
-        setError(data.message || "Failed to update address");
+        setErrorModal({ title: "Update Failed", message: data.message || "Failed to update address" });
       }
     } catch (err) {
       console.error("Error updating address:", err);
-      setError("Failed to update address");
+      setErrorModal({ title: "Update Failed", message: "Failed to update address" });
     } finally {
       setIsUpdatingAddress(false);
     }
@@ -290,13 +290,13 @@ export default function ProfilePage({ basePath = "/dashboard" }: { basePath?: st
         if (data.success) {
           setTwoFactorEnabled(false);
           setError(null);
-          alert("2FA has been disabled successfully");
+          setSuccessModal({ title: "2FA Disabled", message: "2FA has been disabled successfully." });
         } else {
-          setError(data.message || "Failed to disable 2FA");
+          setErrorModal({ title: "2FA Update Failed", message: data.message || "Failed to disable 2FA" });
         }
       } catch (err) {
         console.error("Error disabling 2FA:", err);
-        setError("Failed to disable 2FA");
+        setErrorModal({ title: "2FA Update Failed", message: "Failed to disable 2FA" });
       } finally {
         setIs2FALoading(false);
       }
@@ -349,13 +349,13 @@ export default function ProfilePage({ basePath = "/dashboard" }: { basePath?: st
         setTwoFactorSecret(null);
         setVerificationCode("");
         setError(null);
-        alert("2FA has been enabled successfully");
+        setSuccessModal({ title: "2FA Enabled", message: "2FA has been enabled successfully." });
       } else {
-        setError(data.message || "Invalid verification code");
+        setErrorModal({ title: "2FA Verification Failed", message: data.message || "Invalid verification code" });
       }
     } catch (err) {
       console.error("Error enabling 2FA:", err);
-      setError("Failed to enable 2FA");
+      setErrorModal({ title: "2FA Verification Failed", message: "Failed to enable 2FA" });
     } finally {
       setIs2FALoading(false);
     }
@@ -517,8 +517,9 @@ export default function ProfilePage({ basePath = "/dashboard" }: { basePath?: st
   if (!profile) return null;
 
   return (
-    <div className="pt-6 md:pt-0">
-      <BackNavigation href={basePath} label="Back to Dashboard" />
+    <>
+      <div className="pt-6 md:pt-0">
+        <BackNavigation href={basePath} label="Back to Dashboard" />
 
       <div className="mb-6">
         <h1 className="text-xl md:text-2xl font-semibold text-[#191919] mb-2">Profile</h1>
@@ -921,7 +922,20 @@ export default function ProfilePage({ basePath = "/dashboard" }: { basePath?: st
           </div>
         </div>
       )}
-    </div>
+      </div>
+      <SuccessModal
+        isOpen={!!successModal}
+        onClose={() => setSuccessModal(null)}
+        title={successModal?.title}
+        message={successModal?.message}
+      />
+      <ErrorModal
+        isOpen={!!errorModal}
+        onClose={() => setErrorModal(null)}
+        title={errorModal?.title}
+        message={errorModal?.message}
+      />
+    </>
   );
 }
 

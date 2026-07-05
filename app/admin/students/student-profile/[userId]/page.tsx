@@ -10,6 +10,7 @@ import { SuspendLoanModal } from '@/components/admin/suspend-loan-modal';
 import { PaymentReminderModal } from '@/components/admin/payment-reminder-modal';
 import { EditStudentDrawer } from '@/components/admin/edit-student-drawer';
 import { SuccessModal } from '@/components/ui/success-modal';
+import { ErrorModal } from '@/components/ui/error-modal';
 import useAuthStore from '@/src/authStore';
 import { api } from '@/src/lib/api';
 
@@ -73,6 +74,7 @@ export default function StudentProfilePage() {
   const [showFreeze, setShowFreeze] = useState(false);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [successMsg, setSuccessMsg] = useState<{ title: string; message: string } | null>(null);
+  const [errorMsg, setErrorMsg] = useState<{ title: string; message: string } | null>(null);
 
   useEffect(() => {
     if (user?.role !== 'ADMIN') { router.push('/dashboard'); return; }
@@ -107,11 +109,11 @@ export default function StudentProfilePage() {
       if (json.success !== false) {
         setSuccessMsg(ACTION_LABELS[path] ?? { title: 'Action Successful', message: 'The action was completed successfully.' });
       } else {
-        alert(json.message || 'Action failed. Please try again.');
+        setErrorMsg({ title: 'Action Failed', message: json.message || 'Action failed. Please try again.' });
       }
     } catch (e) {
       console.error(e);
-      alert('An error occurred. Please try again.');
+      setErrorMsg({ title: 'Action Failed', message: 'An error occurred. Please try again.' });
     } finally {
       setActionLoading(false);
     }
@@ -380,6 +382,12 @@ export default function StudentProfilePage() {
         onClose={() => setSuccessMsg(null)}
         title={successMsg?.title}
         message={successMsg?.message}
+      />
+      <ErrorModal
+        isOpen={!!errorMsg}
+        onClose={() => setErrorMsg(null)}
+        title={errorMsg?.title}
+        message={errorMsg?.message}
       />
     </>
   );

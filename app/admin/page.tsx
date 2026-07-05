@@ -7,6 +7,7 @@ import { QuickActionsCardAdmin } from '@/components/dashboard/quick-actions-card
 import { StatCardSkeleton } from '@/components/dashboard/stat-card-skeleton';
 import { DataTable } from '@/components/dashboard/data-table';
 import { StudentsbyCountry } from '@/components/admin/students-by-country';
+import { DisbursementRepaymentChart } from '@/components/admin/disbursement-repayment-chart';
 import useAuthStore from '@/src/authStore';
 import { api } from '@/src/lib/api';
 
@@ -163,9 +164,17 @@ export default function AdminDashboard() {
         />
       </div>
 
-      {/*  Students by Country side by side */}
-      <div className='max-w-[414px]'>
-        <StudentsbyCountry />
+      {/* Students by Country and Loan Flow */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="xl:max-w-[414px]">
+          <StudentsbyCountry />
+        </div>
+        <div>
+          <DisbursementRepaymentChart
+            totalDisbursed={Number(stats?.loans?.totalDisbursedAmount ?? 0)}
+            totalRepaid={Number(stats?.loans?.totalRepaidAmount ?? 0)}
+          />
+        </div>
       </div>
     </div>
   );
