@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, InstagramIcon } from "lucide-react";
 import { HomeGradientWrapper } from "./home-gradient-wrapper";
 
 const navColumns = [
@@ -97,7 +97,7 @@ export function HomeFooterSection() {
               {/* Social icons */}
               <div className="flex items-center gap-[1.125rem] pt-1">
                 {[
-                  // { href: "#", icon: <InstagramIcon size={18} color="white" strokeWidth={1.75} />, label: "Instagram" },
+                  { href: "https://www.instagram.com/pay_myfees?igsh=MWU1Mmt3bXNhbGJjcw%3D%3D&utm_source=qr", icon: <InstagramIcon size={18} color="white" strokeWidth={1.75} />, label: "Instagram" },
                   { href: "https://x.com/paymyfeesglobal?s=21", icon: <XIcon />, label: "X / Twitter" },
                   { href: "https://www.facebook.com/share/1HNRYXghzC/?mibextid=wwXIfr", icon: <FacebookIcon />, label: "Facebook" },
                   { href: "https://www.tiktok.com/@paymyfeesglobal?_r=1&_t=ZS-96gGDx9JllV", icon: <TikTokIcon />, label: "TikTok" },
