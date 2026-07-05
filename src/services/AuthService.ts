@@ -15,6 +15,8 @@ import {
   AuthUser
 } from '@/src/middleware/auth';
 import {
+  ConflictError,
+  InternalServerError,
   UnauthorizedError,
 } from '@/src/types/errors';
 import {
@@ -71,6 +73,15 @@ export class AuthService implements IAuthService {
 
     // Normalize email to lowercase
     const normalizedEmail = input.email.trim().toLowerCase();
+
+    const [existingEmail, existingPhone] = await Promise.all([
+      this.userRepository.findByEmail(normalizedEmail),
+      input.phone ? this.userRepository.findByPhone(input.phone) : Promise.resolve(null),
+    ]);
+
+    if (existingEmail || existingPhone) {
+      throw new ConflictError('This email or phone number is already registered.');
+    }
 
     // Create user with transaction
     const user = await executeTransaction(async (tx) => {
@@ -151,7 +162,7 @@ export class AuthService implements IAuthService {
         await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
         const detail = err instanceof Error ? err.message : String(err);
         console.error({ message: 'Embedly provisioning failed — user rolled back', userId: user.id, detail });
-        throw new Error(`Registration failed: could not provision payment account. ${detail}`);
+        throw new InternalServerError('We could not create your payment wallet right now. Please try again.');
       }
     }
 

@@ -5,10 +5,44 @@ import useAuthStore from "@/src/authStore";
 import { RegisterForm, RegisterFormData } from "@/components/forms/register-form";
 import { HomeHeader } from "@/components/home/home-header";
 import { signIn } from "next-auth/react";
+import { ApiFieldError, getReadableAuthError, normalizeNigerianPhone } from "@/src/utils/registration-form";
+
+type RegisterFieldErrors = Partial<Record<keyof RegisterFormData, string>>;
+
+const REGISTER_FORM_FIELDS = new Set<keyof RegisterFormData>([
+  "firstName",
+  "lastName",
+  "middleName",
+  "email",
+  "phone",
+  "dob",
+  "gender",
+  "role",
+  "address",
+  "city",
+  "schoolName",
+  "password",
+  "agreeToTerms",
+  "verificationMode",
+]);
+
+function mapServerErrors(errors?: ApiFieldError[]): RegisterFieldErrors {
+  if (!errors) return {};
+
+  return errors.reduce<RegisterFieldErrors>((next, item) => {
+    const field = item.field as keyof RegisterFormData | undefined;
+    if (field && REGISTER_FORM_FIELDS.has(field) && item.message) {
+      next[field] = item.message;
+    }
+    return next;
+  }, {});
+}
 
 export default function RegisterPage() {
   const [, setIsSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [serverErrors, setServerErrors] = useState<RegisterFieldErrors>({});
   const { login } = useAuthStore();
 
   const handleGoogleSignUp = async () => {
@@ -20,13 +54,15 @@ export default function RegisterPage() {
   const handleSubmit = async (formData: RegisterFormData) => {
     try {
       setIsSubmitting(true);
+      setSubmitError(null);
+      setServerErrors({});
 
       const apiData = {
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         middleName: formData.middleName.trim() || undefined,
         email: formData.email,
-        phone: formData.phone,
+        phone: normalizeNigerianPhone(formData.phone),
         dob: formData.dob,
         gender: formData.gender,
         address: formData.address.trim(),
@@ -45,9 +81,9 @@ export default function RegisterPage() {
         body: JSON.stringify(apiData),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
 
-      if (data.success) {
+      if (data?.success) {
         login(data.data.user, data.data.token, data.data.refreshToken);
 
         if (formData.verificationMode === "link") {
@@ -56,11 +92,13 @@ export default function RegisterPage() {
           window.location.href = "/auth/verify/otp";
         }
       } else {
-        alert(data.message || "Registration failed. Please try again.");
+        const nextServerErrors = mapServerErrors(data?.errors);
+        setServerErrors(nextServerErrors);
+        setSubmitError(getReadableAuthError(data));
       }
     } catch (error) {
       console.error("Registration error:", error);
-      alert("An error occurred during registration. Please try again.");
+      setSubmitError("We could not complete registration right now. Please try again shortly.");
     } finally {
       setIsSubmitting(false);
     }
@@ -76,7 +114,7 @@ export default function RegisterPage() {
           <p className="text-center font-semibold text-sm text-[#525252] mb-6">
             Finance Your Education, Stress Free
           </p>
-          <RegisterForm onSubmit={handleSubmit} />
+          <RegisterForm onSubmit={handleSubmit} serverError={submitError} serverErrors={serverErrors} />
 
           {/* Divider */}
           <div className="flex items-center justify-center my-4">

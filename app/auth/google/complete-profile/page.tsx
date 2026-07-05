@@ -7,6 +7,12 @@ import useAuthStore from '@/src/authStore';
 import { CustomInput } from '@/components/ui/custom-input';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Gender, UserRole } from '@prisma/client';
+import {
+  ApiFieldError,
+  getReadableAuthError,
+  normalizeNigerianPhone,
+  validateNigerianPhone,
+} from '@/src/utils/registration-form';
 
 interface CompleteProfileData {
   phone: string;
@@ -17,6 +23,18 @@ interface CompleteProfileData {
   gender: Gender | '';
   schoolName: string;
 }
+
+type CompleteProfileErrors = Partial<Record<keyof CompleteProfileData, string>>;
+
+const COMPLETE_PROFILE_FIELDS = new Set<keyof CompleteProfileData>([
+  'phone',
+  'dob',
+  'role',
+  'address',
+  'city',
+  'gender',
+  'schoolName',
+]);
 
 const ROLES = [
   { value: UserRole.PARENT, label: 'Parent' },
@@ -30,6 +48,55 @@ const GENDERS = [
   { value: 'FEMALE', label: 'Female' },
   { value: 'OTHER', label: 'Other' },
 ];
+
+function validateCompleteProfileField(
+  field: keyof CompleteProfileData,
+  value: string,
+  data: CompleteProfileData
+): string | undefined {
+  const str = String(value ?? '').trim();
+
+  switch (field) {
+    case 'phone':
+      return validateNigerianPhone(value);
+    case 'dob':
+      return !str ? 'Date of birth is required' : undefined;
+    case 'role':
+      return !str ? 'Account type is required' : undefined;
+    case 'address':
+      if (!str) return 'Address is required';
+      return str.length < 5 ? 'Address must be at least 5 characters' : undefined;
+    case 'city':
+      if (!str) return 'City is required';
+      return str.length < 2 ? 'City must be at least 2 characters' : undefined;
+    case 'schoolName':
+      if (data.role !== UserRole.SCHOOL) return undefined;
+      if (!str) return 'School name is required for School role';
+      return str.length < 2 ? 'School name must be at least 2 characters' : undefined;
+    default:
+      return undefined;
+  }
+}
+
+function validateCompleteProfile(data: CompleteProfileData): CompleteProfileErrors {
+  return (Object.keys(data) as (keyof CompleteProfileData)[]).reduce<CompleteProfileErrors>((next, field) => {
+    const message = validateCompleteProfileField(field, String(data[field] ?? ''), data);
+    if (message) next[field] = message;
+    return next;
+  }, {});
+}
+
+function mapServerErrors(errors?: ApiFieldError[]): CompleteProfileErrors {
+  if (!errors) return {};
+
+  return errors.reduce<CompleteProfileErrors>((next, item) => {
+    const field = item.field as keyof CompleteProfileData | undefined;
+    if (field && COMPLETE_PROFILE_FIELDS.has(field) && item.message) {
+      next[field] = item.message;
+    }
+    return next;
+  }, {});
+}
 
 export default function CompleteProfilePage() {
   const { data: session, status } = useSession();
@@ -66,70 +133,61 @@ export default function CompleteProfilePage() {
     }
   }, [session, status, router]);
 
-  const set = (field: keyof CompleteProfileData, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (touched[field]) validateField(field, value);
+  const set = (field: keyof CompleteProfileData, value: string) => {
+    const nextData = {
+      ...formData,
+      [field]: field === 'phone' ? normalizeNigerianPhone(value) : value,
+    } as CompleteProfileData;
+    const fieldsToValidate: (keyof CompleteProfileData)[] = [field];
+
+    if (field === 'role' || field === 'schoolName') {
+      fieldsToValidate.push('schoolName');
+    }
+
+    setFormData(nextData);
+    setTouched((current) => ({ ...current, [field]: true }));
+    setErrors((current) => {
+      const updated = { ...current };
+
+      fieldsToValidate.forEach((item) => {
+        const message = validateCompleteProfileField(item, String(nextData[item] ?? ''), nextData);
+        if (message) updated[item] = message;
+        else delete updated[item];
+      });
+
+      return updated;
+    });
   };
 
   const touch = (field: keyof CompleteProfileData) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
-    validateField(field, formData[field]);
-  };
-
-  const validateField = (field: keyof CompleteProfileData, value: any) => {
     setErrors((prev) => {
       const next = { ...prev };
-      const str = String(value ?? '').trim();
-
-      switch (field) {
-        case 'phone': {
-          const ph = String(value ?? '').replace(/\s/g, '');
-          if (!ph) next.phone = 'Phone number is required';
-          else if (!/^(\+?234|0)[789]\d{9}$/.test(ph))
-            next.phone = 'Enter a valid Nigerian phone number (e.g. 08012345678)';
-          else delete next.phone;
-          break;
-        }
-        case 'dob':
-          if (!str) next.dob = 'Date of birth is required';
-          else delete next.dob;
-          break;
-        case 'role':
-          if (!value) next.role = 'Account type is required';
-          else delete next.role;
-          break;
-        case 'schoolName':
-          if (formData.role === UserRole.SCHOOL && !str)
-            next.schoolName = 'School name is required for School role';
-          else delete next.schoolName;
-          break;
-        default:
-          break;
-      }
+      const message = validateCompleteProfileField(field, String(formData[field] ?? ''), formData);
+      if (message) next[field] = message;
+      else delete next[field];
       return next;
     });
   };
 
-  const isValid = (): boolean => {
-    const requiredFields: (keyof CompleteProfileData)[] = ['phone', 'dob', 'role'];
-    if (formData.role === UserRole.SCHOOL) requiredFields.push('schoolName');
-
-    return requiredFields.every((field) => {
-      const value = formData[field];
-      return value && String(value).trim() !== '';
-    });
-  };
+  const currentErrors = validateCompleteProfile(formData);
+  const isValid = Object.keys(currentErrors).length === 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
 
-    // Validate all fields
-    Object.keys(formData).forEach((field) => {
-      validateField(field as keyof CompleteProfileData, formData[field as keyof CompleteProfileData]);
+    const validationErrors = validateCompleteProfile(formData);
+    setErrors(validationErrors);
+    setTouched(() => {
+      const next: Partial<Record<keyof CompleteProfileData, boolean>> = {};
+      (Object.keys(formData) as (keyof CompleteProfileData)[]).forEach((field) => {
+        next[field] = true;
+      });
+      return next;
     });
 
-    if (!isValid()) {
+    if (Object.keys(validationErrors).length > 0) {
       setSubmitError('Please fill in all required fields');
       return;
     }
@@ -140,7 +198,7 @@ export default function CompleteProfilePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phone: formData.phone,
+          phone: normalizeNigerianPhone(formData.phone),
           dob: formData.dob,
           role: formData.role,
           address: formData.address,
@@ -150,10 +208,20 @@ export default function CompleteProfilePage() {
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
 
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to complete profile');
+      if (!response.ok || !data?.success) {
+        const serverErrors = mapServerErrors(data?.errors);
+        setErrors((prev) => ({ ...prev, ...serverErrors }));
+        setTouched((prev) => {
+          const next = { ...prev };
+          (Object.keys(serverErrors) as (keyof CompleteProfileData)[]).forEach((field) => {
+            next[field] = true;
+          });
+          return next;
+        });
+        setSubmitError(getReadableAuthError(data));
+        return;
       }
 
       // Store custom JWT in Zustand
@@ -174,9 +242,7 @@ export default function CompleteProfilePage() {
       }
     } catch (error) {
       console.error('Complete profile error:', error);
-      setSubmitError(
-        error instanceof Error ? error.message : 'An error occurred. Please try again.'
-      );
+      setSubmitError('We could not complete registration right now. Please try again shortly.');
     } finally {
       setLoading(false);
     }
@@ -304,7 +370,12 @@ export default function CompleteProfilePage() {
             label="Address"
             value={formData.address}
             onChange={(val) => set('address', val)}
+            onBlur={() => touch('address')}
+            error={touched.address && !!errors.address}
           />
+          {touched.address && errors.address && (
+            <p className="text-red-500 text-xs mt-1">{errors.address}</p>
+          )}
 
           {/* City */}
           <CustomInput
@@ -313,7 +384,12 @@ export default function CompleteProfilePage() {
             label="City"
             value={formData.city}
             onChange={(val) => set('city', val)}
+            onBlur={() => touch('city')}
+            error={touched.city && !!errors.city}
           />
+          {touched.city && errors.city && (
+            <p className="text-red-500 text-xs mt-1">{errors.city}</p>
+          )}
 
           {/* Error Message */}
           {submitError && (
@@ -329,7 +405,7 @@ export default function CompleteProfilePage() {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !isValid}
             className="w-full py-3 bg-[#00296B] text-white rounded-lg font-semibold hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all mt-6"
           >
             {loading ? 'Completing Profile...' : 'Complete Profile'}

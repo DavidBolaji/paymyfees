@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CustomInput } from "@/components/ui/custom-input";
+import { normalizeNigerianPhone, validateNigerianPhone } from "@/src/utils/registration-form";
 import Link from "next/link";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -134,7 +135,11 @@ export interface RegisterFormData {
 
 interface RegisterFormProps {
   onSubmit: (data: RegisterFormData) => Promise<void>;
+  serverError?: string | null;
+  serverErrors?: Partial<Record<keyof RegisterFormData, string>>;
 }
+
+type FormErrors = Partial<Record<keyof RegisterFormData, string>>;
 
 // ─── Small helpers ────────────────────────────────────────────────────────────
 
@@ -181,9 +186,70 @@ function StepIndicator({ current }: { current: number }) {
   );
 }
 
+function validateRegistrationField(
+  field: keyof RegisterFormData,
+  value: string | boolean | undefined,
+  data: RegisterFormData
+): string | undefined {
+  const str = String(value ?? "").trim();
+
+  switch (field) {
+    case "firstName":
+      if (!str) return "First name is required";
+      return str.length < 2 ? "First name must be at least 2 characters" : undefined;
+    case "lastName":
+      if (!str) return "Last name is required";
+      return str.length < 2 ? "Last name must be at least 2 characters" : undefined;
+    case "email":
+      if (!str) return "Email is required";
+      return /\S+@\S+\.\S+/.test(str) ? undefined : "Invalid email address";
+    case "phone":
+      return validateNigerianPhone(String(value ?? ""));
+    case "dob":
+      return !value ? "Date of birth is required" : undefined;
+    case "gender":
+      return !value ? "Please select your gender" : undefined;
+    case "role":
+      return !value ? "Please select your account type" : undefined;
+    case "address":
+      if (!str) return "Address is required";
+      return str.length < 5 ? "Address must be at least 5 characters" : undefined;
+    case "city":
+      if (!str) return "City is required";
+      return str.length < 2 ? "City must be at least 2 characters" : undefined;
+    case "schoolName":
+      if (data.role !== "SCHOOL") return undefined;
+      if (!str) return "School name is required";
+      return str.length < 2 ? "School name must be at least 2 characters" : undefined;
+    case "password": {
+      const p = String(value ?? "");
+      if (!p) return "Password is required";
+      if (p.length < 8 || !PASSWORD_CRITERIA.ONE_UPPERCASE.test(p) || !PASSWORD_CRITERIA.SPECIAL_CHAR.test(p)) {
+        return "Password doesn't meet requirements";
+      }
+      return undefined;
+    }
+    case "agreeToTerms":
+      return !value ? "You must agree to the terms" : undefined;
+    default:
+      return undefined;
+  }
+}
+
+function validateRegistrationFields(
+  fields: (keyof RegisterFormData)[],
+  data: RegisterFormData
+): FormErrors {
+  return fields.reduce<FormErrors>((next, field) => {
+    const message = validateRegistrationField(field, data[field], data);
+    if (message) next[field] = message;
+    return next;
+  }, {});
+}
+
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export function RegisterForm({ onSubmit }: RegisterFormProps) {
+export function RegisterForm({ onSubmit, serverError, serverErrors }: RegisterFormProps) {
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState<RegisterFormData>({
     firstName: "", lastName: "", middleName: "", email: "", phone: "",
@@ -212,90 +278,78 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
     });
   }, [formData.password]);
 
+  useEffect(() => {
+    if (!serverErrors || Object.keys(serverErrors).length === 0) return;
+
+    setErrors((prev) => ({ ...prev, ...serverErrors }));
+    setTouched((prev) => {
+      const next = { ...prev };
+      (Object.keys(serverErrors) as (keyof RegisterFormData)[]).forEach((field) => {
+        next[field] = true;
+      });
+      return next;
+    });
+  }, [serverErrors]);
+
   // ── Helpers ──────────────────────────────────────────────────────────────────
   const set = (field: keyof RegisterFormData, value: string | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (touched[field]) validateField(field, value);
+    const nextData = {
+      ...formData,
+      [field]: field === "phone" && typeof value === "string" ? normalizeNigerianPhone(value) : value,
+    };
+    const fieldsToValidate: (keyof RegisterFormData)[] = [field];
+
+    if (field === "role" || field === "schoolName") {
+      fieldsToValidate.push("schoolName");
+    }
+
+    setFormData(nextData);
+    setTouched((current) => ({ ...current, [field]: true }));
+    setErrors((current) => {
+      const updated = { ...current };
+
+      fieldsToValidate.forEach((item) => {
+        const message = validateRegistrationField(item, nextData[item], nextData);
+        if (message) updated[item] = message;
+        else delete updated[item];
+      });
+
+      return updated;
+    });
   };
 
   const touch = (field: keyof RegisterFormData) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
-    validateField(field, formData[field]);
-  };
-
-  const validateField = (field: keyof RegisterFormData, value: string | boolean | undefined) => {
     setErrors((prev) => {
       const next = { ...prev };
-      const str = String(value ?? "").trim();
-
-      switch (field) {
-        case "firstName":
-          !str ? (next.firstName = "First name is required") : delete next.firstName; break;
-        case "lastName":
-          !str ? (next.lastName = "Last name is required") : delete next.lastName; break;
-        case "email":
-          if (!str) next.email = "Email is required";
-          else if (!/\S+@\S+\.\S+/.test(str)) next.email = "Invalid email address";
-          else delete next.email;
-          break;
-        case "phone": {
-          const ph = String(value ?? "").replace(/\s/g, "");
-          if (!ph) next.phone = "Phone number is required";
-          else if (!/^(\+?234|0)[789]\d{9}$/.test(ph))
-            next.phone = "Enter a valid Nigerian phone number (e.g. 08012345678)";
-          else delete next.phone;
-          break;
-        }
-        case "dob":
-          !value ? (next.dob = "Date of birth is required") : delete next.dob; break;
-        case "gender":
-          !value ? (next.gender = "Please select your gender") : delete next.gender; break;
-        case "role":
-          !value ? (next.role = "Please select your account type") : delete next.role; break;
-        case "address":
-          !str ? (next.address = "Address is required") : delete next.address; break;
-        case "city":
-          !str ? (next.city = "City is required") : delete next.city; break;
-        case "schoolName":
-          formData.role === "SCHOOL" && !str
-            ? (next.schoolName = "School name is required")
-            : delete next.schoolName;
-          break;
-        case "password": {
-          const p = String(value ?? "");
-          if (!p) next.password = "Password is required";
-          else if (p.length < 8 || !PASSWORD_CRITERIA.ONE_UPPERCASE.test(p) || !PASSWORD_CRITERIA.SPECIAL_CHAR.test(p))
-            next.password = "Password doesn't meet requirements";
-          else delete next.password;
-          break;
-        }
-        case "agreeToTerms":
-          !value ? (next.agreeToTerms = "You must agree to the terms") : delete next.agreeToTerms; break;
-      }
+      const message = validateRegistrationField(field, formData[field], formData);
+      if (message) next[field] = message;
+      else delete next[field];
       return next;
     });
   };
 
   const touchAll = (fields: (keyof RegisterFormData)[]) => {
-    const nextTouched = { ...touched };
-    fields.forEach((f) => {
-      nextTouched[f] = true;
-      validateField(f, formData[f]);
+    setTouched((prev) => {
+      const next = { ...prev };
+      fields.forEach((field) => {
+        next[field] = true;
+      });
+      return next;
     });
-    setTouched(nextTouched);
-  };
 
-  const isStepValid = (fields: (keyof RegisterFormData)[]) =>
-    fields.every((f) => {
-      const v = formData[f];
-      if (f === "agreeToTerms") return !!v;
-      if (f === "schoolName" && formData.role !== "SCHOOL") return true;
-      if (f === "password") {
-        const p = String(v ?? "");
-        return p.length >= 8 && PASSWORD_CRITERIA.ONE_UPPERCASE.test(p) && PASSWORD_CRITERIA.SPECIAL_CHAR.test(p);
-      }
-      return !!String(v ?? "").trim();
-    }) && fields.every((f) => !errors[f]);
+    const nextErrors = validateRegistrationFields(fields, formData);
+    setErrors((prev) => {
+      const updated = { ...prev };
+      fields.forEach((field) => {
+        if (nextErrors[field]) updated[field] = nextErrors[field];
+        else delete updated[field];
+      });
+      return updated;
+    });
+
+    return nextErrors;
+  };
 
   // ── Terms scroll detection ────────────────────────────────────────────────
   const handleTermsScroll = () => {
@@ -314,8 +368,8 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
 
   const goNext = () => {
     const fields = STEP_FIELDS[step]!;
-    touchAll(fields);
-    if (isStepValid(fields)) {
+    const stepErrors = touchAll(fields);
+    if (Object.keys(stepErrors).length === 0) {
       setStep((s) => s + 1);
       window.scrollTo(0, 0);
     }
@@ -323,11 +377,21 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    touchAll(STEP_FIELDS[2]!);
-    if (!isStepValid(STEP_FIELDS[2]!)) return;
+    const allFields = STEP_FIELDS.flat();
+    const formErrors = touchAll(allFields);
+    if (Object.keys(formErrors).length > 0) {
+      const firstInvalidStep = STEP_FIELDS.findIndex((fields) => fields.some((field) => formErrors[field]));
+      if (firstInvalidStep >= 0) setStep(firstInvalidStep);
+      return;
+    }
+
     try {
       setLoading(true);
-      await onSubmit({ ...formData, email: formData.email.trim().toLowerCase() });
+      await onSubmit({
+        ...formData,
+        email: formData.email.trim().toLowerCase(),
+        phone: normalizeNigerianPhone(formData.phone),
+      });
     } catch (err) {
       console.error("Registration error:", err);
     } finally {
@@ -339,6 +403,16 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
   return (
     <div>
       <StepIndicator current={step} />
+
+      {serverError && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600"
+        >
+          {serverError}
+        </motion.p>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <AnimatePresence mode="wait">
@@ -379,8 +453,8 @@ export function RegisterForm({ onSubmit }: RegisterFormProps) {
               </div>
 
               <div>
-                <CustomInput label="Phone Number" type="text" value={formData.phone}
-                  placeholder="e.g. 08012345678" onChange={(v) => set("phone", v)}
+                <CustomInput label="Phone Number" type="phone" value={formData.phone}
+                  placeholder="8012345678" onChange={(v) => set("phone", v)}
                   onBlur={() => touch("phone")} error={touched.phone && !!errors.phone} />
                 <FieldError show={!!touched.phone} message={errors.phone} />
               </div>
