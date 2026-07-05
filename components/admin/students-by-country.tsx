@@ -177,11 +177,10 @@ export function StudentsbyCountry({ data }: StudentsbyCountryProps) {
   const handleMouseLeave = useCallback(() => setTooltip(null), []);
 
   const topCountries = [...currentData]
-    .sort((a, b) => b.students - a.students)
-    .slice(0, 5);
+    .sort((a, b) => b.students - a.students);
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 w-full">
+    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 w-full h-full xl:h-[620px] flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold text-[#191919] text-[1.0625rem]">Students by Country</h3>
@@ -279,7 +278,7 @@ export function StudentsbyCountry({ data }: StudentsbyCountryProps) {
 
       {/* Top Countries */}
       <p className="text-sm font-semibold text-[#191919] mb-3">Top Countries</p>
-      <div className="space-y-2.5">
+      <div className="space-y-2.5 flex-1 min-h-0 overflow-y-auto pr-1">
         {topCountries.map(c => (
           <div key={c.alpha2} className="flex items-center justify-between">
             <div className="flex items-center gap-2">

@@ -21,7 +21,7 @@ export function DisbursementRepaymentChart({
   ];
 
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 w-full">
+    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 w-full h-full xl:h-[620px] flex flex-col">
       <div className="mb-4">
         <h3 className="font-semibold text-[#191919] text-[1.0625rem]">Loan Flow Overview</h3>
         <p className="text-sm text-[#7C7C7C] mt-1">Total disbursed loans vs total amount paid back</p>
@@ -38,7 +38,7 @@ export function DisbursementRepaymentChart({
         </div>
       </div>
 
-      <div className="h-[320px]">
+      <div className="h-[320px] xl:h-auto xl:flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
