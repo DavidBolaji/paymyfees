@@ -165,11 +165,11 @@ export default function AdminDashboard() {
       </div>
 
       {/* Students by Country and Loan Flow */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div className="xl:max-w-[414px]">
+      <div className="grid grid-cols-1 xl:grid-cols-[414px_minmax(0,1fr)] gap-6 items-start">
+        <div className="w-full">
           <StudentsbyCountry />
         </div>
-        <div>
+        <div className="w-full">
           <DisbursementRepaymentChart
             totalDisbursed={Number(stats?.loans?.totalDisbursedAmount ?? 0)}
             totalRepaid={Number(stats?.loans?.totalRepaidAmount ?? 0)}
