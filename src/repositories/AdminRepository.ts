@@ -832,7 +832,7 @@ export class AdminRepository implements IAdminRepository {
       activeStudentCount, activeLoansCount, overdueCount, openTicketsCount, completedLoansCount,
       pendingSchoolsCount, underReviewCount, verifiedSchoolsCount, rejectedSchoolsCount,
       totalLoansCount, pendingLoansCount, approvedLoansCount, rejectedLoansCount,
-      totalTicketsToday, totalPlatformTickets, resolvedTicketsCount, closedTicketsCount, loanFinancials,
+      totalTicketsToday, totalPlatformTickets, resolvedTicketsCount, closedTicketsCount, loanFinancials, usersByCountry,
     ] = await Promise.all([
       prisma.user.count({
         where: { role: { in: [UserRole.PARENT, UserRole.STUDENT] } }
@@ -868,6 +868,17 @@ export class AdminRepository implements IAdminRepository {
           amountRepaid: true,
         },
       }),
+      prisma.user.groupBy({
+        by: ['country'],
+        where: {
+          role: { in: [UserRole.PARENT, UserRole.STUDENT] },
+          country: { not: '' },
+        },
+        _count: { id: true },
+        orderBy: {
+          _count: { id: 'desc' },
+        },
+      }),
     ]);
 
     // Compute average first response time in minutes using DB-level aggregation
@@ -889,6 +900,10 @@ export class AdminRepository implements IAdminRepository {
         totalDisbursedAmount: Number(loanFinancials._sum.amountDisbursed || 0),
         totalRepaidAmount: Number(loanFinancials._sum.amountRepaid || 0),
       },
+      countryDistribution: usersByCountry.map((entry: any) => ({
+        name: entry.country,
+        students: entry._count.id,
+      })),
       tickets: {
         totalToday: totalTicketsToday,
         open: openTicketsCount,

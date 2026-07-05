@@ -90,15 +90,69 @@ interface TooltipState {
 }
 
 interface StudentsbyCountryProps {
-  data?: Record<string, CountryData[]>;
+  data?: Array<{ name: string; students: number }>;
 }
 
-export function StudentsbyCountry({ data = MOCK_DATA }: StudentsbyCountryProps) {
+const COUNTRY_TO_ALPHA2: Record<string, string> = {
+  Nigeria: 'NG',
+  'United Kingdom': 'GB',
+  UK: 'GB',
+  'United States': 'US',
+  'United States of America': 'US',
+  USA: 'US',
+  Germany: 'DE',
+  'South Africa': 'ZA',
+  Ghana: 'GH',
+  Kenya: 'KE',
+  Canada: 'CA',
+  France: 'FR',
+  Russia: 'RU',
+  China: 'CN',
+  India: 'IN',
+  Australia: 'AU',
+  Brazil: 'BR',
+};
+
+const ALPHA2_TO_FLAG: Record<string, string> = {
+  NG: '🇳🇬',
+  GB: '🇬🇧',
+  US: '🇺🇸',
+  DE: '🇩🇪',
+  ZA: '🇿🇦',
+  GH: '🇬🇭',
+  KE: '🇰🇪',
+  CA: '🇨🇦',
+  FR: '🇫🇷',
+  RU: '🇷🇺',
+  CN: '🇨🇳',
+  IN: '🇮🇳',
+  AU: '🇦🇺',
+  BR: '🇧🇷',
+};
+
+function normalizeCountryData(data?: Array<{ name: string; students: number }>): CountryData[] | null {
+  if (!data || data.length === 0) return null;
+
+  return data
+    .map((entry) => {
+      const alpha2 = COUNTRY_TO_ALPHA2[entry.name];
+      return {
+        alpha2: alpha2 ?? 'UN',
+        name: entry.name,
+        flag: alpha2 ? ALPHA2_TO_FLAG[alpha2] ?? '🌍' : '🌍',
+        students: entry.students,
+      };
+    })
+    .sort((a, b) => b.students - a.students);
+}
+
+export function StudentsbyCountry({ data }: StudentsbyCountryProps) {
   const [filter, setFilter] = useState('Last 7 Days');
   const [filterOpen, setFilterOpen] = useState(false);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
-  const currentData = data[filter] ?? data['Last 7 Days'] ?? [];
+  const actualData = normalizeCountryData(data);
+  const currentData = actualData ?? MOCK_DATA[filter] ?? MOCK_DATA['Last 7 Days'] ?? [];
 
   const handleMouseEnter = useCallback(
     (geo: any, evt: React.MouseEvent) => {
@@ -134,6 +188,11 @@ export function StudentsbyCountry({ data = MOCK_DATA }: StudentsbyCountryProps) 
 
         {/* Filter dropdown */}
         <div className="relative">
+          {actualData ? (
+            <div className="px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-medium text-[#191919]">
+              All Time
+            </div>
+          ) : (
           <button
             onClick={() => setFilterOpen(o => !o)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-sm font-medium text-[#191919] hover:bg-gray-50 transition-colors"
@@ -141,7 +200,8 @@ export function StudentsbyCountry({ data = MOCK_DATA }: StudentsbyCountryProps) 
             {filter}
             <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${filterOpen ? 'rotate-180' : ''}`} />
           </button>
-          {filterOpen && (
+          )}
+          {!actualData && filterOpen && (
             <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-20 min-w-[140px] py-1">
               {FILTER_OPTIONS.map(opt => (
                 <button
@@ -209,9 +269,9 @@ export function StudentsbyCountry({ data = MOCK_DATA }: StudentsbyCountryProps) 
 
       {/* Legend */}
       <div className="flex items-center gap-5 mt-3 mb-4">
-        <LegendItem color="#1B3A6B" label="High sales" />
-        <LegendItem color="#D4A017" label="Low sales" />
-        <LegendItem color="#D6D6DA" label="No Sales activity" />
+        <LegendItem color="#1B3A6B" label="High student count" />
+        <LegendItem color="#D4A017" label="Low student count" />
+        <LegendItem color="#D6D6DA" label="No student activity" />
       </div>
 
       {/* Divider */}
