@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Pencil, Plus, X, Loader2, User } from 'lucide-react';
 import { BackNavigation } from '@/components/dashboard/back-navigation';
 import { FormInput, FormSelect } from '@/components/ui/form-input';
@@ -158,13 +159,13 @@ export default function ChildrenPage() {
           </div>
           <h3 className="font-semibold text-[#292D32] mb-1">No children added yet</h3>
           <p className="text-sm text-gray-500 mb-4">Add a child when applying for a loan and their information will appear here.</p>
-          <a
+          <Link
             href="/dashboard/loans/new"
             className="inline-flex items-center gap-2 bg-[#00296B] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#002561] transition-colors"
           >
             <Plus className="w-4 h-4" />
             Apply for a Loan
-          </a>
+          </Link>
         </div>
       )}
 

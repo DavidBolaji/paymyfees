@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Info, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -458,7 +459,7 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
                     {pp?.lengthOfEmployment && <div><span className="text-[#7C7C7C]">Duration: </span><span className="font-medium">{pp.lengthOfEmployment}</span></div>}
                     {pp?.monthlyIncome && <div><span className="text-[#7C7C7C]">Monthly Income: </span><span className="font-medium">{formatCurrency(Number(pp.monthlyIncome))}</span></div>}
                   </div>
-                  <a href="/dashboard/profile" className="text-[#00296B] text-xs font-medium hover:underline">Update details →</a>
+                  <Link href="/dashboard/profile" className="text-[#00296B] text-xs font-medium hover:underline">Update details →</Link>
                 </div>
               ) : (
                 <div className="space-y-2">
