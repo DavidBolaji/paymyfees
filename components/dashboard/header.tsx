@@ -3,6 +3,7 @@
 import { Search, Bell, ChevronRight, CreditCard, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import Link from 'next/link';
 import Logo from "@/assets/images/logo/logo.png";
 import { MenuIcon } from '@/assets/icons/MenuIcon';
 import useAuthStore from '@/src/authStore';
@@ -17,8 +18,18 @@ interface HeaderProps {
   onMenuToggle?: () => void;
 }
 
+function getHomePath(role?: string): string {
+  switch (role) {
+    case 'ADMIN':   return '/admin';
+    case 'SCHOOL':  return '/school-admin';
+    case 'TEACHER': return '/teacher-admin';
+    default:        return '/dashboard';
+  }
+}
+
 export function Header({ className, onMenuToggle }: HeaderProps) {
   const { user } = useAuthStore();
+  const homePath = getHomePath(user?.role);
   const { stats, selectedLoanId, setSelectedLoanId } = useDashboardStore();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -76,7 +87,9 @@ export function Header({ className, onMenuToggle }: HeaderProps) {
     )}>
       {/* Mobile logo */}
       <div className="md:hidden flex-1">
-        <Image src={Logo} width={140} height={35} alt="PayMyFees Logo" />
+        <Link href={homePath}>
+          <Image src={Logo} width={140} height={35} alt="PayMyFees Logo" />
+        </Link>
       </div>
 
       {/* Notifications + Loan Dropdown — visible on both mobile and desktop */}

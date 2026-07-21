@@ -107,6 +107,7 @@ export class DashboardService implements IDashboardService {
         status: l.status,
         schoolName: l.schoolName,
         createdAt: l.createdAt,
+        studentName: l.studentProfile?.studentName ?? undefined,
       })),
     };
   }

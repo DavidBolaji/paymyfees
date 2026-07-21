@@ -78,6 +78,9 @@ export class DashboardRepository implements IDashboardRepository {
           status: true,
           schoolName: true,
           createdAt: true,
+          studentProfile: {
+            select: { studentName: true },
+          },
         },
       });
       

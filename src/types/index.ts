@@ -727,6 +727,7 @@ export interface DashboardLoanSummary {
   status: string;
   schoolName: string;
   createdAt: string;
+  studentName?: string;
 }
 
 export interface DashboardStats {

@@ -7,7 +7,6 @@ import { UploadedFile } from '@/components/ui/file-upload';
 import { CloudinaryUploadResult, uploadToCloudinary, getCloudinaryResourceType } from '@/src/utils/cloudinary-api';
 
 const DEFAULT_ACCEPT = ['.pdf', '.jpg', '.jpeg', '.png'];
-const PHOTO_ACCEPT = ['.jpg', '.jpeg', '.png'];
 
 interface DocumentSlot {
   id: string;
@@ -17,18 +16,22 @@ interface DocumentSlot {
   accept: string[];
   multiple: boolean;
   sensitive?: boolean;
+  /** 'kyc' slots are parent-level, 'loan' slots are per-application */
+  category: 'kyc' | 'loan';
 }
 
-const DOCUMENT_SLOTS: DocumentSlot[] = [
-  { id: 'nin',            label: 'NIN Slip',                        required: true,  accept: DEFAULT_ACCEPT, multiple: false, sensitive: true },
-  { id: 'salary',         label: 'Salary Slips',                    required: false, accept: DEFAULT_ACCEPT, multiple: true  },
-  { id: 'bank_statement', label: 'Bank Statement',  hint: 'Last 3 months', required: true,  accept: DEFAULT_ACCEPT, multiple: false },
-  { id: 'proof_of_address', label: 'Proof of Address',              required: true,  accept: DEFAULT_ACCEPT, multiple: false },
-  { id: 'school_invoice', label: 'School Fees Invoice / Offer Letter', required: true, accept: DEFAULT_ACCEPT, multiple: false },
-  { id: 'school_receipts', label: 'School Fees Receipts', hint: 'Last 2 terms', required: true, accept: DEFAULT_ACCEPT, multiple: true },
-  { id: 'parent_photo',   label: 'Passport Photo — Parent/Guardian', required: true,  accept: PHOTO_ACCEPT,   multiple: false },
-  { id: 'student_photo',  label: 'Passport Photo — Student',        required: true,  accept: PHOTO_ACCEPT,   multiple: false },
-  { id: 'other',          label: 'Other Supporting Documents',      required: false, accept: DEFAULT_ACCEPT, multiple: true  },
+const ALL_DOCUMENT_SLOTS: DocumentSlot[] = [
+  // --- KYC (parent-level, uploaded once) ---
+  { id: 'nin',            label: 'NIN Slip',                               required: true,  accept: DEFAULT_ACCEPT, multiple: false, sensitive: true,  category: 'kyc'  },
+  { id: 'salary',         label: 'Salary Slips',                           required: false, accept: DEFAULT_ACCEPT, multiple: true,                    category: 'kyc'  },
+  { id: 'bank_statement', label: 'Bank Statement', hint: 'Last 3 months',  required: true,  accept: DEFAULT_ACCEPT, multiple: false,                    category: 'kyc'  },
+  { id: 'utility_bill',   label: 'Utility Bill',                           required: true,  accept: DEFAULT_ACCEPT, multiple: false,                    category: 'kyc'  },
+  { id: 'parent_photo',   label: 'Passport Photo — Parent/Guardian',       required: true,  accept: DEFAULT_ACCEPT, multiple: false,                    category: 'kyc'  },
+  // --- Loan-specific (per application) ---
+  { id: 'school_invoice', label: 'School Fees Invoice / Offer Letter',     required: true,  accept: DEFAULT_ACCEPT, multiple: false,                    category: 'loan' },
+  { id: 'school_receipts',label: 'School Fees Receipts', hint: 'Last 2 terms', required: true, accept: DEFAULT_ACCEPT, multiple: true,                category: 'loan' },
+  { id: 'student_photo',  label: 'Passport Photo — Student',               required: true,  accept: DEFAULT_ACCEPT, multiple: false,                    category: 'loan' },
+  { id: 'other',          label: 'Other Supporting Documents',             required: false, accept: DEFAULT_ACCEPT, multiple: true,                     category: 'loan' },
 ];
 
 type SlotState = Record<string, UploadedFile[]>;
@@ -41,21 +44,27 @@ export interface DocumentUploadListRef {
 interface DocumentUploadListProps {
   onFilesChange: (files: UploadedFile[]) => void;
   folder?: string;
+  /** 'kyc' = parent KYC docs only, 'loan' = per-application docs only, 'all' = everything */
+  mode?: 'kyc' | 'loan' | 'all';
 }
 
 export const DocumentUploadList = forwardRef<DocumentUploadListRef, DocumentUploadListProps>(
-  ({ onFilesChange, folder = 'loan-documents' }, ref) => {
-    const initialState: SlotState = Object.fromEntries(DOCUMENT_SLOTS.map(s => [s.id, []]));
+  ({ onFilesChange, folder = 'loan-documents', mode = 'all' }, ref) => {
+    const activeSlots = mode === 'all'
+      ? ALL_DOCUMENT_SLOTS
+      : ALL_DOCUMENT_SLOTS.filter(s => s.category === mode);
+
+    const initialState: SlotState = Object.fromEntries(activeSlots.map(s => [s.id, []]));
     const [slotFiles, setSlotFiles] = useState<SlotState>(initialState);
+    const [dragOver, setDragOver] = useState<string | null>(null);
     const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-    // Always-fresh refs — no stale closures, no useCallback dependency arrays to manage
+    // Always-fresh refs — no stale closures
     const slotFilesRef = useRef(slotFiles);
     slotFilesRef.current = slotFiles;
     const onFilesChangeRef = useRef(onFilesChange);
     onFilesChangeRef.current = onFilesChange;
 
-    // Notify parent whenever slot files change
     useEffect(() => {
       onFilesChangeRef.current(Object.values(slotFiles).flat());
     }, [slotFiles]);
@@ -68,7 +77,7 @@ export const DocumentUploadList = forwardRef<DocumentUploadListRef, DocumentUplo
     };
 
     const uploadFile = async (slotId: string, file: UploadedFile): Promise<CloudinaryUploadResult | null> => {
-      const slot = DOCUMENT_SLOTS.find(s => s.id === slotId);
+      const slot = activeSlots.find(s => s.id === slotId);
       const uploadFolder = slot?.sensitive ? `${folder}/sensitive` : folder;
       const tags = slot?.sensitive ? ['sensitive', slotId] : [slotId];
 
@@ -91,12 +100,11 @@ export const DocumentUploadList = forwardRef<DocumentUploadListRef, DocumentUplo
       }
     };
 
-    const handleFileSelect = async (slotId: string, slot: DocumentSlot, e: React.ChangeEvent<HTMLInputElement>) => {
-      // Copy File objects into a plain array BEFORE resetting the input —
-      // some browsers clear the live FileList when input.value is set to ''.
+    const handleFileSelect = async (slotId: string, slot: DocumentSlot, e: React.ChangeEvent<HTMLInputElement> | { target: { files: FileList | null } }) => {
       const rawFiles = Array.from(e.target.files ?? []);
-      e.target.value = '';
-
+      if ('target' in e && 'value' in e.target) {
+        (e.target as HTMLInputElement).value = '';
+      }
       if (rawFiles.length === 0) return;
 
       const newFiles: UploadedFile[] = rawFiles.map(file => ({
@@ -142,13 +150,13 @@ export const DocumentUploadList = forwardRef<DocumentUploadListRef, DocumentUplo
     };
 
     const areAllRequiredUploaded = () =>
-      DOCUMENT_SLOTS.filter(s => s.required).every(
+      activeSlots.filter(s => s.required).every(
         s => slotFilesRef.current[s.id]?.some(f => f.uploaded)
       );
 
     useImperativeHandle(ref, () => ({ uploadAllFiles, areAllRequiredUploaded }));
 
-    const requiredSlots = DOCUMENT_SLOTS.filter(s => s.required);
+    const requiredSlots = activeSlots.filter(s => s.required);
     const requiredTotal = requiredSlots.length;
     const requiredDone = requiredSlots.filter(s => slotFiles[s.id]?.some(f => f.uploaded)).length;
 
@@ -176,21 +184,29 @@ export const DocumentUploadList = forwardRef<DocumentUploadListRef, DocumentUplo
           </div>
         </div>
 
+        {/* Accepted formats note */}
+        <p className="text-[#7C7C7C] text-xs">
+          Accepted: <span className="font-medium">PDF, JPG, PNG</span> · Max <span className="font-medium">10 MB</span> per file · Drag &amp; drop or click Upload
+        </p>
+
         {/* Document slots */}
         <div className="space-y-1.5">
-          {DOCUMENT_SLOTS.map((slot, index) => {
+          {activeSlots.map((slot, index) => {
             const files = slotFiles[slot.id] ?? [];
             const isUploaded = files.some(f => f.uploaded);
             const isUploading = files.some(f => f.uploading);
             const hasError = files.some(f => f.error);
             const hasFile = files.length > 0;
+            const isDragTarget = dragOver === slot.id;
 
             return (
               <div
                 key={slot.id}
                 className={cn(
                   "border rounded-xl p-3 transition-all duration-200",
-                  isUploaded && !isUploading
+                  isDragTarget
+                    ? "border-[#00296B] bg-blue-50 ring-2 ring-[#00296B]/20"
+                    : isUploaded && !isUploading
                     ? "border-green-200 bg-green-50"
                     : hasError
                     ? "border-red-200 bg-red-50"
@@ -198,20 +214,27 @@ export const DocumentUploadList = forwardRef<DocumentUploadListRef, DocumentUplo
                     ? "border-blue-200 bg-blue-50"
                     : "border-gray-200 bg-white"
                 )}
+                onDragOver={e => { e.preventDefault(); setDragOver(slot.id); }}
+                onDragLeave={() => setDragOver(null)}
+                onDrop={e => {
+                  e.preventDefault();
+                  setDragOver(null);
+                  handleFileSelect(slot.id, slot, { target: { files: e.dataTransfer.files } });
+                }}
               >
                 <div className="flex items-start gap-3">
                   {/* Status circle */}
                   <div className={cn(
                     "flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold mt-0.5",
                     isUploaded && !isUploading ? "bg-green-100 text-green-600"
-                      : hasError                ? "bg-red-100 text-red-500"
-                      : isUploading             ? "bg-blue-100 text-blue-600"
-                      :                          "bg-gray-100 text-gray-500"
+                      : hasError              ? "bg-red-100 text-red-500"
+                      : isUploading           ? "bg-blue-100 text-blue-600"
+                      :                        "bg-gray-100 text-gray-500"
                   )}>
                     {isUploaded && !isUploading ? <CheckCircle className="w-3.5 h-3.5" />
-                      : isUploading             ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      : hasError               ? <AlertCircle className="w-3.5 h-3.5" />
-                      :                          index + 1}
+                      : isUploading            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : hasError              ? <AlertCircle className="w-3.5 h-3.5" />
+                      :                         index + 1}
                   </div>
 
                   {/* Label + uploaded files */}
@@ -236,6 +259,10 @@ export const DocumentUploadList = forwardRef<DocumentUploadListRef, DocumentUplo
                         </span>
                       )}
                     </div>
+
+                    <p className="text-[10px] text-[#7C7C7C] mt-0.5">
+                      {slot.accept.join(', ').toUpperCase().replace(/\./g, '')} · max 10 MB
+                    </p>
 
                     {files.length > 0 && (
                       <div className="mt-1.5 space-y-1">
@@ -298,10 +325,6 @@ export const DocumentUploadList = forwardRef<DocumentUploadListRef, DocumentUplo
             );
           })}
         </div>
-
-        <p className="text-[#7C7C7C] text-xs">
-          Accepted: PDF, JPG, PNG · Max 10 MB per file · Ensure all documents are legible and authentic.
-        </p>
       </div>
     );
   }

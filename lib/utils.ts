@@ -10,6 +10,20 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Convert a string to title case (e.g. "john DOE" → "John Doe")
+ */
+export function toTitleCase(str: string): string {
+  return str.trim().replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/**
+ * Normalize user-entered text (names, school names, etc.) to title case
+ */
+export function normalizeText(value: string): string {
+  return toTitleCase(value);
+}
+
 export function formatCurrency(amount: number, currency = 'NGN'): string {
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount);
 }
@@ -18,7 +32,7 @@ export function formatCurrency(amount: number, currency = 'NGN'): string {
 /**
  * Format date to display format
  */
-const formatDate = (date: Date | string | null | undefined): string => {
+export const formatDate = (date: Date | string | null | undefined): string => {
   if (!date) return '-';
   
   try {

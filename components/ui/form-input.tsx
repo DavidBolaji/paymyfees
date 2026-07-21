@@ -8,15 +8,17 @@ export interface FormInputProps extends React.InputHTMLAttributes<HTMLInputEleme
   label?: string;
   error?: string;
   helperText?: string;
+  showRequired?: boolean;
 }
 
 export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
-  ({ label, error, helperText, className, ...props }, ref) => {
+  ({ label, error, helperText, showRequired, className, ...props }, ref) => {
     return (
       <div className="space-y-2">
         {label && (
           <label className="block font-semibold text-[#292929] text-sm">
             {label}
+            {showRequired && <span className="text-red-500 ml-0.5">*</span>}
           </label>
         )}
         <input
@@ -46,15 +48,17 @@ export interface FormSelectProps extends React.SelectHTMLAttributes<HTMLSelectEl
   error?: string;
   helperText?: string;
   options: { value: string; label: string }[];
+  showRequired?: boolean;
 }
 
 export const FormSelect = forwardRef<HTMLSelectElement, FormSelectProps>(
-  ({ label, error, helperText, options, className, ...props }, ref) => {
+  ({ label, error, helperText, options, showRequired, className, ...props }, ref) => {
     return (
       <div className="space-y-2">
         {label && (
           <label className="block font-semibold text-[#292929] text-sm">
             {label}
+            {showRequired && <span className="text-red-500 ml-0.5">*</span>}
           </label>
         )}
         <div className="relative">

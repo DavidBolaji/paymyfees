@@ -9,6 +9,9 @@ import { DocumentUploadList, DocumentUploadListRef } from './document-upload-lis
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormInput, FormSelect } from '@/components/ui/form-input';
 import { validateLoanApplication, type LoanApplicationFormData } from '@/data';
+import { NIGERIAN_CLASS_LEVELS } from '@/data/constants';
+import { ParentKycForm } from '@/components/forms/parent-kyc-form';
+import { formatCurrency } from '@/lib/utils';
 import { applyForLoan } from '../../src/utils/loan-api';
 import { api } from '@/src/lib/api';
 import { SchoolSelector } from './school-selector';
@@ -206,7 +209,7 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
 
     // All required document slots must be uploaded
     if (!fileUploadRef.current?.areAllRequiredUploaded()) {
-      formErrors.uploadedFiles = 'Please upload all 7 required documents before submitting.';
+      formErrors.uploadedFiles = 'Please upload all required documents before submitting.';
     }
 
     // Parents must select or create a student profile
@@ -358,33 +361,6 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
     }
   };
 
-  const isStudentProfileValid = () => {
-    if (user?.role !== 'PARENT') return true;
-    if (!studentProfileSelection) return false;
-    if (studentProfileSelection === 'new') {
-      const fullName = `${newStudentForm.firstName} ${newStudentForm.lastName}`.trim();
-      return !!fullName && !!newStudentForm.relationship && !!newStudentForm.classLevel;
-    }
-    return true;
-  };
-
-  const isFormValid = () => {
-    return formData.schoolName &&
-      formData.academicSession &&
-      formData.term &&
-      formData.loanAmount &&
-      formData.loanAmount > 0 &&
-      formData.selectedPlan &&
-      formData.selectedPlan > 0 &&
-      formData.uploadedFiles &&
-      formData.uploadedFiles.length > 0 &&
-      (fileUploadRef.current?.areAllRequiredUploaded() ?? false) &&
-      formData.consents?.schoolDetails &&
-      formData.consents?.directPayment &&
-      formData.consents?.terms &&
-      isStudentProfileValid();
-  };
-
   const handleSchoolChange = (schoolId: string, schoolName: string) => {
     updateFormData({ schoolId, schoolName });
   };
@@ -396,6 +372,7 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
         {/* Student Profile Section */}
         <div className="bg-white p-4 rounded-xl space-y-4">
           <h3 className="font-semibold text-[#292D32] text-[18px]">Student Profile</h3>
+          <p className="text-xs text-[#7C7C7C]"><span className="text-red-500">*</span> Required fields</p>
 
           <FormSelect
             label={user?.role === 'PARENT' ? 'Select Student *' : 'Select Student'}
@@ -452,74 +429,53 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
                   value={newStudentForm.relationship}
                   onChange={e => handleNewStudentChange('relationship', e.target.value)}
                 />
-                <FormInput
+                <FormSelect
                   label="Class / Level"
                   value={newStudentForm.classLevel}
                   onChange={e => handleNewStudentChange('classLevel', e.target.value)}
-                  placeholder="e.g. JSS 2, SSS 3, Grade 5"
+                  options={NIGERIAN_CLASS_LEVELS}
                 />
               </div>
             </div>
           )}
         </div>
 
-        {/* Parent Employment Details */}
-        <div className="bg-white p-4 rounded-xl space-y-4">
-          <h3 className="font-semibold text-[#292D32] text-[18px]">Parent / Guardian Details</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormSelect
-              label="Employment Status"
-              options={[
-                { value: '', label: 'Select status' },
-                { value: 'Employed', label: 'Employed' },
-                { value: 'Self-Employed', label: 'Self-Employed' },
-                { value: 'Unemployed', label: 'Unemployed' },
-                { value: 'Retired', label: 'Retired' },
-              ]}
-              value={formData.parentDetails?.employmentStatus ?? ''}
-              onChange={e => updateFormData({ parentDetails: { ...formData.parentDetails, employmentStatus: e.target.value } })}
-            />
-            <FormSelect
-              label="Employment Type"
-              options={[
-                { value: '', label: 'Select type' },
-                { value: 'Employee', label: 'Employee' },
-                { value: 'Business', label: 'Business Person' },
-              ]}
-              value={formData.parentDetails?.employmentType ?? ''}
-              onChange={e => updateFormData({ parentDetails: { ...formData.parentDetails, employmentType: e.target.value as 'Employee' | 'Business' } })}
-            />
-            <FormInput
-              label="Employment Role / Job Title"
-              value={formData.parentDetails?.employmentRole ?? ''}
-              onChange={e => updateFormData({ parentDetails: { ...formData.parentDetails, employmentRole: e.target.value } })}
-              placeholder="e.g. Software Engineer, Trader"
-            />
-            <FormInput
-              label="Monthly NET Income (₦)"
-              value={formData.parentDetails?.monthlyNetIncome ? `₦${formData.parentDetails.monthlyNetIncome.toLocaleString()}` : ''}
-              onChange={e => {
-                const raw = e.target.value.replace(/[₦,]/g, '');
-                const num = parseInt(raw) || undefined;
-                updateFormData({ parentDetails: { ...formData.parentDetails, monthlyNetIncome: num } });
-              }}
-              placeholder="₦0"
-            />
-            <FormSelect
-              label="Length of Employment"
-              options={[
-                { value: '', label: 'Select range' },
-                { value: '<1year', label: 'Less than 1 year' },
-                { value: '1-2years', label: '1 – 2 years' },
-                { value: '2-3years', label: '2 – 3 years' },
-                { value: '3-4years', label: '3 – 4 years' },
-                { value: '5+years', label: '5+ years' },
-              ]}
-              value={formData.parentDetails?.lengthOfEmployment ?? ''}
-              onChange={e => updateFormData({ parentDetails: { ...formData.parentDetails, lengthOfEmployment: e.target.value } })}
-            />
-          </div>
-        </div>
+        {/* Parent KYC / Employment Details */}
+        {user?.role === 'PARENT' && (() => {
+          const pp = (user as unknown as { parentProfile?: { employmentStatus?: string; employerName?: string; employmentRole?: string; employmentType?: string; lengthOfEmployment?: string; monthlyIncome?: number | null } })?.parentProfile;
+          const kycComplete = !!(pp?.employmentStatus && pp?.monthlyIncome);
+          return (
+            <div className="bg-white p-4 rounded-xl space-y-4">
+              <h3 className="font-semibold text-[#292D32] text-[18px]">Your KYC Details</h3>
+              {kycComplete ? (
+                <div className="space-y-3">
+                  <p className="text-[#5F5F5F] text-xs">Your employment details are on file and will be used for this application.</p>
+                  <div className="bg-[#f5f5f5] rounded-lg p-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                    <div><span className="text-[#7C7C7C]">Status: </span><span className="font-medium">{pp?.employmentStatus}</span></div>
+                    {pp?.employerName && <div><span className="text-[#7C7C7C]">Employer: </span><span className="font-medium">{pp.employerName}</span></div>}
+                    {pp?.employmentRole && <div><span className="text-[#7C7C7C]">Role: </span><span className="font-medium">{pp.employmentRole}</span></div>}
+                    {pp?.employmentType && <div><span className="text-[#7C7C7C]">Type: </span><span className="font-medium">{pp.employmentType}</span></div>}
+                    {pp?.lengthOfEmployment && <div><span className="text-[#7C7C7C]">Duration: </span><span className="font-medium">{pp.lengthOfEmployment}</span></div>}
+                    {pp?.monthlyIncome && <div><span className="text-[#7C7C7C]">Monthly Income: </span><span className="font-medium">{formatCurrency(Number(pp.monthlyIncome))}</span></div>}
+                  </div>
+                  <a href="/dashboard/profile" className="text-[#00296B] text-xs font-medium hover:underline">Update details →</a>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[#5F5F5F] text-xs">Please complete your employment details to proceed with this loan application. This information will be saved for future applications.</p>
+                  <ParentKycForm
+                    requireAll={true}
+                    submitLabel="Save & Continue"
+                    onSuccess={() => {
+                      // Force re-render after KYC saved — page will re-read from authStore
+                      window.location.reload();
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         <div className="gap-4 grid grid-cols-1 lg:grid-cols-2">
           {/* Left Column - School & Tuition Details */}
@@ -599,6 +555,7 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
             <div className="h-[480px] overflow-y-scroll [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
               <DocumentUploadList
                 ref={fileUploadRef}
+                mode="loan"
                 onFilesChange={(files) => handleInputChange('uploadedFiles', files)}
               />
             </div>
@@ -703,14 +660,7 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
             />
           </div>
 
-          {!isFormValid() && (
-            <div className="flex items-center gap-2 text-red-600 text-sm">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-              Please complete all required fields and accept all terms
-            </div>
-          )}
+          <p className="text-xs text-[#7C7C7C]"><span className="text-red-500">*</span> Required fields must be completed before submission</p>
         </div>
 
         {/* Action Buttons */}
@@ -726,10 +676,10 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
 
           <button
             type="submit"
-            disabled={!isFormValid() || isSubmitting}
+            disabled={isSubmitting}
             className={cn(
               "flex flex-1 justify-center items-center gap-2 rounded-lg h-12 font-medium transition-colors",
-              isFormValid() && !isSubmitting
+              !isSubmitting
                 ? "bg-[#00296B] text-white hover:bg-[#002561]"
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
             )}

@@ -8,6 +8,7 @@ import { LoanService, ILoanService } from '@/src/services/LoanService';
 import { SchoolService, ISchoolService } from '@/src/services/SchoolService';
 import { createLoanSchema, loanQuerySchema } from '@/src/validation/schemas';
 import { ApiResponse } from '@/src/types';
+import { normalizeText } from '@/lib/utils';
 import { AuthUser } from '@/src/middleware/auth';
 import { LoanStatus, ResidencyStatus } from '@prisma/client';
 import { prisma } from '@/src/database/prisma';
@@ -92,7 +93,7 @@ export class LoanController {
       const createdProfile = await prisma.studentProfile.create({
         data: {
           parentId: user.id,
-          studentName,
+          studentName: normalizeText(studentName),
           dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
           relationship,
           classLevel,

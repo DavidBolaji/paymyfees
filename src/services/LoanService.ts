@@ -4,6 +4,7 @@
  */
 
 import { LoanRepository, ILoanRepository, DetailedLoanDTO } from '@/src/repositories/LoanRepository';
+import { normalizeText } from '@/lib/utils';
 import { executeTransaction } from '@/src/database/prisma';
 import { ValidationError, NotFoundError } from '@/src/types/errors';
 import { LoanStatus, ResidencyStatus, DocumentType } from '@prisma/client';
@@ -144,7 +145,7 @@ export class LoanService implements ILoanService {
         totalAmount: loanCalculation.totalAmount,
         monthlyPayment: loanCalculation.monthlyPayment,
         repaymentMonths: input.repaymentMonths,
-        schoolName: input.schoolName,
+        schoolName: normalizeText(input.schoolName),
         academicSession: input.academicSession,
         term: input.term,
         residencyStatus: ResidencyStatus.LOCAL,

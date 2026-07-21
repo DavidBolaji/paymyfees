@@ -424,7 +424,8 @@ export function RegisterForm({ onSubmit, serverError, serverErrors }: RegisterFo
               exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}
               className="space-y-4"
             >
-              <p className="text-xs text-gray-500 -mt-2 mb-3">Step 1 of 3 — Personal Information</p>
+              <p className="text-xs text-gray-500 -mt-2 mb-1">Step 1 of 3 — Personal Information</p>
+              <p className="text-xs text-[#7C7C7C] mb-3"><span className="text-red-500">*</span> All fields are required unless marked optional</p>
 
               <div>
                 <CustomInput label="First Name" type="text" value={formData.firstName}
@@ -501,7 +502,8 @@ export function RegisterForm({ onSubmit, serverError, serverErrors }: RegisterFo
               exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}
               className="space-y-4"
             >
-              <p className="text-xs text-gray-500 -mt-2 mb-3">Step 2 of 3 — Address</p>
+              <p className="text-xs text-gray-500 -mt-2 mb-1">Step 2 of 3 — Address</p>
+              <p className="text-xs text-[#7C7C7C] mb-3"><span className="text-red-500">*</span> All fields are required unless marked optional</p>
 
               <div>
                 <CustomInput label="Residential Address" type="text" value={formData.address}
@@ -556,7 +558,8 @@ export function RegisterForm({ onSubmit, serverError, serverErrors }: RegisterFo
               exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}
               className="space-y-4"
             >
-              <p className="text-xs text-gray-500 -mt-2 mb-3">Step 3 of 3 — Security & Terms</p>
+              <p className="text-xs text-gray-500 -mt-2 mb-1">Step 3 of 3 — Security & Terms</p>
+              <p className="text-xs text-[#7C7C7C] mb-3"><span className="text-red-500">*</span> All fields are required</p>
 
               {/* Password */}
               <div>

@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import { CLASS_LEVEL_VALUES } from '@/data/constants';
 import {
   UserRole,
   PaymentMethod,
@@ -168,7 +169,7 @@ const baseLoanSchema = z.object({
     studentName: z.string().min(2, 'Student name is required').max(255),
     dateOfBirth: z.string().optional(),
     relationship: z.string().min(1, 'Relationship is required').max(100),
-    classLevel: z.string().min(1, 'Class/Level is required').max(100),
+    classLevel: z.enum(CLASS_LEVEL_VALUES, { errorMap: () => ({ message: 'Please select a valid class/level' }) }),
   }).optional(),
   // Parent employment details — optional
   parentDetails: z.object({
@@ -249,7 +250,14 @@ export const createStudentProfileSchema = z.object({
   studentName: z.string().min(2, 'Student name is required').max(255),
   dateOfBirth: z.coerce.date().optional(),
   relationship: z.string().min(1, 'Relationship is required').max(100),
-  classLevel: z.string().min(1, 'Class/Level is required').max(100),
+  classLevel: z.enum(CLASS_LEVEL_VALUES, { errorMap: () => ({ message: 'Please select a valid class/level' }) }),
+});
+
+export const updateStudentProfileSchema = z.object({
+  studentName: z.string().min(2, 'Student name is required').max(255).optional(),
+  dateOfBirth: z.coerce.date().optional(),
+  relationship: z.string().min(1, 'Relationship is required').max(100).optional(),
+  classLevel: z.enum(CLASS_LEVEL_VALUES, { errorMap: () => ({ message: 'Please select a valid class/level' }) }).optional(),
 });
 
 // ============================================

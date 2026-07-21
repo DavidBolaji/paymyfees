@@ -3,18 +3,19 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  LayoutDashboard, 
-  GraduationCap, 
-  CreditCard, 
-  BarChart3, 
-  HelpCircle, 
-  Sun, 
-  Moon, 
+import {
+  LayoutDashboard,
+  GraduationCap,
+  CreditCard,
+  BarChart3,
+  HelpCircle,
+  Sun,
+  Moon,
   LogOut,
   ChevronRight,
   Building2,
   FileText,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Logo from "@/assets/images/logo/logo.png";
@@ -36,6 +37,8 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   href?: string;
+  /** Only show this item for users with PARENT role */
+  parentOnly?: boolean;
 }
 
 interface NavGroup {
@@ -55,6 +58,12 @@ const studentNavigationGroups: NavGroup[] = [
     items: [
       { icon: GraduationCap, label: 'School Verification', href: '/dashboard/school-verification' },
       { icon: CreditCard, label: 'Wallet', href: '/dashboard/wallet' }
+    ]
+  },
+  {
+    title: 'FAMILY',
+    items: [
+      { icon: Users, label: 'My Children', href: '/dashboard/children', parentOnly: true },
     ]
   },
   {
@@ -174,7 +183,7 @@ const adminNavigationGroups: NavGroup[] = [
 
 export function Sidebar({ className, isAdmin = false, isTeacherAdmin = false, isSchoolAdmin = false, isOpen = false, onClose }: SidebarProps) {
   const [isDark, setIsDark] = useState(false);
-  const {logout} = useAuthStore()
+  const { logout, user } = useAuthStore();
   const pathname = usePathname();
   const navigationGroups = isTeacherAdmin
     ? teacherAdminNavigationGroups
@@ -183,6 +192,14 @@ export function Sidebar({ className, isAdmin = false, isTeacherAdmin = false, is
       : isAdmin
         ? adminNavigationGroups
         : studentNavigationGroups;
+
+  const homePath = isTeacherAdmin
+    ? '/teacher-admin'
+    : isSchoolAdmin
+      ? '/school-admin'
+      : isAdmin
+        ? '/admin'
+        : '/dashboard';
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
@@ -236,12 +253,17 @@ export function Sidebar({ className, isAdmin = false, isTeacherAdmin = false, is
       )}>
         {/* Logo */}
         <div className="p-6 items-center hidden md:flex">
-          <Image src={Logo} width={140} height={38} alt="Logo" />
+          <Link href={homePath}>
+            <Image src={Logo} width={140} height={38} alt="Logo" />
+          </Link>
         </div>
 
         {/* Navigation */}
         <div className="flex-1 space-y-6 px-4 py-6 overflow-y-auto mt-2.5 pt-20 md:pt-5">
-          {navigationGroups.map((group, groupIndex) => (
+          {navigationGroups.map((group, groupIndex) => {
+            const visibleItems = group.items.filter(item => !item.parentOnly || user?.role === 'PARENT');
+            if (visibleItems.length === 0) return null;
+            return (
             <div key={groupIndex} className="space-y-2">
               {group.title && (
                 <h5 className="font-medium text-sm uppercase tracking-wider" style={{ color: 'rgba(125, 125, 125, 1)' }}>
@@ -249,7 +271,7 @@ export function Sidebar({ className, isAdmin = false, isTeacherAdmin = false, is
                 </h5>
               )}
               <div className="space-y-1">
-                {group.items.map((item, itemIndex) => {
+                {group.items.filter(item => !item.parentOnly || user?.role === 'PARENT').map((item, itemIndex) => {
                   const isActive = (item.href === '/dashboard' || item.href === '/admin' || item.href === '/teacher-admin' || item.href === '/school-admin')
                     ? pathname === item.href ||
                       (item.href === '/dashboard' && (
@@ -371,7 +393,8 @@ export function Sidebar({ className, isAdmin = false, isTeacherAdmin = false, is
                 })}
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Theme Switcher & Logout */}

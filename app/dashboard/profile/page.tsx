@@ -10,6 +10,7 @@ import Image from "next/image";
 import useAuthStore from "@/src/authStore";
 import { SuccessModal } from "@/components/ui/success-modal";
 import { ErrorModal } from "@/components/ui/error-modal";
+import { ParentKycForm } from "@/components/forms/parent-kyc-form";
 
 interface UserProfile {
   id: string;
@@ -31,6 +32,12 @@ interface UserProfile {
     postalCode: string | null;
     country: string;
     language: string | null;
+    employmentStatus?: string | null;
+    employerName?: string | null;
+    employmentRole?: string | null;
+    employmentType?: string | null;
+    lengthOfEmployment?: string | null;
+    monthlyIncome?: number | null;
   };
 }
 
@@ -702,6 +709,34 @@ export default function ProfilePage({ basePath = "/dashboard" }: { basePath?: st
             </div>
           </div>
         </div>
+
+        {/* Employment & KYC Details (PARENT only) */}
+        {profile.role === 'PARENT' && (
+          <div className="lg:col-span-12">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-[#292929] mb-2">Employment & KYC Details</h3>
+              <p className="text-sm text-gray-500 mb-5">
+                These details are saved once and automatically used for all future loan applications.
+              </p>
+              <ParentKycForm
+                initialValues={{
+                  employmentStatus: profile.parentProfile?.employmentStatus ?? '',
+                  employerName: profile.parentProfile?.employerName ?? '',
+                  employmentRole: profile.parentProfile?.employmentRole ?? '',
+                  employmentType: profile.parentProfile?.employmentType ?? '',
+                  lengthOfEmployment: profile.parentProfile?.lengthOfEmployment ?? '',
+                  monthlyIncome: profile.parentProfile?.monthlyIncome != null ? String(profile.parentProfile.monthlyIncome) : '',
+                }}
+                onSuccess={() => {
+                  setSuccessModal({ title: 'KYC Updated', message: 'Your employment details have been saved successfully.' });
+                  fetchProfile();
+                }}
+                submitLabel="Save Employment Details"
+                requireAll={false}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Bottom Left - Notification Settings (6 cols) */}
         <div className="lg:col-span-6">

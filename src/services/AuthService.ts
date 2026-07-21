@@ -5,6 +5,7 @@
  */
 
 import bcrypt from 'bcryptjs';
+import { normalizeText } from '@/lib/utils';
 import speakeasy from 'speakeasy';
 import { UserRepository, IUserRepository } from '@/src/repositories/UserRepository';
 import {
@@ -65,8 +66,13 @@ export class AuthService implements IAuthService {
   async register(input: CreateUserInput): Promise<AuthResponse> {
     console.info(`User registration started for ${input.email} with role ${input.role} and mode ${input.mode}`);
 
+    // Normalize names to title case
+    const firstName = normalizeText(input.firstName);
+    const lastName = normalizeText(input.lastName);
+    const middleName = input.middleName ? normalizeText(input.middleName) : null;
+
     // Derive fullName for backward compat
-    const fullName = `${input.firstName} ${input.lastName}`.trim();
+    const fullName = `${firstName} ${lastName}`.trim();
 
     // Hash password
     const hashedPassword = await this.hashPassword(input.password);
@@ -94,9 +100,9 @@ export class AuthService implements IAuthService {
           country: input.country || 'Nigeria',
           role: input.role,
           fullName,
-          firstName: input.firstName,
-          lastName: input.lastName,
-          middleName: input.middleName || null,
+          firstName,
+          lastName,
+          middleName,
           dob: input.dob ? new Date(input.dob) : null,
           address: input.address || null,
           city: input.city || null,

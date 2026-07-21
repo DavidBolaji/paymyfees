@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ResidencyModal } from '@/components/dashboard/residency-modal';
+import { KycBanner } from '@/components/dashboard/kyc-banner';
 
 
 import { StatCard } from '@/components/dashboard/stat-card';
@@ -89,12 +90,15 @@ export default function DashboardPage() {
 
   // Show residency modal for students on first login
   const showResidencyModal = user?.role === 'STUDENT' && user?.isFirstTime === true;
+  // Show KYC banner for parents on first login (dismissable)
+  const showKycBanner = user?.role === 'PARENT' && user?.isFirstTime === true;
 
   return (
     <>
       <ResidencyModal isOpen={showResidencyModal} />
       <div className="">
         <div className="pt-6 md:pt-0">
+          {showKycBanner && <KycBanner />}
           <h2 className='mb-2 md:mb-4 font-semibold text-[#191919] text-xl md:text-[1.6875rem]'>Dashboard</h2>
           <p className='mb-5 md:mb-[1.375rem] font-semibold text-[#5F5F5F] text-lg md:text-[1.6875rem]'>Welcome Back, {userName}</p>
 

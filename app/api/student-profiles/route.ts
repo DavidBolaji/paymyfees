@@ -10,6 +10,7 @@ import { studentAuthMiddleware } from '@/src/middleware/authMiddleware';
 import { asyncHandler } from '@/src/middleware/errorHandler';
 import { createStudentProfileSchema } from '@/src/validation/schemas';
 import { ApiResponse } from '@/src/types';
+import { normalizeText } from '@/lib/utils';
 
 export const GET = asyncHandler(async (req: Request) => {
   const authResult = await studentAuthMiddleware(req);
@@ -51,7 +52,7 @@ export const POST = asyncHandler(async (req: Request) => {
   const profile = await prisma.studentProfile.create({
     data: {
       parentId: authResult.userId!,
-      studentName: validated.studentName,
+      studentName: normalizeText(validated.studentName),
       dateOfBirth: validated.dateOfBirth ?? null,
       relationship: validated.relationship,
       classLevel: validated.classLevel,

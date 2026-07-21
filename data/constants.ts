@@ -287,3 +287,31 @@ export const INSTANT_ACTIONS = [
     description: 'Top up your wallet using any payment method for easy repayment debit.'
   }
 ] as const;
+
+export const NIGERIAN_CLASS_LEVELS = [
+  { value: '', label: 'Select class / level' },
+  { value: 'Nursery 1', label: 'Nursery 1' },
+  { value: 'Nursery 2', label: 'Nursery 2' },
+  { value: 'Primary 1', label: 'Primary 1' },
+  { value: 'Primary 2', label: 'Primary 2' },
+  { value: 'Primary 3', label: 'Primary 3' },
+  { value: 'Primary 4', label: 'Primary 4' },
+  { value: 'Primary 5', label: 'Primary 5' },
+  { value: 'Primary 6', label: 'Primary 6' },
+  { value: 'JSS 1', label: 'JSS 1' },
+  { value: 'JSS 2', label: 'JSS 2' },
+  { value: 'JSS 3', label: 'JSS 3' },
+  { value: 'SS 1', label: 'SS 1' },
+  { value: 'SS 2', label: 'SS 2' },
+  { value: 'SS 3', label: 'SS 3' },
+  { value: '100 Level', label: '100 Level' },
+  { value: '200 Level', label: '200 Level' },
+  { value: '300 Level', label: '300 Level' },
+  { value: '400 Level', label: '400 Level' },
+  { value: '500 Level', label: '500 Level' },
+  { value: 'Other', label: 'Other' },
+];
+
+export const CLASS_LEVEL_VALUES = NIGERIAN_CLASS_LEVELS
+  .filter(o => o.value !== '')
+  .map(o => o.value) as [string, ...string[]];
