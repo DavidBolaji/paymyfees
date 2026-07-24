@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Download, PhoneCall, CheckCircle2, X } from 'lucide-react';
+import { Download, PhoneCall, CheckCircle2, X, CreditCard, ChevronRight } from 'lucide-react';
+import { StatusBadge } from '@/components/dashboard/status-badge';
+import { cn } from '@/lib/utils';
 import { DataTable } from '@/components/dashboard/data-table';
 import { BackNavigation } from '@/components/dashboard/back-navigation';
 import { WALLET_TRANSACTION_COLUMNS } from '@/data/constants';
@@ -26,7 +28,9 @@ import useAuthStore from '@/src/authStore';
 export default function WalletPage({ basePath = "/dashboard" }: { basePath?: string }) {
   const { user } = useAuthStore();
   const searchParams = useSearchParams();
-  const { selectedLoanId } = useDashboardStore();
+  const { selectedLoanId, setSelectedLoanId, stats: dashboardStats } = useDashboardStore();
+  const allLoans = dashboardStats?.allLoans ?? [];
+  const activeLoan = allLoans.find(l => l.id === selectedLoanId) ?? allLoans[0] ?? null;
   const [isFundModalOpen, setIsFundModalOpen] = useState(false);
   const [isMakePaymentModalOpen, setIsMakePaymentModalOpen] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -231,6 +235,56 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
         )}
 
         <>
+          {/* Loan Selector — shown when user has more than one loan */}
+          {allLoans.length > 1 && (
+            <div className="mb-6 bg-white rounded-xl border border-[#F2F2F2] overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#F2F2F2]">
+                <p className="text-sm font-semibold text-[#191919]">Select Loan to Pay For</p>
+                <p className="text-xs text-[#7C7C7C] mt-0.5">{allLoans.length} loan applications found · select one to view its wallet details</p>
+              </div>
+              <div className="divide-y divide-[#F8F8F8]">
+                {allLoans.map(loan => {
+                  const isActive = loan.id === (selectedLoanId ?? activeLoan?.id);
+                  return (
+                    <button
+                      key={loan.id}
+                      type="button"
+                      onClick={() => setSelectedLoanId(loan.id)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-[#F8FAFF]",
+                        isActive && "bg-[#EEF3FF]"
+                      )}
+                    >
+                      <div className={cn(
+                        "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0",
+                        isActive ? "bg-[#00296B]" : "bg-[#F2F2F2]"
+                      )}>
+                        <CreditCard className={cn("w-4 h-4", isActive ? "text-white" : "text-[#7C7C7C]")} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-[#191919] truncate">{loan.schoolName}</p>
+                        <p className="text-xs text-[#7C7C7C] mt-0.5">
+                          {loan.loanNumber} · ₦{Number(loan.loanAmount).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                        <StatusBadge status={loan.status} />
+                        {isActive && <ChevronRight className="w-3.5 h-3.5 text-[#00296B]" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              {activeLoan && (
+                <div className="px-4 py-2.5 bg-[#F8F8F8] border-t border-[#F2F2F2]">
+                  <p className="text-xs text-[#7C7C7C] text-center">
+                    Viewing wallet for: <span className="font-semibold text-[#00296B]">{activeLoan.loanNumber}</span>
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Wallet Stats */}
           <WalletStatCards
             stats={stats}

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Info, X } from 'lucide-react';
+import { Info, X, Loader2, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UploadedFile } from '@/components/ui/file-upload';
 import { DocumentUploadList, DocumentUploadListRef } from './document-upload-list';
@@ -11,8 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FormInput, FormSelect } from '@/components/ui/form-input';
 import { validateLoanApplication, type LoanApplicationFormData } from '@/data';
 import { NIGERIAN_CLASS_LEVELS } from '@/data/constants';
-import { ParentKycForm } from '@/components/forms/parent-kyc-form';
-import { formatCurrency } from '@/lib/utils';
+import { normalizeText } from '@/lib/utils';
 import { applyForLoan } from '../../src/utils/loan-api';
 import { api } from '@/src/lib/api';
 import { SchoolSelector } from './school-selector';
@@ -57,8 +56,219 @@ interface FormErrors {
   };
 }
 
+// ─── Inline KYC section: auto-saves on blur, grayed-out once saved ───────────
+
+type ParentProfile = {
+  employmentStatus?: string | null;
+  employerName?: string | null;
+  employmentRole?: string | null;
+  employmentType?: string | null;
+  lengthOfEmployment?: string | null;
+  monthlyIncome?: number | null;
+};
+
+const EMPLOYMENT_STATUS_OPTS = [
+  { value: '', label: 'Select employment status' },
+  { value: 'Employed', label: 'Employed' },
+  { value: 'Self-Employed', label: 'Self-Employed' },
+  { value: 'Unemployed', label: 'Unemployed' },
+  { value: 'Retired', label: 'Retired' },
+];
+const EMPLOYMENT_TYPE_OPTS = [
+  { value: '', label: 'Select employment type' },
+  { value: 'Employee', label: 'Employee' },
+  { value: 'Business', label: 'Business Person' },
+];
+const DURATION_OPTS = [
+  { value: '', label: 'Select duration' },
+  { value: '<1 year', label: 'Less than 1 year' },
+  { value: '1-2 years', label: '1 – 2 years' },
+  { value: '2-3 years', label: '2 – 3 years' },
+  { value: '3-4 years', label: '3 – 4 years' },
+  { value: '5+ years', label: '5 or more years' },
+];
+
+function InlineKycSection({ user, updateUser }: { user: { parentProfile?: ParentProfile; role?: string }; updateUser: (data: never) => void }) {
+  const pp = user?.parentProfile;
+  const saved = !!(pp?.employmentStatus && pp?.monthlyIncome);
+
+  const [fields, setFields] = useState({
+    employmentStatus: pp?.employmentStatus ?? '',
+    employerName: pp?.employerName ?? '',
+    employmentRole: pp?.employmentRole ?? '',
+    employmentType: pp?.employmentType ?? '',
+    lengthOfEmployment: pp?.lengthOfEmployment ?? '',
+    monthlyIncome: pp?.monthlyIncome != null ? String(pp.monthlyIncome) : '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [savedOk, setSavedOk] = useState(saved);
+
+  const showEmployer = fields.employmentStatus === 'Employed' || fields.employmentStatus === 'Self-Employed';
+
+  const autoSave = async (updated: typeof fields) => {
+    if (!updated.employmentStatus || !updated.monthlyIncome) return; // don't save partial
+    setSaving(true);
+    try {
+      const res = await api.put('/api/user/kyc', {
+        employmentStatus: updated.employmentStatus,
+        employerName: updated.employerName || null,
+        employmentRole: updated.employmentRole || null,
+        employmentType: updated.employmentType || null,
+        lengthOfEmployment: updated.lengthOfEmployment || null,
+        monthlyIncome: updated.monthlyIncome ? Number(updated.monthlyIncome) : null,
+      });
+      const data = await res.json();
+      if (data.success) {
+        updateUser({ parentProfile: data.data?.parentProfile, isFirstTime: false } as never);
+        setSavedOk(true);
+      }
+    } catch {
+      // silent — user can still submit, data isn't lost
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const set = (field: keyof typeof fields, value: string) => {
+    setFields(prev => ({ ...prev, [field]: value }));
+    setSavedOk(false);
+  };
+
+  const onBlur = (updated?: Partial<typeof fields>) => {
+    const merged = { ...fields, ...updated };
+    autoSave(merged);
+  };
+
+  const inputClass = cn(
+    "bg-[#f5f5f5] px-3 border focus:border-[#00296B] rounded-lg focus:outline-none w-full h-12 text-[#292929] transition-colors",
+    savedOk ? "border-green-300 text-gray-500 cursor-not-allowed" : "border-[#d1d1d1]"
+  );
+  const selectClass = cn(inputClass, "appearance-none");
+
+  return (
+    <div className="bg-white p-4 rounded-xl space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-[#292D32] text-[18px]">Your KYC Details</h3>
+        <div className="flex items-center gap-1.5 text-xs">
+          {saving && <Loader2 className="w-3.5 h-3.5 animate-spin text-[#00296B]" />}
+          {saving && <span className="text-[#00296B]">Saving…</span>}
+          {!saving && savedOk && <><CheckCircle className="w-3.5 h-3.5 text-green-500" /><span className="text-green-600">Saved</span></>}
+        </div>
+      </div>
+
+      <p className="text-[#5F5F5F] text-xs">
+        {savedOk
+          ? 'Your employment details are saved and will be reused for future loan applications.'
+          : 'Fill in your employment details below. They will be saved automatically and reused next time.'}
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Employment Status */}
+        <div className="space-y-1.5">
+          <label className="block font-semibold text-[#292929] text-sm">Employment Status <span className="text-red-500">*</span></label>
+          <div className="relative">
+            <select
+              value={fields.employmentStatus}
+              disabled={savedOk}
+              onChange={e => set('employmentStatus', e.target.value)}
+              onBlur={e => onBlur({ employmentStatus: e.target.value })}
+              className={selectClass}
+            >
+              {EMPLOYMENT_STATUS_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Employment Type */}
+        <div className="space-y-1.5">
+          <label className="block font-semibold text-[#292929] text-sm">Employment Type</label>
+          <div className="relative">
+            <select
+              value={fields.employmentType}
+              disabled={savedOk}
+              onChange={e => set('employmentType', e.target.value)}
+              onBlur={e => onBlur({ employmentType: e.target.value })}
+              className={selectClass}
+            >
+              {EMPLOYMENT_TYPE_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Employer Name — only when employed */}
+        {(showEmployer || savedOk) && (
+          <div className="space-y-1.5">
+            <label className="block font-semibold text-[#292929] text-sm">Employer / Company Name</label>
+            <input
+              value={fields.employerName}
+              disabled={savedOk}
+              onChange={e => set('employerName', e.target.value)}
+              onBlur={e => onBlur({ employerName: e.target.value })}
+              placeholder="e.g. Acme Corporation"
+              className={inputClass}
+            />
+          </div>
+        )}
+
+        {/* Job Title */}
+        <div className="space-y-1.5">
+          <label className="block font-semibold text-[#292929] text-sm">Job Title / Role</label>
+          <input
+            value={fields.employmentRole}
+            disabled={savedOk}
+            onChange={e => set('employmentRole', e.target.value)}
+            onBlur={e => onBlur({ employmentRole: e.target.value })}
+            placeholder="e.g. Software Engineer"
+            className={inputClass}
+          />
+        </div>
+
+        {/* Duration with Current Employer */}
+        <div className="space-y-1.5">
+          <label className="block font-semibold text-[#292929] text-sm">Duration with Current Employer</label>
+          <div className="relative">
+            <select
+              value={fields.lengthOfEmployment}
+              disabled={savedOk}
+              onChange={e => set('lengthOfEmployment', e.target.value)}
+              onBlur={e => onBlur({ lengthOfEmployment: e.target.value })}
+              className={selectClass}
+            >
+              {DURATION_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* Monthly Income */}
+        <div className="space-y-1.5">
+          <label className="block font-semibold text-[#292929] text-sm">Monthly NET Income (₦) <span className="text-red-500">*</span></label>
+          <input
+            type="number"
+            min="0"
+            value={fields.monthlyIncome}
+            disabled={savedOk}
+            onChange={e => set('monthlyIncome', e.target.value)}
+            onBlur={e => onBlur({ monthlyIncome: e.target.value })}
+            placeholder="e.g. 250000"
+            className={inputClass}
+          />
+        </div>
+      </div>
+
+      {savedOk && (
+        <p className="text-xs text-[#7C7C7C]">
+          To update these details, go to your{' '}
+          <Link href="/dashboard/profile" className="text-[#00296B] font-medium hover:underline">Profile page</Link>.
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function ApplyForLoanForm() {
-  const { user } = useAuthStore();
+  const { user, updateUser } = useAuthStore();
   const { formData, updateFormData, updateConsent, resetForm } = useLoanApplicationStore();
   const { clearCache, setStats, setLastFetched } = useDashboardStore();
   const fileUploadRef = useRef<DocumentUploadListRef>(null);
@@ -103,7 +313,9 @@ export function ApplyForLoanForm() {
   };
 
   const handleNewStudentChange = (field: keyof typeof newStudentForm, value: string) => {
-    const updated = { ...newStudentForm, [field]: value };
+    // Normalize text fields to title case on every keystroke
+    const normalized = (field === 'firstName' || field === 'lastName') ? normalizeText(value) : value;
+    const updated = { ...newStudentForm, [field]: normalized };
     setNewStudentForm(updated);
     // Combine first + last name into the single studentName field for the API
     const fullName = `${updated.firstName} ${updated.lastName}`.trim();
@@ -441,42 +653,10 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
           )}
         </div>
 
-        {/* Parent KYC / Employment Details */}
-        {user?.role === 'PARENT' && (() => {
-          const pp = (user as unknown as { parentProfile?: { employmentStatus?: string; employerName?: string; employmentRole?: string; employmentType?: string; lengthOfEmployment?: string; monthlyIncome?: number | null } })?.parentProfile;
-          const kycComplete = !!(pp?.employmentStatus && pp?.monthlyIncome);
-          return (
-            <div className="bg-white p-4 rounded-xl space-y-4">
-              <h3 className="font-semibold text-[#292D32] text-[18px]">Your KYC Details</h3>
-              {kycComplete ? (
-                <div className="space-y-3">
-                  <p className="text-[#5F5F5F] text-xs">Your employment details are on file and will be used for this application.</p>
-                  <div className="bg-[#f5f5f5] rounded-lg p-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                    <div><span className="text-[#7C7C7C]">Status: </span><span className="font-medium">{pp?.employmentStatus}</span></div>
-                    {pp?.employerName && <div><span className="text-[#7C7C7C]">Employer: </span><span className="font-medium">{pp.employerName}</span></div>}
-                    {pp?.employmentRole && <div><span className="text-[#7C7C7C]">Role: </span><span className="font-medium">{pp.employmentRole}</span></div>}
-                    {pp?.employmentType && <div><span className="text-[#7C7C7C]">Type: </span><span className="font-medium">{pp.employmentType}</span></div>}
-                    {pp?.lengthOfEmployment && <div><span className="text-[#7C7C7C]">Duration: </span><span className="font-medium">{pp.lengthOfEmployment}</span></div>}
-                    {pp?.monthlyIncome && <div><span className="text-[#7C7C7C]">Monthly Income: </span><span className="font-medium">{formatCurrency(Number(pp.monthlyIncome))}</span></div>}
-                  </div>
-                  <Link href="/dashboard/profile" className="text-[#00296B] text-xs font-medium hover:underline">Update details →</Link>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-[#5F5F5F] text-xs">Please complete your employment details to proceed with this loan application. This information will be saved for future applications.</p>
-                  <ParentKycForm
-                    requireAll={true}
-                    submitLabel="Save & Continue"
-                    onSuccess={() => {
-                      // Force re-render after KYC saved — page will re-read from authStore
-                      window.location.reload();
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })()}
+        {/* Parent KYC / Employment Details — inline, auto-save on blur */}
+        {user?.role === 'PARENT' && (
+          <InlineKycSection user={user} updateUser={updateUser} />
+        )}
 
         <div className="gap-4 grid grid-cols-1 lg:grid-cols-2">
           {/* Left Column - School & Tuition Details */}
