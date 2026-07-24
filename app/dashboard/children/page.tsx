@@ -6,15 +6,13 @@ import { Pencil, Plus, X, Loader2, User } from 'lucide-react';
 import { BackNavigation } from '@/components/dashboard/back-navigation';
 import { FormInput, FormSelect } from '@/components/ui/form-input';
 import { api } from '@/src/lib/api';
-import { NIGERIAN_CLASS_LEVELS } from '@/data/constants';
 import { normalizeText } from '@/lib/utils';
 
 interface StudentProfile {
   id: string;
   studentName: string;
   dateOfBirth: string | null;
-  relationship: string;
-  classLevel: string;
+  relationship: string | null;
   createdAt: string;
 }
 
@@ -33,7 +31,6 @@ interface EditForm {
   studentName: string;
   dateOfBirth: string;
   relationship: string;
-  classLevel: string;
 }
 
 export default function ChildrenPage() {
@@ -41,7 +38,7 @@ export default function ChildrenPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>({ studentName: '', dateOfBirth: '', relationship: '', classLevel: '' });
+  const [editForm, setEditForm] = useState<EditForm>({ studentName: '', dateOfBirth: '', relationship: '' });
   const [editErrors, setEditErrors] = useState<Partial<EditForm>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -73,8 +70,7 @@ export default function ChildrenPage() {
     setEditForm({
       studentName: profile.studentName,
       dateOfBirth: profile.dateOfBirth ? profile.dateOfBirth.substring(0, 10) : '',
-      relationship: profile.relationship,
-      classLevel: profile.classLevel,
+      relationship: profile.relationship ?? '',
     });
     setEditErrors({});
     setSaveError(null);
@@ -91,12 +87,6 @@ export default function ChildrenPage() {
     if (!editForm.studentName.trim() || editForm.studentName.trim().length < 2) {
       errs.studentName = 'Name must be at least 2 characters';
     }
-    if (!editForm.relationship) {
-      errs.relationship = 'Relationship is required';
-    }
-    if (!editForm.classLevel) {
-      errs.classLevel = 'Class / Level is required';
-    }
     setEditErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -106,11 +96,10 @@ export default function ChildrenPage() {
     setSaving(true);
     setSaveError(null);
     try {
-      const payload: { studentName: string; relationship: string; classLevel: string; dateOfBirth?: string } = {
+      const payload: { studentName: string; relationship?: string; dateOfBirth?: string } = {
         studentName: normalizeText(editForm.studentName),
-        relationship: editForm.relationship,
-        classLevel: editForm.classLevel,
       };
+      if (editForm.relationship) payload.relationship = editForm.relationship;
       if (editForm.dateOfBirth) payload.dateOfBirth = editForm.dateOfBirth;
 
       const res = await api.put(`/api/student-profiles/${editingId}`, payload);
@@ -190,10 +179,10 @@ export default function ChildrenPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormInput
                       label="Full Name"
+                      showRequired
                       value={editForm.studentName}
-                      onChange={e => setEditForm(prev => ({ ...prev, studentName: e.target.value }))}
+                      onChange={e => setEditForm(prev => ({ ...prev, studentName: normalizeText(e.target.value) }))}
                       error={editErrors.studentName}
-                      onBlur={e => setEditForm(prev => ({ ...prev, studentName: normalizeText(e.target.value) }))}
                     />
                     <FormInput
                       label="Date of Birth"
@@ -207,13 +196,6 @@ export default function ChildrenPage() {
                       value={editForm.relationship}
                       onChange={e => setEditForm(prev => ({ ...prev, relationship: e.target.value }))}
                       error={editErrors.relationship}
-                    />
-                    <FormSelect
-                      label="Class / Level"
-                      options={NIGERIAN_CLASS_LEVELS}
-                      value={editForm.classLevel}
-                      onChange={e => setEditForm(prev => ({ ...prev, classLevel: e.target.value }))}
-                      error={editErrors.classLevel}
                     />
                   </div>
 
@@ -244,12 +226,11 @@ export default function ChildrenPage() {
                     <div>
                       <h3 className="font-semibold text-[#292D32] text-base">{profile.studentName}</h3>
                       <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
-                        <span className="text-sm text-gray-500">
-                          <span className="text-[#7C7C7C]">Class: </span>{profile.classLevel}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          <span className="text-[#7C7C7C]">Relationship: </span>{profile.relationship}
-                        </span>
+                        {profile.relationship && (
+                          <span className="text-sm text-gray-500">
+                            <span className="text-[#7C7C7C]">Relationship: </span>{profile.relationship}
+                          </span>
+                        )}
                         {profile.dateOfBirth && (
                           <span className="text-sm text-gray-500">
                             <span className="text-[#7C7C7C]">DOB: </span>

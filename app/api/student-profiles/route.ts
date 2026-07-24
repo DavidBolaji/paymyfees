@@ -26,7 +26,6 @@ export const GET = asyncHandler(async (req: Request) => {
       studentName: true,
       dateOfBirth: true,
       relationship: true,
-      classLevel: true,
       createdAt: true,
     },
   });
@@ -54,15 +53,13 @@ export const POST = asyncHandler(async (req: Request) => {
       parentId: authResult.userId!,
       studentName: normalizeText(validated.studentName),
       dateOfBirth: validated.dateOfBirth ?? null,
-      relationship: validated.relationship,
-      classLevel: validated.classLevel,
+      relationship: validated.relationship ?? null,
     },
     select: {
       id: true,
       studentName: true,
       dateOfBirth: true,
       relationship: true,
-      classLevel: true,
       createdAt: true,
     },
   });

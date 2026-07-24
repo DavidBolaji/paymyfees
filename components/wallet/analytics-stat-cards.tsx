@@ -49,7 +49,15 @@ export function AnalyticsStatCards({ stats, isLoading, className }: AnalyticsSta
         <StatCard
           title="Engagement Score"
           value="-"
-          footer="Based on activity"
+          footer={
+            <span className="flex items-center gap-1">
+              Based on dashboard activity
+              <span
+                title="Calculated from: Login frequency (25%), payment consistency (25%), wallet top-ups (25%), and notification engagement (25%)."
+                className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-gray-400 text-white text-[9px] cursor-help shrink-0"
+              >?</span>
+            </span>
+          }
         />
       </div>
     );
@@ -96,8 +104,15 @@ export function AnalyticsStatCards({ stats, isLoading, className }: AnalyticsSta
             ? `${stats.fundingHistory.count} wallet top-up${stats.fundingHistory.count !== 1 ? 's' : ''}`
             : "No activity yet"
         }
-        // footer="Based on login, payments, and wallet activity."
-        footer="Based on dashboard activity."
+        footer={
+          <span className="flex items-center gap-1">
+            Based on dashboard activity
+            <span
+              title="Calculated from: Login frequency (25%), payment consistency (25%), wallet top-ups (25%), and notification engagement (25%)."
+              className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-gray-400 text-white text-[9px] cursor-help shrink-0"
+            >?</span>
+          </span>
+        }
       />
     </div>
   );

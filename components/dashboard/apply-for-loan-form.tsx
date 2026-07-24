@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Info, X, Loader2, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UploadedFile } from '@/components/ui/file-upload';
 import { DocumentUploadList, DocumentUploadListRef } from './document-upload-list';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormInput, FormSelect } from '@/components/ui/form-input';
@@ -30,8 +29,7 @@ interface StudentProfileOption {
   id: string;
   studentName: string;
   dateOfBirth: string | null;
-  relationship: string;
-  classLevel: string;
+  relationship: string | null;
 }
 
 interface RepaymentPlan {
@@ -272,6 +270,7 @@ export function ApplyForLoanForm() {
   const { formData, updateFormData, updateConsent, resetForm } = useLoanApplicationStore();
   const { clearCache, setStats, setLastFetched } = useDashboardStore();
   const fileUploadRef = useRef<DocumentUploadListRef>(null);
+  const kycUploadRef = useRef<DocumentUploadListRef>(null);
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -287,8 +286,11 @@ export function ApplyForLoanForm() {
     lastName: '',
     dateOfBirth: '',
     relationship: '',
-    classLevel: '',
   });
+  // Per-loan class level (separate from student profile)
+  const [loanClassLevel, setLoanClassLevel] = useState('');
+  // Prefilled documents from previous loan for the selected student
+  const [prefillDocs, setPrefillDocs] = useState<Record<string, { fileName: string; fileUrl: string; fileSize: number; mimeType: string }>>({});
 
   useEffect(() => {
     api.get('/api/student-profiles')
@@ -297,16 +299,27 @@ export function ApplyForLoanForm() {
       .catch(() => {});
   }, []);
 
-  const handleStudentProfileChange = (value: string) => {
+  const handleStudentProfileChange = async (value: string) => {
     setStudentProfileSelection(value);
+    setPrefillDocs({});
     // Clear student profile error on any selection
     if (errors.studentProfile) {
       setErrors(prev => ({ ...prev, studentProfile: undefined }));
     }
     if (value === 'new') {
-      updateFormData({ studentProfileId: undefined, newStudentProfile: { studentName: '', dateOfBirth: '', relationship: '', classLevel: '' } });
+      updateFormData({ studentProfileId: undefined, newStudentProfile: { studentName: '', dateOfBirth: '', relationship: '' } });
     } else if (value) {
       updateFormData({ studentProfileId: value, newStudentProfile: undefined });
+      // Attempt to prefill documents from previous loan for this student
+      try {
+        const res = await api.get(`/api/student-profiles/${value}/latest-documents`);
+        const data = await res.json();
+        if (data.success && data.data && Object.keys(data.data).length > 0) {
+          setPrefillDocs(data.data);
+        }
+      } catch {
+        // silent — user can still upload manually
+      }
     } else {
       updateFormData({ studentProfileId: undefined, newStudentProfile: undefined });
     }
@@ -324,7 +337,6 @@ export function ApplyForLoanForm() {
         studentName: fullName,
         dateOfBirth: updated.dateOfBirth,
         relationship: updated.relationship,
-        classLevel: updated.classLevel,
       },
     });
   };
@@ -420,9 +432,14 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
       });
     }
 
-    // All required document slots must be uploaded
+    // All required loan document slots must be uploaded
     if (!fileUploadRef.current?.areAllRequiredUploaded()) {
       formErrors.uploadedFiles = 'Please upload all required documents before submitting.';
+    }
+
+    // All required KYC document slots must be uploaded
+    if (user?.role === 'PARENT' && !kycUploadRef.current?.areAllRequiredUploaded()) {
+      formErrors.uploadedFiles = 'Please upload all required KYC and loan documents before submitting.';
     }
 
     // Parents must select or create a student profile
@@ -433,11 +450,11 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
         const fullName = `${newStudentForm.firstName} ${newStudentForm.lastName}`.trim();
         if (!fullName) {
           formErrors.studentProfile = 'Please enter the student\'s first and last name.';
-        } else if (!newStudentForm.relationship) {
-          formErrors.studentProfile = 'Please select your relationship to the student.';
-        } else if (!newStudentForm.classLevel) {
-          formErrors.studentProfile = 'Please enter the student\'s class or level.';
         }
+      }
+      // Class level is required for all student-linked loans
+      if (studentProfileSelection && !loanClassLevel) {
+        formErrors.studentProfile = formErrors.studentProfile || 'Please select the student\'s current class or level.';
       }
     }
 
@@ -484,27 +501,12 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
     let cloudinaryResults: CloudinaryUploadResult[];
 
     try {
-      // Step 1: Handle file uploads
-      if (formData.uploadedFiles && formData.uploadedFiles.length > 0) {
-        const uploadedFiles = formData.uploadedFiles.filter(
-          (f): f is UploadedFile & { cloudinaryResult: CloudinaryUploadResult } =>
-            f.uploaded === true && f.cloudinaryResult !== undefined
-        );
+      // Step 1: Handle file uploads (loan docs + KYC docs combined)
+      const loanUploadResults = fileUploadRef.current ? await fileUploadRef.current.uploadAllFiles() : [];
+      const kycUploadResults = kycUploadRef.current ? await kycUploadRef.current.uploadAllFiles() : [];
+      cloudinaryResults = [...loanUploadResults, ...kycUploadResults];
 
-        if (uploadedFiles.length === formData.uploadedFiles.length) {
-          cloudinaryResults = uploadedFiles.map(f => f.cloudinaryResult);
-        } else {
-          if (fileUploadRef.current?.uploadAllFiles) {
-            cloudinaryResults = await fileUploadRef.current.uploadAllFiles();
-          } else {
-            cloudinaryResults = uploadedFiles.map(f => f.cloudinaryResult);
-          }
-        }
-
-        if (!cloudinaryResults || cloudinaryResults.length === 0) {
-          throw new Error('Please wait for all files to finish uploading.');
-        }
-      } else {
+      if (!cloudinaryResults || cloudinaryResults.length === 0) {
         throw new Error('Please upload at least one document.');
       }
 
@@ -523,6 +525,7 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
         uploadedFiles: normalizedFiles,
         residencyStatus: ResidencyStatus.LOCAL,
         agreementMeta: meta,
+        loanClassLevel: loanClassLevel || undefined,
       };
 
       // Attach student profile — either existing ID or new profile data
@@ -588,12 +591,13 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
           <p className="text-xs text-[#7C7C7C]"><span className="text-red-500">*</span> Required fields</p>
 
           <FormSelect
-            label={user?.role === 'PARENT' ? 'Select Student *' : 'Select Student'}
+            label="Select Student"
+            showRequired={user?.role === 'PARENT'}
             options={[
               { value: '', label: user?.role === 'PARENT' ? 'Select a student profile' : 'Select a student profile (optional)' },
               ...studentProfiles.map(p => ({
                 value: p.id,
-                label: `${p.studentName} — ${p.classLevel}`,
+                label: p.studentName,
               })),
               { value: 'new', label: '+ Create new student profile' },
             ]}
@@ -611,12 +615,14 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormInput
                   label="Student First Name"
+                  showRequired
                   value={newStudentForm.firstName}
                   onChange={e => handleNewStudentChange('firstName', e.target.value)}
                   placeholder="e.g. Chisom"
                 />
                 <FormInput
                   label="Student Last Name"
+                  showRequired
                   value={newStudentForm.lastName}
                   onChange={e => handleNewStudentChange('lastName', e.target.value)}
                   placeholder="e.g. Adeyemi"
@@ -642,13 +648,23 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
                   value={newStudentForm.relationship}
                   onChange={e => handleNewStudentChange('relationship', e.target.value)}
                 />
-                <FormSelect
-                  label="Class / Level"
-                  value={newStudentForm.classLevel}
-                  onChange={e => handleNewStudentChange('classLevel', e.target.value)}
-                  options={NIGERIAN_CLASS_LEVELS}
-                />
               </div>
+            </div>
+          )}
+
+          {/* Per-loan class level — shown once any student is selected/created */}
+          {studentProfileSelection && (
+            <div className="pt-2 border-t border-gray-100">
+              <FormSelect
+                label="Student's Current Class / Level"
+                showRequired
+                value={loanClassLevel}
+                onChange={e => {
+                  setLoanClassLevel(e.target.value);
+                  if (errors.studentProfile) setErrors(prev => ({ ...prev, studentProfile: undefined }));
+                }}
+                options={NIGERIAN_CLASS_LEVELS}
+              />
             </div>
           )}
         </div>
@@ -656,6 +672,22 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
         {/* Parent KYC / Employment Details — inline, auto-save on blur */}
         {user?.role === 'PARENT' && (
           <InlineKycSection user={user} updateUser={updateUser} />
+        )}
+
+        {/* KYC Documents — salary slips, utility bill, NIN, bank statement, parent photo */}
+        {user?.role === 'PARENT' && (
+          <div className="bg-white p-4 rounded-xl">
+            <h3 className="mb-1 font-semibold text-[#292D32] text-[18px]">KYC Documents</h3>
+            <p className="text-xs text-[#7C7C7C] mb-4">
+              These documents are tied to your account and reused across all applications. Upload once; update anytime from your profile.
+            </p>
+            <DocumentUploadList
+              ref={kycUploadRef}
+              mode="kyc"
+              folder="kyc-documents"
+              onFilesChange={() => {}}
+            />
+          </div>
         )}
 
         <div className="gap-4 grid grid-cols-1 lg:grid-cols-2">
@@ -687,6 +719,7 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
 
                 <FormSelect
                   label="Academic Session"
+                  showRequired
                   options={academicSessionOptions}
                   value={formData.academicSession || ''}
                   onChange={(e) => handleInputChange('academicSession', e.target.value)}
@@ -695,6 +728,7 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
 
                 <FormSelect
                   label="Term"
+                  showRequired
                   options={termOptions}
                   value={formData.term || ''}
                   onChange={(e) => handleInputChange('term', e.target.value)}
@@ -704,6 +738,7 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
                 <div className="space-y-2">
                   <FormInput
                     label="Tuition Requested"
+                    showRequired
                     value={formData.loanAmount ? `₦${formData.loanAmount.toLocaleString()}` : ''}
                     onChange={(e) => handleLoanAmountChange(e.target.value)}
                     placeholder="₦0"
@@ -738,6 +773,7 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
                 ref={fileUploadRef}
                 mode="loan"
                 onFilesChange={(files) => handleInputChange('uploadedFiles', files)}
+                prefillSlots={prefillDocs}
               />
             </div>
 

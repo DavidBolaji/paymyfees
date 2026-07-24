@@ -23,8 +23,7 @@ export interface LoanApplicationFormState {
   newStudentProfile?: {
     studentName: string;
     dateOfBirth?: string;
-    relationship: string;
-    classLevel: string;
+    relationship?: string;
   };
   parentDetails?: {
     employmentStatus?: string;

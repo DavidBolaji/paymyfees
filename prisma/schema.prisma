@@ -115,8 +115,8 @@ model StudentProfile {
   parentId     String    @db.Char(36)
   studentName  String    @db.VarChar(255)
   dateOfBirth  DateTime? @db.Date
-  relationship String    @db.VarChar(100)
-  classLevel   String    @db.VarChar(100)
+  relationship String?   @db.VarChar(100)
+  classLevel   String?   @db.VarChar(100)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   parent       User      @relation(fields: [parentId], references: [id], onDelete: Cascade)
@@ -216,6 +216,7 @@ model Loan {
   bankName             String?               @db.VarChar(100)
   accountNumber        String?               @db.VarChar(50)
   countryOfBankAccount String?               @db.VarChar(100)
+  loanClassLevel       String?               @db.VarChar(100)
   status               LoanStatus            @default(PENDING)
   amountDisbursed      Decimal               @default(0.00) @db.Decimal(15, 2)
   amountRepaid         Decimal               @default(0.00) @db.Decimal(15, 2)

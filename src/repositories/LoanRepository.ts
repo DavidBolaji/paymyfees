@@ -46,6 +46,7 @@ export interface CreateLoanData {
 
   // Student profile (optional, for parent loans)
   studentProfileId?: string;
+  loanClassLevel?: string;
 
   status: LoanStatus;
   outstandingBalance: number;

@@ -27,7 +27,6 @@ export const GET = asyncHandler(async (req: Request, context?: { params: Promise
       studentName: true,
       dateOfBirth: true,
       relationship: true,
-      classLevel: true,
       createdAt: true,
     },
   });
@@ -78,14 +77,12 @@ export const PUT = asyncHandler(async (req: Request, context?: { params: Promise
       ...(validated.studentName !== undefined && { studentName: normalizeText(validated.studentName) }),
       ...(validated.dateOfBirth !== undefined && { dateOfBirth: validated.dateOfBirth ?? null }),
       ...(validated.relationship !== undefined && { relationship: validated.relationship }),
-      ...(validated.classLevel !== undefined && { classLevel: validated.classLevel }),
     },
     select: {
       id: true,
       studentName: true,
       dateOfBirth: true,
       relationship: true,
-      classLevel: true,
       createdAt: true,
     },
   });

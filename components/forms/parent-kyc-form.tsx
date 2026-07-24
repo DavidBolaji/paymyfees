@@ -5,6 +5,7 @@ import { FormInput, FormSelect } from '@/components/ui/form-input';
 import { api } from '@/src/lib/api';
 import useAuthStore from '@/src/authStore';
 import { Loader2 } from 'lucide-react';
+import { normalizeText } from '@/lib/utils';
 
 const EMPLOYMENT_STATUS_OPTIONS = [
   { value: '', label: 'Select employment status' },
@@ -74,7 +75,10 @@ export function ParentKycForm({
   const [serverError, setServerError] = useState<string | null>(null);
 
   const set = (field: keyof KycFormData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm(prev => ({ ...prev, [field]: e.target.value }));
+    const value = ['employerName', 'employmentRole'].includes(field)
+      ? normalizeText(e.target.value)
+      : e.target.value;
+    setForm(prev => ({ ...prev, [field]: value }));
     setErrors(prev => ({ ...prev, [field]: undefined }));
     setServerError(null);
   };

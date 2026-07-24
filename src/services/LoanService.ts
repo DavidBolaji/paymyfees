@@ -36,6 +36,7 @@ export interface ILoanService {
     schoolId: string;
     uploadedFiles?: UploadedFileData[];
     studentProfileId?: string;
+    loanClassLevel?: string;
   }): Promise<LoanDTO>;
   createInternationalLoan(input: Omit<InternationalLoanInput, 'userId' | 'schoolId'> & { 
     userId: string; 
@@ -123,6 +124,7 @@ export class LoanService implements ILoanService {
     schoolId: string;
     uploadedFiles?: UploadedFileData[];
     studentProfileId?: string;
+    loanClassLevel?: string;
   }): Promise<LoanDTO> {
     console.log({ msg: 'Creating local loan application', userId: input.userId });
 
@@ -150,6 +152,7 @@ export class LoanService implements ILoanService {
         term: input.term,
         residencyStatus: ResidencyStatus.LOCAL,
         studentProfileId: input.studentProfileId,
+        loanClassLevel: input.loanClassLevel,
         status: LoanStatus.PENDING,
         amountDisbursed: 0,
         amountRepaid: 0,

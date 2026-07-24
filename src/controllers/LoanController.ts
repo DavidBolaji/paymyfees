@@ -89,14 +89,13 @@ export class LoanController {
     // Resolve student profile — create new one if provided, else use existing ID
     let studentProfileId: string | undefined = (validatedData as any).studentProfileId;
     if ((validatedData as any).newStudentProfile) {
-      const { studentName, dateOfBirth, relationship, classLevel } = (validatedData as any).newStudentProfile;
+      const { studentName, dateOfBirth, relationship } = (validatedData as any).newStudentProfile;
       const createdProfile = await prisma.studentProfile.create({
         data: {
           parentId: user.id,
           studentName: normalizeText(studentName),
           dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-          relationship,
-          classLevel,
+          relationship: relationship ?? null,
         },
       });
       studentProfileId = createdProfile.id;
@@ -150,6 +149,7 @@ export class LoanController {
           term: (validatedData as any).term,
           uploadedFiles: (validatedData as any).uploadedFiles,
           studentProfileId,
+          loanClassLevel: (validatedData as any).loanClassLevel,
         });
 
     // Send in-app + email notification (async, never breaks response)

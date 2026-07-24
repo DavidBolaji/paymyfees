@@ -12,7 +12,8 @@ export interface UploadedFile {
   name: string;
   size: number;
   type: string;
-  file: File;
+  file?: File;              // optional — absent for pre-loaded Cloudinary files
+  preloaded?: boolean;      // true when pre-populated from a previous loan
   cloudinaryResult?: CloudinaryUploadResult;
   uploading?: boolean;
   uploaded?: boolean;
@@ -88,6 +89,7 @@ export const FileUpload = forwardRef<FileUploadRef, FileUploadProps>(({
     onFilesChange(updatedFiles);
 
     try {
+      if (!file.file) return null;
       const result = await uploadToCloudinary(file.file, {
         folder,
         resourceType: getCloudinaryResourceType(file.file),

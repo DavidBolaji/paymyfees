@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CustomInput } from "@/components/ui/custom-input";
 import { normalizeNigerianPhone, validateNigerianPhone } from "@/src/utils/registration-form";
+import { normalizeText } from "@/lib/utils";
 import Link from "next/link";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -293,9 +294,17 @@ export function RegisterForm({ onSubmit, serverError, serverErrors }: RegisterFo
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   const set = (field: keyof RegisterFormData, value: string | boolean) => {
+    let processedValue: string | boolean = value;
+    if (typeof value === 'string') {
+      if (field === 'phone') {
+        processedValue = normalizeNigerianPhone(value);
+      } else if (['firstName', 'lastName', 'middleName'].includes(field)) {
+        processedValue = normalizeText(value);
+      }
+    }
     const nextData = {
       ...formData,
-      [field]: field === "phone" && typeof value === "string" ? normalizeNigerianPhone(value) : value,
+      [field]: processedValue,
     };
     const fieldsToValidate: (keyof RegisterFormData)[] = [field];
 
@@ -428,14 +437,14 @@ export function RegisterForm({ onSubmit, serverError, serverErrors }: RegisterFo
               <p className="text-xs text-[#7C7C7C] mb-3"><span className="text-red-500">*</span> All fields are required unless marked optional</p>
 
               <div>
-                <CustomInput label="First Name" type="text" value={formData.firstName}
+                <CustomInput label="First Name *" type="text" value={formData.firstName}
                   placeholder="e.g. John" onChange={(v) => set("firstName", v)}
                   onBlur={() => touch("firstName")} error={touched.firstName && !!errors.firstName} />
                 <FieldError show={!!touched.firstName} message={errors.firstName} />
               </div>
 
               <div>
-                <CustomInput label="Last Name" type="text" value={formData.lastName}
+                <CustomInput label="Last Name *" type="text" value={formData.lastName}
                   placeholder="e.g. Doe" onChange={(v) => set("lastName", v)}
                   onBlur={() => touch("lastName")} error={touched.lastName && !!errors.lastName} />
                 <FieldError show={!!touched.lastName} message={errors.lastName} />
@@ -447,28 +456,28 @@ export function RegisterForm({ onSubmit, serverError, serverErrors }: RegisterFo
               </div>
 
               <div>
-                <CustomInput label="Email Address" type="email" value={formData.email}
+                <CustomInput label="Email Address *" type="email" value={formData.email}
                   placeholder="e.g. john.doe@example.com" onChange={(v) => set("email", v)}
                   onBlur={() => touch("email")} error={touched.email && !!errors.email} />
                 <FieldError show={!!touched.email} message={errors.email} />
               </div>
 
               <div>
-                <CustomInput label="Phone Number" type="phone" value={formData.phone}
+                <CustomInput label="Phone Number *" type="phone" value={formData.phone}
                   placeholder="8012345678" onChange={(v) => set("phone", v)}
                   onBlur={() => touch("phone")} error={touched.phone && !!errors.phone} />
                 <FieldError show={!!touched.phone} message={errors.phone} />
               </div>
 
               <div>
-                <CustomInput label="Date of Birth" type="date" value={formData.dob}
+                <CustomInput label="Date of Birth *" type="date" value={formData.dob}
                   onChange={(v) => set("dob", v)} onBlur={() => touch("dob")}
                   error={touched.dob && !!errors.dob} />
                 <FieldError show={!!touched.dob} message={errors.dob} />
               </div>
 
               <div>
-                <CustomInput label="Gender" type="select" value={formData.gender}
+                <CustomInput label="Gender *" type="select" value={formData.gender}
                   placeholder="Select gender" options={GENDERS}
                   onChange={(v) => set("gender", v)} onBlur={() => touch("gender")}
                   error={touched.gender && !!errors.gender} />
@@ -476,7 +485,7 @@ export function RegisterForm({ onSubmit, serverError, serverErrors }: RegisterFo
               </div>
 
               <div>
-                <CustomInput label="Account Type" type="select" value={formData.role}
+                <CustomInput label="Account Type *" type="select" value={formData.role}
                   placeholder="Select account type" options={ROLES}
                   onChange={(v) => set("role", v)} onBlur={() => touch("role")}
                   error={touched.role && !!errors.role} />

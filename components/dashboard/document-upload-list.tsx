@@ -46,10 +46,12 @@ interface DocumentUploadListProps {
   folder?: string;
   /** 'kyc' = parent KYC docs only, 'loan' = per-application docs only, 'all' = everything */
   mode?: 'kyc' | 'loan' | 'all';
+  /** Pre-loaded Cloudinary file data keyed by slot ID (e.g. student_photo, school_invoice) */
+  prefillSlots?: Record<string, { fileName: string; fileUrl: string; fileSize: number; mimeType: string }>;
 }
 
 export const DocumentUploadList = forwardRef<DocumentUploadListRef, DocumentUploadListProps>(
-  ({ onFilesChange, folder = 'loan-documents', mode = 'all' }, ref) => {
+  ({ onFilesChange, folder = 'loan-documents', mode = 'all', prefillSlots }, ref) => {
     const activeSlots = mode === 'all'
       ? ALL_DOCUMENT_SLOTS
       : ALL_DOCUMENT_SLOTS.filter(s => s.category === mode);
@@ -69,6 +71,36 @@ export const DocumentUploadList = forwardRef<DocumentUploadListRef, DocumentUplo
       onFilesChangeRef.current(Object.values(slotFiles).flat());
     }, [slotFiles]);
 
+    // Apply prefilled documents when they arrive (only fills empty slots)
+    useEffect(() => {
+      if (!prefillSlots || Object.keys(prefillSlots).length === 0) return;
+      setSlotFiles(prev => {
+        const next = { ...prev };
+        for (const [slotId, doc] of Object.entries(prefillSlots)) {
+          if (next[slotId] !== undefined && next[slotId].length === 0) {
+            next[slotId] = [{
+              id: `prefill-${slotId}`,
+              name: doc.fileName,
+              size: doc.fileSize,
+              type: doc.mimeType,
+              preloaded: true,
+              uploaded: true,
+              cloudinaryResult: {
+                secure_url: doc.fileUrl,
+                url: doc.fileUrl,
+                public_id: doc.fileName,
+                original_filename: doc.fileName,
+                bytes: doc.fileSize,
+                format: doc.mimeType.split('/')[1] ?? 'pdf',
+                resource_type: doc.mimeType.startsWith('image') ? 'image' : 'raw',
+              } as CloudinaryUploadResult,
+            }];
+          }
+        }
+        return next;
+      });
+    }, [prefillSlots]);
+
     const updateFileStatus = (slotId: string, fileId: string, updates: Partial<UploadedFile>) => {
       setSlotFiles(prev => ({
         ...prev,
@@ -80,6 +112,12 @@ export const DocumentUploadList = forwardRef<DocumentUploadListRef, DocumentUplo
       const slot = activeSlots.find(s => s.id === slotId);
       const uploadFolder = slot?.sensitive ? `${folder}/sensitive` : folder;
       const tags = slot?.sensitive ? ['sensitive', slotId] : [slotId];
+
+      // Pre-loaded files are already on Cloudinary — skip re-upload
+      if (file.preloaded && file.cloudinaryResult) {
+        return file.cloudinaryResult;
+      }
+      if (!file.file) return null;
 
       updateFileStatus(slotId, file.id, { uploading: true, error: undefined });
       try {

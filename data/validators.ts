@@ -9,13 +9,7 @@ export interface LoanApplicationFormData {
   schoolId: string;
   academicSession: string;
   term: string;
-  uploadedFiles: Array<{
-    id: string;
-    name: string;
-    size: number;
-    type: string;
-    file: File;
-  }>;
+  uploadedFiles: UploadedFile[];
   consents: {
     schoolDetails: boolean;
     directPayment: boolean;
@@ -26,8 +20,7 @@ export interface LoanApplicationFormData {
   newStudentProfile?: {
     studentName: string;
     dateOfBirth?: string;
-    relationship: string;
-    classLevel: string;
+    relationship?: string;
   };
   // Parent employment details — optional
   parentDetails?: {
@@ -56,13 +49,7 @@ export interface LoanApplicationIntFormData {
   accountNumber: string,
   countryOfBankAccount: '',
   term: string;
-  uploadedFiles: Array<{
-    id: string;
-    name: string;
-    size: number;
-    type: string;
-    file: File;
-  }>;
+  uploadedFiles: UploadedFile[];
   consents: {
     schoolDetails: boolean;
     directPayment: boolean;
