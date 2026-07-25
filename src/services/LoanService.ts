@@ -68,12 +68,27 @@ function toLoanDTO(loan: any): LoanDTO {
   };
 }
 
+/** Map frontend slot ID to DocumentType enum */
+function slotIdToDocumentType(slotId: string): DocumentType | null {
+  const map: Record<string, DocumentType> = {
+    nin: DocumentType.NIN,
+    salary: DocumentType.SALARY_SLIP,
+    bank_statement: DocumentType.BANK_STATEMENT,
+    utility_bill: DocumentType.UTILITY_BILL,
+    parent_photo: DocumentType.PARENT_PHOTO,
+    school_invoice: DocumentType.SCHOOL_INVOICE,
+    school_receipts: DocumentType.SCHOOL_RECEIPTS,
+    student_photo: DocumentType.STUDENT_PHOTO,
+  };
+  return map[slotId] ?? null;
+}
+
 /**
- * Map file type/extension to DocumentType enum
+ * Map file type/extension to DocumentType enum (fallback when slotId is absent)
  */
 function mapFileTypeToDocumentType(fileName: string, _fileType: string): DocumentType {
   const lowerName = fileName.toLowerCase();
-  
+
   if (lowerName.includes('bvn')) return DocumentType.BVN;
   if (lowerName.includes('nin')) return DocumentType.NIN;
   if (lowerName.includes('passport')) return DocumentType.PASSPORT;
@@ -82,9 +97,10 @@ function mapFileTypeToDocumentType(fileName: string, _fileType: string): Documen
   if (lowerName.includes('salary') || lowerName.includes('slip')) return DocumentType.SALARY_SLIP;
   if (lowerName.includes('bank') || lowerName.includes('statement')) return DocumentType.BANK_STATEMENT;
   if (lowerName.includes('invoice')) return DocumentType.SCHOOL_INVOICE;
+  if (lowerName.includes('receipt')) return DocumentType.SCHOOL_RECEIPTS;
   if (lowerName.includes('school') || lowerName.includes('id')) return DocumentType.SCHOOL_ID;
   if (lowerName.includes('cac')) return DocumentType.CAC_DOCUMENT;
-  
+
   return DocumentType.OTHER;
 }
 
@@ -253,10 +269,11 @@ export class LoanService implements ILoanService {
       const fileType: string = (file as any).type || (file as any).mimeType || '';
       const fileUrl: string = (file as any).url || (file as any).fileUrl || (file as any).path || '';
       const fileSize: number = (file as any).size || (file as any).fileSize || 0;
+      const slotId: string | undefined = (file as any).slotId;
       return {
         userId,
         loanId,
-        documentType: mapFileTypeToDocumentType(fileName, fileType),
+        documentType: (slotId && slotIdToDocumentType(slotId)) || mapFileTypeToDocumentType(fileName, fileType),
         fileName,
         fileUrl,
         fileSize,

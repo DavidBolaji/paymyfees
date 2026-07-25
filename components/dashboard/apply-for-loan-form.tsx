@@ -517,24 +517,39 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
   // Called by the agreement modal after the user accepts
   const executeSubmit = async (meta: AgreementMeta) => {
     setIsSubmitting(true);
-    let cloudinaryResults: CloudinaryUploadResult[];
+    let cloudinaryResults: (CloudinaryUploadResult & { slotId?: string })[];
 
     try {
-      // Step 1: Handle file uploads (loan docs + KYC docs combined)
+      // Step 1: Upload loan docs + KYC docs separately
       const loanUploadResults = fileUploadRef.current ? await fileUploadRef.current.uploadAllFiles() : [];
       const kycUploadResults = kycUploadRef.current ? await kycUploadRef.current.uploadAllFiles() : [];
-      cloudinaryResults = [...loanUploadResults, ...kycUploadResults];
+
+      // Save KYC docs via dedicated endpoint (parent-level, loanId: null)
+      if (kycUploadResults.length > 0) {
+        const kycPayload = kycUploadResults.map((r) => ({
+          documentType: r.slotId ?? 'other',
+          fileName: r.original_filename || r.public_id,
+          fileUrl: r.secure_url || r.url,
+          fileSize: r.bytes,
+          mimeType: r.format ? (r.resource_type === 'image' ? `image/${r.format}` : `application/${r.format}`) : 'application/octet-stream',
+        }));
+        await api.post('/api/user/kyc/documents', { documents: kycPayload });
+      }
+
+      // Only loan docs go with the loan payload
+      cloudinaryResults = loanUploadResults;
 
       if (!cloudinaryResults || cloudinaryResults.length === 0) {
         throw new Error('Please upload at least one document.');
       }
 
-      // Step 2: Normalize + submit
+      // Step 2: Normalize + submit (include slotId so backend stores correct documentType)
       const normalizedFiles = cloudinaryResults.map((result) => ({
         url: result.secure_url || result.url,
         name: result.original_filename || result.public_id,
         size: result.bytes,
         type: result.format || result.resource_type,
+        slotId: result.slotId,
       }));
 
       const payload: any = {

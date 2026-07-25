@@ -37,7 +37,7 @@ const ALL_DOCUMENT_SLOTS: DocumentSlot[] = [
 type SlotState = Record<string, UploadedFile[]>;
 
 export interface DocumentUploadListRef {
-  uploadAllFiles: () => Promise<CloudinaryUploadResult[]>;
+  uploadAllFiles: () => Promise<(CloudinaryUploadResult & { slotId?: string })[]>;
   areAllRequiredUploaded: () => boolean;
 }
 
@@ -172,15 +172,15 @@ export const DocumentUploadList = forwardRef<DocumentUploadListRef, DocumentUplo
       }));
     };
 
-    const uploadAllFiles = async (): Promise<CloudinaryUploadResult[]> => {
-      const results: CloudinaryUploadResult[] = [];
+    const uploadAllFiles = async (): Promise<(CloudinaryUploadResult & { slotId?: string })[]> => {
+      const results: (CloudinaryUploadResult & { slotId?: string })[] = [];
       for (const [slotId, files] of Object.entries(slotFilesRef.current)) {
         for (const file of files) {
           if (file.uploaded && file.cloudinaryResult) {
-            results.push(file.cloudinaryResult);
+            results.push({ ...file.cloudinaryResult, slotId });
           } else if (!file.uploading) {
             const result = await uploadFile(slotId, file);
-            if (result) results.push(result);
+            if (result) results.push({ ...result, slotId });
           }
         }
       }

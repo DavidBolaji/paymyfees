@@ -47,7 +47,8 @@ export const GET = asyncHandler(async (req: Request) => {
     return NextResponse.json({ success: true, data: {} });
   }
 
-  const docs = await prisma.document.findMany({
+  // 1. Prefer parent-level docs (new flow: parentId set, loanId null)
+  const parentDocs = await prisma.document.findMany({
     where: {
       parentId: parentProfile.id,
       documentType: { in: [...KYC_TYPES] },
@@ -64,9 +65,8 @@ export const GET = asyncHandler(async (req: Request) => {
     orderBy: { createdAt: 'desc' },
   });
 
-  // Take the most recent document per type
   const bySlot: Record<string, { id: string; fileName: string; fileUrl: string; fileSize: number; mimeType: string }> = {};
-  for (const doc of docs) {
+  for (const doc of parentDocs) {
     const slotId = TYPE_TO_SLOT[doc.documentType];
     if (slotId && !bySlot[slotId]) {
       bySlot[slotId] = {
@@ -76,6 +76,39 @@ export const GET = asyncHandler(async (req: Request) => {
         fileSize: doc.fileSize,
         mimeType: doc.mimeType,
       };
+    }
+  }
+
+  // 2. Fallback: fill any missing slots from loan-attached docs (legacy data)
+  if (Object.keys(bySlot).length < KYC_TYPES.length) {
+    const loanDocs = await prisma.document.findMany({
+      where: {
+        userId,
+        documentType: { in: [...KYC_TYPES] },
+        loanId: { not: null },
+      },
+      select: {
+        id: true,
+        documentType: true,
+        fileName: true,
+        fileUrl: true,
+        fileSize: true,
+        mimeType: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    for (const doc of loanDocs) {
+      const slotId = TYPE_TO_SLOT[doc.documentType];
+      if (slotId && !bySlot[slotId]) {
+        bySlot[slotId] = {
+          id: doc.id,
+          fileName: doc.fileName,
+          fileUrl: doc.fileUrl,
+          fileSize: doc.fileSize,
+          mimeType: doc.mimeType,
+        };
+      }
     }
   }
 
