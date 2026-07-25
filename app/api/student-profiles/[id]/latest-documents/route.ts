@@ -1,8 +1,13 @@
 /**
  * Latest Documents API for a Student Profile
- * GET /api/student-profiles/[id]/latest-documents
- * Returns the most recent STUDENT_PHOTO, SCHOOL_INVOICE, SCHOOL_RECEIPTS documents
- * from the latest loan for the given student profile (used for document prefill).
+ * GET /api/student-profiles/[id]/latest-documents?schoolId=...
+ *
+ * Returns prefill documents for the loan form:
+ * - student_photo  → most recent, from any loan for this student
+ * - school_invoice → most recent from a loan matching both student + schoolId (if provided)
+ * - school_receipts → same as above
+ *
+ * If schoolId is not supplied, school-specific docs are omitted.
  */
 
 import { NextResponse } from 'next/server';
@@ -11,6 +16,10 @@ import { studentAuthMiddleware } from '@/src/middleware/authMiddleware';
 import { asyncHandler } from '@/src/middleware/errorHandler';
 import { ApiResponse } from '@/src/types';
 
+const ACTIVE_STATUSES = ['PENDING', 'UNDER_REVIEW', 'APPROVED', 'DISBURSED', 'ACTIVE', 'COMPLETED'] as const;
+
+type PrefillDoc = { id: string; fileName: string; fileUrl: string; fileSize: number; mimeType: string };
+
 export const GET = asyncHandler(async (req: Request, context?: { params: Promise<{ id: string }> }) => {
   const authResult = await studentAuthMiddleware(req);
   if (!authResult.success) {
@@ -18,6 +27,8 @@ export const GET = asyncHandler(async (req: Request, context?: { params: Promise
   }
 
   const { id } = await context!.params;
+  const { searchParams } = new URL(req.url);
+  const schoolId = searchParams.get('schoolId') ?? undefined;
 
   // Verify the profile belongs to the requesting parent
   const profile = await prisma.studentProfile.findFirst({
@@ -32,54 +43,68 @@ export const GET = asyncHandler(async (req: Request, context?: { params: Promise
     );
   }
 
-  // Find the latest loan for this student profile
-  const latestLoan = await prisma.loan.findFirst({
+  const bySlot: Record<string, PrefillDoc> = {};
+
+  // ── 1. student_photo — latest across any loan for this student ─────────────
+  const loanWithPhoto = await prisma.loan.findFirst({
     where: {
       studentProfileId: id,
-      status: { in: ['PENDING', 'UNDER_REVIEW', 'APPROVED', 'DISBURSED', 'ACTIVE', 'COMPLETED'] },
+      status: { in: [...ACTIVE_STATUSES] },
+      documents: { some: { documentType: 'STUDENT_PHOTO' } },
     },
     orderBy: { createdAt: 'desc' },
     select: {
       documents: {
-        where: {
-          documentType: { in: ['STUDENT_PHOTO', 'SCHOOL_INVOICE', 'SCHOOL_RECEIPTS'] },
-        },
-        select: {
-          id: true,
-          documentType: true,
-          fileName: true,
-          fileUrl: true,
-          fileSize: true,
-          mimeType: true,
-        },
+        where: { documentType: 'STUDENT_PHOTO' },
+        select: { id: true, fileName: true, fileUrl: true, fileSize: true, mimeType: true },
         orderBy: { createdAt: 'desc' },
+        take: 1,
       },
     },
   });
 
-  // Group by documentType, take first per type (most recent)
-  const docs = latestLoan?.documents ?? [];
-  const byType: Record<string, { id: string; fileName: string; fileUrl: string; fileSize: number; mimeType: string }> = {};
-  for (const d of docs) {
-    const slotId =
-      d.documentType === 'STUDENT_PHOTO' ? 'student_photo'
-      : d.documentType === 'SCHOOL_INVOICE' ? 'school_invoice'
-      : d.documentType === 'SCHOOL_RECEIPTS' ? 'school_receipts'
-      : null;
-    if (slotId && !byType[slotId]) {
-      byType[slotId] = {
-        id: d.id,
-        fileName: d.fileName,
-        fileUrl: d.fileUrl,
-        fileSize: d.fileSize,
-        mimeType: d.mimeType,
-      };
+  const photo = loanWithPhoto?.documents[0];
+  if (photo) {
+    bySlot['student_photo'] = photo;
+  }
+
+  // ── 2. school_invoice + school_receipts — only when same school ────────────
+  if (schoolId) {
+    const loanWithSchoolDocs = await prisma.loan.findFirst({
+      where: {
+        studentProfileId: id,
+        schoolId,
+        status: { in: [...ACTIVE_STATUSES] },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        documents: {
+          where: { documentType: { in: ['SCHOOL_INVOICE', 'SCHOOL_RECEIPTS'] } },
+          select: { id: true, documentType: true, fileName: true, fileUrl: true, fileSize: true, mimeType: true },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+
+    for (const doc of loanWithSchoolDocs?.documents ?? []) {
+      const slotId = doc.documentType === 'SCHOOL_INVOICE' ? 'school_invoice'
+        : doc.documentType === 'SCHOOL_RECEIPTS' ? 'school_receipts'
+        : null;
+      if (slotId && !bySlot[slotId]) {
+        bySlot[slotId] = {
+          id: doc.id,
+          fileName: doc.fileName,
+          fileUrl: doc.fileUrl,
+          fileSize: doc.fileSize,
+          mimeType: doc.mimeType,
+        };
+      }
     }
   }
 
   const response: ApiResponse = {
     success: true,
-    data: byType,
+    data: bySlot,
     metadata: { timestamp: new Date().toISOString() },
   };
 

@@ -289,9 +289,14 @@ export function ApplyForLoanForm() {
   });
   // Per-loan class level (separate from student profile)
   const [loanClassLevel, setLoanClassLevel] = useState('');
-  // Prefilled documents from previous loan for the selected student
+  // Prefill for loan document slots (student_photo / school_invoice / school_receipts)
   const [prefillDocs, setPrefillDocs] = useState<Record<string, { fileName: string; fileUrl: string; fileSize: number; mimeType: string }>>({});
+  // Key to force-remount the loan DocumentUploadList when student changes (clears stale prefills)
+  const [loanDocListKey, setLoanDocListKey] = useState(0);
+  // Prefill for KYC document slots (loaded once on mount from user's existing docs)
+  const [kycPrefillDocs, setKycPrefillDocs] = useState<Record<string, { fileName: string; fileUrl: string; fileSize: number; mimeType: string }>>({});
 
+  // Load student profiles
   useEffect(() => {
     api.get('/api/student-profiles')
       .then(r => r.json())
@@ -299,10 +304,32 @@ export function ApplyForLoanForm() {
       .catch(() => {});
   }, []);
 
+  // Load existing KYC documents once on mount so they show as pre-filled
+  useEffect(() => {
+    if (user?.role !== 'PARENT') return;
+    api.get('/api/user/kyc/documents')
+      .then(r => r.json())
+      .then(d => { if (d.success && d.data) setKycPrefillDocs(d.data); })
+      .catch(() => {});
+  }, []);
+
+  // Shared helper: fetch prefill docs for a student (+ optionally a school)
+  const fetchPrefillDocs = async (studentProfileId: string, schoolId?: string) => {
+    try {
+      const qs = schoolId ? `?schoolId=${encodeURIComponent(schoolId)}` : '';
+      const res = await api.get(`/api/student-profiles/${studentProfileId}/latest-documents${qs}`);
+      const data = await res.json();
+      if (data.success && data.data) setPrefillDocs(data.data);
+    } catch {
+      // silent — user can still upload manually
+    }
+  };
+
   const handleStudentProfileChange = async (value: string) => {
     setStudentProfileSelection(value);
+    // Reset loan doc slots so stale prefills don't linger
     setPrefillDocs({});
-    // Clear student profile error on any selection
+    setLoanDocListKey(k => k + 1);
     if (errors.studentProfile) {
       setErrors(prev => ({ ...prev, studentProfile: undefined }));
     }
@@ -310,16 +337,8 @@ export function ApplyForLoanForm() {
       updateFormData({ studentProfileId: undefined, newStudentProfile: { studentName: '', dateOfBirth: '', relationship: '' } });
     } else if (value) {
       updateFormData({ studentProfileId: value, newStudentProfile: undefined });
-      // Attempt to prefill documents from previous loan for this student
-      try {
-        const res = await api.get(`/api/student-profiles/${value}/latest-documents`);
-        const data = await res.json();
-        if (data.success && data.data && Object.keys(data.data).length > 0) {
-          setPrefillDocs(data.data);
-        }
-      } catch {
-        // silent — user can still upload manually
-      }
+      // Pass current schoolId so school-specific docs are prefilled too (if school already chosen)
+      await fetchPrefillDocs(value, formData.schoolId ?? undefined);
     } else {
       updateFormData({ studentProfileId: undefined, newStudentProfile: undefined });
     }
@@ -579,6 +598,11 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
 
   const handleSchoolChange = (schoolId: string, schoolName: string) => {
     updateFormData({ schoolId, schoolName });
+    if (studentProfileSelection && studentProfileSelection !== 'new' && schoolId) {
+      setPrefillDocs({});
+      setLoanDocListKey(k => k + 1);
+      fetchPrefillDocs(studentProfileSelection, schoolId);
+    }
   };
 
   return (
@@ -686,6 +710,7 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
               mode="kyc"
               folder="kyc-documents"
               onFilesChange={() => {}}
+              prefillSlots={kycPrefillDocs}
             />
           </div>
         )}
@@ -770,6 +795,7 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
 
             <div className="h-[480px] overflow-y-scroll [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
               <DocumentUploadList
+                key={loanDocListKey}
                 ref={fileUploadRef}
                 mode="loan"
                 onFilesChange={(files) => handleInputChange('uploadedFiles', files)}

@@ -11,6 +11,77 @@ import { authMiddleware } from '@/src/middleware/authMiddleware';
 import { asyncHandler } from '@/src/middleware/errorHandler';
 import { DocumentType } from '@prisma/client';
 
+const KYC_TYPES = [
+  DocumentType.NIN,
+  DocumentType.SALARY_SLIP,
+  DocumentType.BANK_STATEMENT,
+  DocumentType.UTILITY_BILL,
+  DocumentType.PARENT_PHOTO,
+] as const;
+
+const TYPE_TO_SLOT: Record<string, string> = {
+  NIN: 'nin',
+  SALARY_SLIP: 'salary',
+  BANK_STATEMENT: 'bank_statement',
+  UTILITY_BILL: 'utility_bill',
+  PARENT_PHOTO: 'parent_photo',
+};
+
+/**
+ * GET /api/user/kyc/documents
+ * Returns the most recent KYC document of each type for the authenticated parent.
+ * Used to prefill KYC upload slots when returning to the loan form.
+ */
+export const GET = asyncHandler(async (req: Request) => {
+  const authResult = await authMiddleware(req);
+  if (!authResult.success) return authResult.response!;
+
+  const userId = authResult.userId!;
+
+  const parentProfile = await prisma.parentProfile.findUnique({
+    where: { userId },
+    select: { id: true },
+  });
+
+  if (!parentProfile) {
+    return NextResponse.json({ success: true, data: {} });
+  }
+
+  const docs = await prisma.document.findMany({
+    where: {
+      parentId: parentProfile.id,
+      documentType: { in: [...KYC_TYPES] },
+      loanId: null,
+    },
+    select: {
+      id: true,
+      documentType: true,
+      fileName: true,
+      fileUrl: true,
+      fileSize: true,
+      mimeType: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // Take the most recent document per type
+  const bySlot: Record<string, { id: string; fileName: string; fileUrl: string; fileSize: number; mimeType: string }> = {};
+  for (const doc of docs) {
+    const slotId = TYPE_TO_SLOT[doc.documentType];
+    if (slotId && !bySlot[slotId]) {
+      bySlot[slotId] = {
+        id: doc.id,
+        fileName: doc.fileName,
+        fileUrl: doc.fileUrl,
+        fileSize: doc.fileSize,
+        mimeType: doc.mimeType,
+      };
+    }
+  }
+
+  return NextResponse.json({ success: true, data: bySlot });
+});
+
 interface KycDocumentPayload {
   documentType: string;
   fileName: string;
