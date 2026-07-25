@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Download, PhoneCall, CheckCircle2, X, CreditCard, ChevronRight } from 'lucide-react';
+import { Download, PhoneCall, CheckCircle2, X, CreditCard, ChevronRight, ChevronDown } from 'lucide-react';
 import { StatusBadge } from '@/components/dashboard/status-badge';
 import { cn } from '@/lib/utils';
 import { DataTable } from '@/components/dashboard/data-table';
@@ -34,6 +34,7 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
   const [isFundModalOpen, setIsFundModalOpen] = useState(false);
   const [isMakePaymentModalOpen, setIsMakePaymentModalOpen] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [loanSelectorOpen, setLoanSelectorOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [, setPaymentMethods] = useState<PaymentMethodData[]>([]);
   const [, setIsLoadingPaymentMethods] = useState(false);
@@ -238,49 +239,58 @@ export default function WalletPage({ basePath = "/dashboard" }: { basePath?: str
           {/* Loan Selector — shown when user has more than one loan */}
           {allLoans.length > 1 && (
             <div className="mb-6 bg-white rounded-xl border border-[#F2F2F2] overflow-hidden">
-              <div className="px-4 py-3 border-b border-[#F2F2F2]">
-                <p className="text-sm font-semibold text-[#191919]">Select Loan to Pay For</p>
-                <p className="text-xs text-[#7C7C7C] mt-0.5">{allLoans.length} loan applications found · select one to view its wallet details</p>
-              </div>
-              <div className="divide-y divide-[#F8F8F8]">
-                {allLoans.map(loan => {
-                  const isActive = loan.id === (selectedLoanId ?? activeLoan?.id);
-                  return (
-                    <button
-                      key={loan.id}
-                      type="button"
-                      onClick={() => setSelectedLoanId(loan.id)}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-[#F8FAFF]",
-                        isActive && "bg-[#EEF3FF]"
-                      )}
-                    >
-                      <div className={cn(
-                        "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0",
-                        isActive ? "bg-[#00296B]" : "bg-[#F2F2F2]"
-                      )}>
-                        <CreditCard className={cn("w-4 h-4", isActive ? "text-white" : "text-[#7C7C7C]")} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-[#191919] truncate">{loan.schoolName}</p>
-                        <p className="text-xs text-[#7C7C7C] mt-0.5">
-                          {loan.loanNumber} · ₦{Number(loan.loanAmount).toLocaleString()}
-                        </p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                        <StatusBadge status={loan.status} />
-                        {isActive && <ChevronRight className="w-3.5 h-3.5 text-[#00296B]" />}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-              {activeLoan && (
-                <div className="px-4 py-2.5 bg-[#F8F8F8] border-t border-[#F2F2F2]">
-                  <p className="text-xs text-[#7C7C7C] text-center">
-                    Viewing wallet for: <span className="font-semibold text-[#00296B]">{activeLoan.loanNumber}</span>
+              <button
+                type="button"
+                onClick={() => setLoanSelectorOpen(prev => !prev)}
+                className="w-full flex items-center justify-between px-4 py-3 border-b border-[#F2F2F2] text-left hover:bg-[#F8FAFF] transition-colors"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-[#191919]">Select Loan to Pay For</p>
+                  <p className="text-xs text-[#7C7C7C] mt-0.5">
+                    {activeLoan
+                      ? <>Viewing: <span className="font-semibold text-[#00296B]">{activeLoan.schoolName}</span> · {activeLoan.loanNumber}</>
+                      : <>{allLoans.length} loan applications found</>
+                    }
                   </p>
                 </div>
+                <ChevronDown className={cn("w-4 h-4 text-[#7C7C7C] transition-transform", loanSelectorOpen && "rotate-180")} />
+              </button>
+              {loanSelectorOpen && (
+                <>
+                  <div className="divide-y divide-[#F8F8F8]">
+                    {allLoans.map(loan => {
+                      const isActive = loan.id === (selectedLoanId ?? activeLoan?.id);
+                      return (
+                        <button
+                          key={loan.id}
+                          type="button"
+                          onClick={() => { setSelectedLoanId(loan.id); setLoanSelectorOpen(false); }}
+                          className={cn(
+                            "w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-[#F8FAFF]",
+                            isActive && "bg-[#EEF3FF]"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0",
+                            isActive ? "bg-[#00296B]" : "bg-[#F2F2F2]"
+                          )}>
+                            <CreditCard className={cn("w-4 h-4", isActive ? "text-white" : "text-[#7C7C7C]")} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-[#191919] truncate">{loan.schoolName}</p>
+                            <p className="text-xs text-[#7C7C7C] mt-0.5">
+                              {loan.loanNumber} · ₦{Number(loan.loanAmount).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                            <StatusBadge status={loan.status} />
+                            {isActive && <ChevronRight className="w-3.5 h-3.5 text-[#00296B]" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </div>
           )}
