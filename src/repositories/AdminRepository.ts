@@ -1205,7 +1205,13 @@ export class AdminRepository implements IAdminRepository {
         orderBy: { transactionDate: 'desc' },
         take: 10
       }),
-      prisma.document.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 50 })
+      prisma.document.findMany({
+        where: loanId
+          ? { userId, OR: [{ loanId }, { loanId: null }] }
+          : { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      })
     ]);
 
     if (!user) throw new Error('Student not found');
