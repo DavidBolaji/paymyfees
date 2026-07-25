@@ -121,6 +121,7 @@ model StudentProfile {
   updatedAt    DateTime  @updatedAt
   parent       User      @relation(fields: [parentId], references: [id], onDelete: Cascade)
   loans        Loan[]
+  documents    Document[]
 
   @@index([parentId])
   @@map("student_profiles")
@@ -454,8 +455,9 @@ model Document {
   id           String         @id @default(uuid()) @db.Char(36)
   userId       String?        @db.Char(36)
   parentId     String?        @db.Char(36)
-  schoolId     String?        @db.Char(36)
-  loanId       String?        @db.Char(36)
+  schoolId         String?        @db.Char(36)
+  loanId           String?        @db.Char(36)
+  studentProfileId String?        @db.Char(36)
   documentType DocumentType
   fileName     String         @db.VarChar(255)
   fileUrl      String         @db.VarChar(500)
@@ -468,13 +470,15 @@ model Document {
   updatedAt    DateTime       @updatedAt
   loan         Loan?          @relation(fields: [loanId], references: [id], onDelete: Cascade)
   parent       ParentProfile? @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  school       SchoolProfile? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user         User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school         SchoolProfile?  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentProfile StudentProfile? @relation(fields: [studentProfileId], references: [id], onDelete: SetNull)
+  user           User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([parentId])
   @@index([schoolId])
   @@index([loanId])
+  @@index([studentProfileId])
   @@index([documentType])
   @@map("documents")
 }

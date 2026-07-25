@@ -16,9 +16,9 @@ import { studentAuthMiddleware } from '@/src/middleware/authMiddleware';
 import { asyncHandler } from '@/src/middleware/errorHandler';
 import { ApiResponse } from '@/src/types';
 
-const ACTIVE_STATUSES = ['PENDING', 'UNDER_REVIEW', 'APPROVED', 'DISBURSED', 'ACTIVE', 'COMPLETED'] as const;
-
 type PrefillDoc = { id: string; fileName: string; fileUrl: string; fileSize: number; mimeType: string };
+
+const DOC_SELECT = { id: true, fileName: true, fileUrl: true, fileSize: true, mimeType: true } as const;
 
 export const GET = asyncHandler(async (req: Request, context?: { params: Promise<{ id: string }> }) => {
   const authResult = await studentAuthMiddleware(req);
@@ -45,59 +45,36 @@ export const GET = asyncHandler(async (req: Request, context?: { params: Promise
 
   const bySlot: Record<string, PrefillDoc> = {};
 
-  // ── 1. student_photo — latest across any loan for this student ─────────────
-  // Also check PASSPORT type (legacy: old uploads mapped "passport" filename → PASSPORT instead of STUDENT_PHOTO)
-  const PHOTO_TYPES = ['STUDENT_PHOTO', 'PASSPORT'] as const;
-
-  const loanWithPhoto = await prisma.loan.findFirst({
+  // ── 1. student_photo — latest for this student (any school) ───────────────
+  // Include PASSPORT for legacy data (old filename-based mapper stored passport photos as PASSPORT)
+  const photo = await prisma.document.findFirst({
     where: {
       studentProfileId: id,
-      status: { in: [...ACTIVE_STATUSES] },
-      documents: { some: { documentType: { in: [...PHOTO_TYPES] } } },
+      documentType: { in: ['STUDENT_PHOTO', 'PASSPORT'] },
     },
     orderBy: { createdAt: 'desc' },
-    select: {
-      documents: {
-        where: { documentType: { in: [...PHOTO_TYPES] } },
-        select: { id: true, fileName: true, fileUrl: true, fileSize: true, mimeType: true },
-        orderBy: { createdAt: 'desc' },
-        take: 1,
-      },
-    },
+    select: DOC_SELECT,
   });
 
-  const photo = loanWithPhoto?.documents[0];
   if (photo) {
     bySlot['student_photo'] = photo;
   }
 
-  // ── 2. school_invoice + school_receipts — only when same school ────────────
+  // ── 2. school_invoice + school_receipts — only when same student + school ─
   if (schoolId) {
-    // Fetch ALL docs from the most recent loan for this student+school
-    // so we can match by type or fall back to positional matching for legacy data
-    const loanWithSchoolDocs = await prisma.loan.findFirst({
-      where: {
-        studentProfileId: id,
-        schoolId,
-        status: { in: [...ACTIVE_STATUSES] },
-      },
+    const invoice = await prisma.document.findFirst({
+      where: { studentProfileId: id, schoolId, documentType: 'SCHOOL_INVOICE' },
       orderBy: { createdAt: 'desc' },
-      select: {
-        documents: {
-          select: { id: true, documentType: true, fileName: true, fileUrl: true, fileSize: true, mimeType: true },
-          orderBy: { createdAt: 'desc' },
-        },
-      },
+      select: DOC_SELECT,
     });
+    if (invoice) bySlot['school_invoice'] = invoice;
 
-    for (const doc of loanWithSchoolDocs?.documents ?? []) {
-      // Direct type match
-      if (doc.documentType === 'SCHOOL_INVOICE' && !bySlot['school_invoice']) {
-        bySlot['school_invoice'] = { id: doc.id, fileName: doc.fileName, fileUrl: doc.fileUrl, fileSize: doc.fileSize, mimeType: doc.mimeType };
-      } else if (doc.documentType === 'SCHOOL_RECEIPTS' && !bySlot['school_receipts']) {
-        bySlot['school_receipts'] = { id: doc.id, fileName: doc.fileName, fileUrl: doc.fileUrl, fileSize: doc.fileSize, mimeType: doc.mimeType };
-      }
-    }
+    const receipt = await prisma.document.findFirst({
+      where: { studentProfileId: id, schoolId, documentType: 'SCHOOL_RECEIPTS' },
+      orderBy: { createdAt: 'desc' },
+      select: DOC_SELECT,
+    });
+    if (receipt) bySlot['school_receipts'] = receipt;
   }
 
   const response: ApiResponse = {

@@ -25,6 +25,7 @@ interface UploadedFileData {
   name: string;
   size: number;
   type: string;
+  slotId?: string;
 }
 
 /**
@@ -178,7 +179,7 @@ export class LoanService implements ILoanService {
 
       // Save uploaded documents
       if (input.uploadedFiles && input.uploadedFiles.length > 0) {
-        await this.saveDocuments(tx, newLoan.id, input.userId, input.uploadedFiles);
+        await this.saveDocuments(tx, newLoan.id, input.userId, input.uploadedFiles, input.studentProfileId, input.schoolId);
       }
 
       return newLoan;
@@ -243,7 +244,7 @@ export class LoanService implements ILoanService {
 
       // Save uploaded documents
       if (input.uploadedFiles && input.uploadedFiles.length > 0) {
-        await this.saveDocuments(tx, newLoan.id, input.userId, input.uploadedFiles);
+        await this.saveDocuments(tx, newLoan.id, input.userId, input.uploadedFiles, undefined, input.schoolId);
       }
 
       return newLoan;
@@ -260,20 +261,23 @@ export class LoanService implements ILoanService {
     tx: any,
     loanId: string,
     userId: string,
-    uploadedFiles: UploadedFileData[]
+    uploadedFiles: UploadedFileData[],
+    studentProfileId?: string,
+    schoolId?: string
   ): Promise<void> {
     console.log({ msg: 'Saving documents', loanId, fileCount: uploadedFiles.length });
 
     const documents = uploadedFiles.map(file => {
-      const fileName: string = (file as any).name || (file as any).fileName || (file as any).originalName || 'document';
-      const fileType: string = (file as any).type || (file as any).mimeType || '';
-      const fileUrl: string = (file as any).url || (file as any).fileUrl || (file as any).path || '';
-      const fileSize: number = (file as any).size || (file as any).fileSize || 0;
-      const slotId: string | undefined = (file as any).slotId;
+      const fileName: string = file.name || (file as any).fileName || (file as any).originalName || 'document';
+      const fileType: string = file.type || (file as any).mimeType || '';
+      const fileUrl: string = file.url || (file as any).fileUrl || (file as any).path || '';
+      const fileSize: number = file.size || (file as any).fileSize || 0;
       return {
         userId,
         loanId,
-        documentType: (slotId && slotIdToDocumentType(slotId)) || mapFileTypeToDocumentType(fileName, fileType),
+        studentProfileId: studentProfileId ?? null,
+        schoolId: schoolId ?? null,
+        documentType: (file.slotId && slotIdToDocumentType(file.slotId)) || mapFileTypeToDocumentType(fileName, fileType),
         fileName,
         fileUrl,
         fileSize,
