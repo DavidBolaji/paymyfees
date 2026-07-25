@@ -145,7 +145,23 @@ export class LoanRepository implements ILoanRepository {
         },
       },
     });
-    return loan ? this.toDTO(loan) : null;
+
+    if (!loan) return null;
+
+    // Fetch parent KYC docs (loanId: null) for the loan's user
+    const kycDocuments = await prisma.document.findMany({
+      where: {
+        userId: loan.userId,
+        loanId: null,
+        documentType: { in: ['NIN', 'SALARY_SLIP', 'BANK_STATEMENT', 'UTILITY_BILL', 'PARENT_PHOTO'] },
+      },
+      select: { id: true, documentType: true, fileName: true, fileUrl: true, fileSize: true, mimeType: true, isVerified: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const dto = this.toDTO(loan);
+    (dto as any).kycDocuments = kycDocuments;
+    return dto;
   }
 
   /**

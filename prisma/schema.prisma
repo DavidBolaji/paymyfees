@@ -248,6 +248,8 @@ model Loan {
   @@index([schoolId])
   @@index([studentProfileId])
   @@index([status])
+  @@index([status, updatedAt])
+  @@index([status, createdAt])
   @@index([loanNumber])
   @@index([applicationDate])
   @@index([residencyStatus])
@@ -271,6 +273,7 @@ model Installment {
 
   @@unique([loanId, installmentNumber])
   @@index([loanId])
+  @@index([loanId, daysOverdue])
   @@index([status])
   @@index([dueDate])
   @@map("installments")

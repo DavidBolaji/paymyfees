@@ -176,6 +176,10 @@ export const DocumentUploadList = forwardRef<DocumentUploadListRef, DocumentUplo
       const results: (CloudinaryUploadResult & { slotId?: string })[] = [];
       for (const [slotId, files] of Object.entries(slotFilesRef.current)) {
         for (const file of files) {
+          if (file.preloaded && file.cloudinaryResult) {
+            // Already saved in DB — skip re-saving
+            continue;
+          }
           if (file.uploaded && file.cloudinaryResult) {
             results.push({ ...file.cloudinaryResult, slotId });
           } else if (!file.uploading) {

@@ -195,6 +195,7 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
   const verificationStatus = l?.schoolIsVerified ? 'Verified & Approved' : 'Pending Verification';
   const previousLoans = l?.userPreviousLoans ?? 0;
   const docs: any[] = l?.documents || [];
+  const kycDocs: any[] = l?.kycDocuments || [];
 
   return (
     <>
@@ -286,12 +287,24 @@ export function LoanDetailDrawer({ isOpen, onClose, loan, onApprove, onReject, o
                     {/* Supporting Data */}
                     <div className="bg-gray-50 rounded-xl p-4">
                       <p className="font-bold text-[#191919] text-base mb-3">Supporting Data</p>
-                      <p className="font-semibold text-[#191919] text-sm mb-2">Documents</p>
+
+                      <p className="font-semibold text-[#191919] text-sm mb-2">Loan Documents</p>
                       {docs.length === 0 ? (
-                        <p className="text-sm text-[#AEAEAE]">No documents attached</p>
+                        <p className="text-sm text-[#AEAEAE]">No loan documents attached</p>
                       ) : (
                         <div className="space-y-2">
                           {docs.map((doc: any) => (
+                            <DocItem key={doc.id} doc={doc} />
+                          ))}
+                        </div>
+                      )}
+
+                      <p className="font-semibold text-[#191919] text-sm mb-2 mt-4">KYC Documents</p>
+                      {kycDocs.length === 0 ? (
+                        <p className="text-sm text-[#AEAEAE]">No KYC documents</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {kycDocs.map((doc: any) => (
                             <DocItem key={doc.id} doc={doc} />
                           ))}
                         </div>

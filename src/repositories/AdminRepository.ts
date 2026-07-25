@@ -1197,7 +1197,11 @@ export class AdminRepository implements IAdminRepository {
           installments: { orderBy: { installmentNumber: 'asc' } },
           disbursement: true,
           school: { select: { schoolName: true, city: true, country: true } },
-          payments: { orderBy: { paymentDate: 'desc' }, take: 50, include: { installment: { select: { installmentNumber: true } } } }
+          payments: {
+            orderBy: { paymentDate: 'desc' },
+            take: 50,
+            select: { id: true, amount: true, paymentDate: true, status: true, installmentId: true, installment: { select: { installmentNumber: true } } }
+          }
         }
       }),
       prisma.transaction.findMany({

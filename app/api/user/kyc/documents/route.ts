@@ -158,23 +158,39 @@ export const POST = asyncHandler(async (req: Request) => {
     select: { id: true },
   });
 
-  const createdDocuments = await prisma.$transaction(
-    documents.map(doc =>
-      prisma.document.create({
-        data: {
-          userId,
-          parentId: parentProfile?.id ?? null,
+  // Determine which document types are being submitted
+  const incomingTypes = documents.map(doc => slotIdToDocumentType(doc.documentType));
+
+  // Delete existing KYC docs of these types for this parent, then create fresh (prevents duplicates)
+  const createdDocuments = await prisma.$transaction(async (tx) => {
+    if (parentProfile) {
+      await tx.document.deleteMany({
+        where: {
+          parentId: parentProfile.id,
           loanId: null,
-          documentType: slotIdToDocumentType(doc.documentType),
-          fileName: doc.fileName,
-          fileUrl: doc.fileUrl,
-          fileSize: doc.fileSize,
-          mimeType: doc.mimeType,
-          isVerified: false,
+          documentType: { in: incomingTypes },
         },
-      })
-    )
-  );
+      });
+    }
+
+    return await Promise.all(
+      documents.map(doc =>
+        tx.document.create({
+          data: {
+            userId,
+            parentId: parentProfile?.id ?? null,
+            loanId: null,
+            documentType: slotIdToDocumentType(doc.documentType),
+            fileName: doc.fileName,
+            fileUrl: doc.fileUrl,
+            fileSize: doc.fileSize,
+            mimeType: doc.mimeType,
+            isVerified: false,
+          },
+        })
+      )
+    );
+  });
 
   return NextResponse.json(
     {
