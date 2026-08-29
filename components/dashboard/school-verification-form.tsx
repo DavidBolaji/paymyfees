@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { FormInput, FormSelect } from '@/components/ui/form-input';
 import { validateSchoolApplication, type SchoolVerficationFormData } from '@/data';
 import { useSchoolProfile } from '@/hooks/useSchoolProfile';
+import { getAcademicSessionOptions } from '@/src/utils/academic-session';
 import { RegisterSchoolPayload } from '@/src/utils/school-api';
 import { CloudinaryUploadResult } from '@/src/utils/cloudinary-api';
 import { uploadSchoolDocuments } from '@/src/utils/document-api';
@@ -33,9 +34,7 @@ interface FormErrors {
 // Academic session options
 export const academicSessionOptions = [
     { value: '', label: 'Select Academic Session' },
-    { value: '2025/2026', label: '2025/2026' },
-    { value: '2024/2025', label: '2024/2025' },
-    { value: '2023/2024', label: '2023/2024' }
+    ...getAcademicSessionOptions()
 ];
 
 export function SchoolVerificationForm({ onSuccess }: { onSuccess?: () => void }) {

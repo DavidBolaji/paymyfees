@@ -13,6 +13,7 @@ import { NIGERIAN_CLASS_LEVELS } from '@/data/constants';
 import { normalizeText } from '@/lib/utils';
 import { applyForLoan } from '../../src/utils/loan-api';
 import { api } from '@/src/lib/api';
+import { getAcademicSessionOptions } from '@/src/utils/academic-session';
 import { SchoolSelector } from './school-selector';
 import RegistrationModal from './registration-modal';
 import { SuccessModal } from '../ui/success-modal';
@@ -387,14 +388,9 @@ const calculateRepaymentPlans = (amount: number): RepaymentPlan[] => {
   const selectedPlanData = repaymentPlans.find(plan => plan.months === formData.selectedPlan);
 
   // Academic session options — dynamic based on current year
-  const currentYear = new Date().getFullYear();
   const academicSessionOptions = [
     { value: '', label: 'Select Academic Session' },
-    ...Array.from({ length: 3 }, (_, i) => {
-      const end = currentYear - i;
-      const session = `${end - 1}/${end}`;
-      return { value: session, label: session };
-    })
+    ...getAcademicSessionOptions()
   ];
 
   // Term options

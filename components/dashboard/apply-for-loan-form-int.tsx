@@ -8,6 +8,7 @@ import { FileUpload, UploadedFile } from '@/components/ui/file-upload';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FormInput, FormSelect } from '@/components/ui/form-input';
 import { EMPLOYMENT_STATUS_OPTIONS, PROGRAM_OPTIONS, COUNTRIES, validateLoanIntApplication, type LoanApplicationIntFormData } from '@/data';
+import { getAcademicSessionOptions } from '@/src/utils/academic-session';
 import { applyForLoan } from '@/src/utils/loan-api';
 import { LoanAgreementModal, type AgreementMeta, type LoanAgreementSummary } from './loan-agreement-modal';
 import useAuthStore from '@/src/authStore';
@@ -124,9 +125,7 @@ export function ApplyForLoanFormInt() {
   // Academic session options
   const academicSessionOptions = [
     { value: '', label: 'Select Academic Session' },
-    { value: '2025/2026', label: '2025/2026' },
-    { value: '2024/2025', label: '2024/2025' },
-    { value: '2023/2024', label: '2023/2024' }
+    ...getAcademicSessionOptions()
   ];
 
   // Form handlers

@@ -6,6 +6,7 @@ import { CustomInput } from '@/components/ui/custom-input';
 import { MinimalFileUpload, MinimalFileUploadRef, MinimalUploadedFile } from '@/components/ui/minimal-file-upload';
 import { CloudinaryUploadResult } from '@/src/utils/cloudinary-api';
 import { uploadSchoolDocuments } from '@/src/utils/document-api';
+import { getAcademicSessionOptions } from '@/src/utils/academic-session';
 
 interface EditSchoolModalProps {
   isOpen: boolean;
@@ -26,11 +27,7 @@ interface EditSchoolModalProps {
   schoolId?: string; // Add school ID for document upload
 }
 
-const academicSessionOptions = [
-  { value: '2025/2026', label: '2025/2026' },
-  { value: '2024/2025', label: '2024/2025' },
-  { value: '2023/2024', label: '2023/2024' },
-];
+const academicSessionOptions = getAcademicSessionOptions();
 
 export default function EditSchoolModal({
   isOpen,
