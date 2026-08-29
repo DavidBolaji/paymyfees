@@ -152,13 +152,10 @@ export class RepaymentService implements IRepaymentService {
         );
       }
 
-      // Must be the next due installment (pay in order)
+      // Must be the next due installment (pay in order, per loan)
       const nextDue = await tx.installment.findFirst({
         where: {
-          loan: {
-            userId: input.userId,
-            status: { in: ['ACTIVE', 'DISBURSED'] },
-          },
+          loanId: installment.loanId,
           status: { in: ['PENDING', 'OVERDUE'] },
         },
         orderBy: { dueDate: 'asc' },
@@ -539,10 +536,10 @@ export class RepaymentService implements IRepaymentService {
           ...(loanId ? { id: loanId } : {}),
           status: { in: ['ACTIVE', 'DISBURSED'] },
         },
-        status: 'PENDING',
+        status: { in: ['PENDING', 'OVERDUE'] },
       },
       include: {
-        loan: true, // FIXED: Include loan relation
+        loan: true,
       },
       orderBy: { dueDate: 'asc' },
     });
