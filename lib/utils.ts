@@ -14,7 +14,8 @@ export function cn(...inputs: ClassValue[]) {
  * Convert a string to title case (e.g. "john DOE" → "John Doe")
  */
 export function toTitleCase(str: string): string {
-  return str.trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  const leading = str.replace(/^\s+/, '');
+  return leading.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 }
 
 /**
