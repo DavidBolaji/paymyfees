@@ -205,9 +205,9 @@ export class EmbedlyService implements IEmbedlyService {
   async fetchCurrencyId(): Promise<string> {
     if (this.ngn_currency_id) return this.ngn_currency_id;
     try {
-      const res = await this.request<any>('GET', '/currencies');
+      const res = await this.request<any>('GET', '/utilities/currencies/get');
       const list: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
-      const ngn = list.find((c: any) => c.code === 'NGN' || c.currencyCode === 'NGN');
+      const ngn = list.find((c: any) => c.shortName === 'NGN' || c.code === 'NGN' || c.currencyCode === 'NGN');
       if (ngn?.id) {
         console.log({ msg: 'Fetched NGN currency ID from Embedly', id: ngn.id });
         return ngn.id;
@@ -225,7 +225,7 @@ export class EmbedlyService implements IEmbedlyService {
   async fetchCustomerTypeId(): Promise<string> {
     if (this.customer_type_id) return this.customer_type_id;
     try {
-      const res = await this.request<any>('GET', '/customer-types');
+      const res = await this.request<any>('GET', '/customers/types/all');
       const list: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
       const retail = list.find((c: any) => c.name?.toLowerCase().includes('retail') || c.name?.toLowerCase().includes('individual'));
       const first = list[0];
@@ -247,7 +247,7 @@ export class EmbedlyService implements IEmbedlyService {
   async fetchCountryId(): Promise<string> {
     if (this.country_id) return this.country_id;
     try {
-      const res = await this.request<any>('GET', '/countries');
+      const res = await this.request<any>('GET', '/utilities/countries/get');
       const list: any[] = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
       const nigeria = list.find((c: any) => c.name === 'Nigeria' || c.name?.toLowerCase().includes('nigeria'));
       if (nigeria?.id) {
