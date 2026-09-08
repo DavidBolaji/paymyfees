@@ -50,8 +50,16 @@ const baseEnvSchema = {
   
   // Email Service
   SENDGRID_API_KEY: z.string().optional(),
+  RESEND_API_KEY: z.string().optional(),
   FROM_EMAIL: z.string().email().default('noreply@paymyfees.co'),
-  
+  /** Destination for internal alerts, e.g. the daily auto-debit failure digest. */
+  SUPPORT_EMAIL: z.string().email().default('support@paymyfees.co'),
+
+  // Scheduled jobs (GitHub Actions → /api/cron/*)
+  CRON_SECRET: z.string().optional(),
+  /** Kill switch: set to the string 'false' to stop auto-debit without a redeploy. */
+  AUTO_DEBIT_ENABLED: z.string().optional(),
+
   // SMS Service
   TWILIO_ACCOUNT_SID: z.string().optional(),
   TWILIO_AUTH_TOKEN: z.string().optional(),

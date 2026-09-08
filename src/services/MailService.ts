@@ -38,6 +38,35 @@ export interface IMailService {
   sendRepaymentReminderEmail(to: string, fullName: string, amount: number, dueDate: string, loanNumber: string): Promise<boolean>;
   sendOverduePaymentEmail(to: string, fullName: string, amount: number, daysOverdue: number, loanNumber: string): Promise<boolean>;
   sendDocumentRequestEmail(to: string, fullName: string, documentType: string, instructions: string): Promise<boolean>;
+  // Auto-debit
+  sendAutoDebitFailedEmail(to: string, fullName: string, data: AutoDebitFailedEmailData): Promise<boolean>;
+  sendSupportAutoDebitAlertEmail(to: string, data: SupportAutoDebitAlertData): Promise<boolean>;
+}
+
+/**
+ * Payload for the user-facing "we couldn't collect your repayment" email.
+ * Amounts are raw numbers here and formatted at the send site.
+ */
+export interface AutoDebitFailedEmailData {
+  loanNumber: string;
+  amountDue: number;
+  walletBalance: number;
+  shortfall: number;
+  dueDate: string;
+  daysOverdue?: number;
+}
+
+/**
+ * Payload for the internal daily digest. Amounts arrive pre-formatted from
+ * AutoDebitService because the template renders them verbatim into a table.
+ */
+export interface SupportAutoDebitAlertData {
+  runDate: string;
+  failures: Array<Record<string, unknown>>;
+  stuck: Array<Record<string, unknown>>;
+  /** Run counters, rendered as a stat row. Kept loose so AutoDebitService's
+   *  summary type can be passed straight through without importing it here. */
+  summary?: object;
 }
 
 /**
@@ -282,13 +311,73 @@ export class MailService implements IMailService {
   // ─── Loan lifecycle emails ─────────────────────────────────────────────────
 
   private async sendSimple(to: string, subject: string, templateName: string, data: Record<string, any>): Promise<boolean> {
+    let html = '';
     try {
-      const html = await this.renderTemplate(templateName, { appName: this.appName, appUrl: this.appUrl, ...data });
+      html = await this.renderTemplate(templateName, { appName: this.appName, appUrl: this.appUrl, ...data });
       const result = await this.sendWithRetry({ from: `${this.appName} <${this.fromEmail}>`, to: [to], subject, html });
-      return !result?.error;
+      const ok = !result?.error;
+
+      await this.recordEmailLog({
+        to,
+        recipientName: typeof data.fullName === 'string' ? data.fullName : null,
+        subject,
+        html,
+        emailType: templateName,
+        ok,
+        errorMessage: result?.error ? result.error.message : null,
+      });
+
+      return ok;
     } catch (err) {
       console.error(`[MailService] ${templateName} error`, err);
+      await this.recordEmailLog({
+        to,
+        recipientName: typeof data.fullName === 'string' ? data.fullName : null,
+        subject,
+        html,
+        emailType: templateName,
+        ok: false,
+        errorMessage: err instanceof Error ? err.message : String(err),
+      });
       return false;
+    }
+  }
+
+  /**
+   * Persist a row to the email_logs table.
+   *
+   * The table has existed in the schema since the beginning but nothing ever
+   * wrote to it, so "did that email actually go out?" was unanswerable. Never
+   * throws — a failed log write must not turn a sent email into a failed one.
+   */
+  private async recordEmailLog(entry: {
+    to: string;
+    recipientName: string | null;
+    subject: string;
+    html: string;
+    emailType: string;
+    ok: boolean;
+    errorMessage: string | null;
+  }): Promise<void> {
+    try {
+      const { prisma } = await import('@/src/database/prisma');
+      await prisma.emailLog.create({
+        data: {
+          recipientEmail: entry.to.slice(0, 255),
+          recipientName: entry.recipientName?.slice(0, 255) ?? null,
+          subject: entry.subject.slice(0, 500),
+          // Stored in full: transactional volume is low and the rendered body is
+          // the only record of what the recipient actually saw.
+          body: entry.html,
+          status: entry.ok ? 'sent' : 'failed',
+          sentAt: entry.ok ? new Date() : null,
+          failedAt: entry.ok ? null : new Date(),
+          errorMessage: entry.errorMessage,
+          emailType: entry.emailType.slice(0, 100),
+        },
+      });
+    } catch (err) {
+      console.error('[MailService] Failed to write EmailLog', err);
     }
   }
 
@@ -337,6 +426,47 @@ export class MailService implements IMailService {
       amount: `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
       dashboardUrl: `${this.appUrl}/dashboard/wallet`,
     });
+  }
+
+  /**
+   * Auto-debit failed because the wallet was short. Leads with the shortfall —
+   * that is the one number the user needs to act on.
+   */
+  async sendAutoDebitFailedEmail(to: string, fullName: string, data: AutoDebitFailedEmailData): Promise<boolean> {
+    return this.sendSimple(to, `${this.appName} — Action Needed: Top Up for Your Loan Repayment`, 'auto-debit-failed', {
+      fullName,
+      loanNumber: data.loanNumber,
+      dueDate: data.dueDate,
+      daysOverdue: data.daysOverdue ?? 0,
+      amountDue: this.formatNaira(data.amountDue),
+      walletBalance: this.formatNaira(data.walletBalance),
+      shortfall: this.formatNaira(data.shortfall),
+      dashboardUrl: `${this.appUrl}/dashboard/wallet`,
+    });
+  }
+
+  /**
+   * Internal daily digest of every auto-debit failure in one run.
+   * One email per run, not one per user.
+   */
+  async sendSupportAutoDebitAlertEmail(to: string, data: SupportAutoDebitAlertData): Promise<boolean> {
+    const count = data.failures.length;
+    return this.sendSimple(
+      to,
+      `[${this.appName}] Auto-Debit Failures — ${data.runDate} (${count} user${count === 1 ? '' : 's'})`,
+      'support-auto-debit-alert',
+      {
+        fullName: 'Support',
+        runDate: data.runDate,
+        failures: data.failures,
+        stuck: data.stuck,
+        summary: data.summary ?? null,
+      }
+    );
+  }
+
+  private formatNaira(amount: number): string {
+    return `₦${Number(amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`;
   }
 
   async sendRepaymentReminderEmail(to: string, fullName: string, amount: number, dueDate: string, loanNumber: string): Promise<boolean> {

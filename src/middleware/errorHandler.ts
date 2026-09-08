@@ -7,6 +7,84 @@ import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { Prisma } from '@prisma/client';
 import { AppError } from '@/src/types/errors';
+import {
+  eventLog,
+  runWithRequestContext,
+  type EventSeverity,
+} from '@/src/services/EventLogService';
+
+/**
+ * Strip query strings and origins so logged paths group cleanly and can't
+ * carry tokens that were passed as query parameters.
+ */
+function safePath(rawUrl: string): string {
+  try {
+    return new URL(rawUrl).pathname;
+  } catch {
+    return rawUrl.split('?')[0] ?? rawUrl;
+  }
+}
+
+/**
+ * Classify a thrown value for the event log.
+ *
+ * AppError.isOperational already separates "expected" (a 404, a validation
+ * failure) from "a bug", which maps directly onto warn vs error — so ordinary
+ * user mistakes don't drown out real defects.
+ */
+function describeError(error: unknown): {
+  severity: EventSeverity;
+  eventType: string;
+  message: string;
+  metadata: Record<string, unknown>;
+} {
+  if (error instanceof ZodError) {
+    return {
+      severity: 'warn',
+      eventType: 'http.validation_error',
+      message: 'Request validation failed',
+      metadata: { issues: error.issues.map((i) => ({ field: i.path.join('.'), message: i.message })) },
+    };
+  }
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return {
+      severity: 'error',
+      eventType: 'http.database_error',
+      message: `Prisma ${error.code}: ${error.message}`,
+      metadata: { code: error.code, meta: error.meta },
+    };
+  }
+
+  if (error instanceof AppError) {
+    return {
+      severity: error.isOperational ? 'warn' : 'error',
+      eventType: error.isOperational ? 'http.operational_error' : 'http.programming_error',
+      message: `${error.name}: ${error.message}`,
+      metadata: {
+        name: error.name,
+        statusCode: error.statusCode,
+        ...(error.isOperational ? {} : { stack: error.stack }),
+      },
+    };
+  }
+
+  if (error instanceof Error) {
+    return {
+      severity: 'error',
+      eventType: 'http.unhandled_error',
+      message: `${error.name}: ${error.message}`,
+      metadata: { name: error.name, stack: error.stack },
+    };
+  }
+
+  return {
+    severity: 'error',
+    eventType: 'http.unhandled_error',
+    message: `Non-Error thrown: ${String(error)}`,
+    metadata: {},
+  };
+}
 
 /**
  * Handle Zod validation errors
@@ -293,18 +371,37 @@ export function asyncHandler<T = any>(
   handler: (req: Request, context?: T) => Promise<NextResponse>
 ): (req: Request, context?: T) => Promise<NextResponse> {
   return async (req: Request, context?: T): Promise<NextResponse> => {
+    // Correlation id for this request. Seeded into AsyncLocalStorage so that
+    // services nested many layers deep can attach it to their own log rows
+    // without every function signature having to thread it through.
+    const requestId = req.headers.get('x-request-id') || crypto.randomUUID();
+    const startedAt = Date.now();
+    const path = safePath(req.url);
+
+    return runWithRequestContext({ requestId }, async () => {
     try {
       // Execute the handler with proper context handling
       const response = await handler(req, context);
-      
+
       // Validate response exists
       if (!response) {
-        console.error({ 
+        console.error({
           msg: 'Handler returned undefined response',
           url: req.url,
-          method: req.method 
+          method: req.method,
+          requestId
         });
-        
+
+        void eventLog.logEvent({
+          eventType: 'http.invalid_response',
+          category: 'HTTP',
+          severity: 'error',
+          requestId,
+          message: `Handler returned undefined for ${req.method} ${path}`,
+          durationMs: Date.now() - startedAt,
+          metadata: { method: req.method, path },
+        });
+
         return NextResponse.json(
           {
             success: false,
@@ -345,23 +442,57 @@ export function asyncHandler<T = any>(
         response.headers.set('Cache-Control', 'private, no-store');
       }
 
+      // Expose the correlation id so a user reporting a problem can quote it
+      // and it can be looked up directly in the event log.
+      response.headers.set('x-request-id', requestId);
+
+      // Successful requests are logged at debug only. Logging every 200 would
+      // fill event_logs with noise and crowd out the rows that matter.
+      void eventLog.logEvent({
+        eventType: 'http.request',
+        category: 'HTTP',
+        severity: 'debug',
+        requestId,
+        message: `${req.method} ${path} → ${response.status}`,
+        durationMs: Date.now() - startedAt,
+        metadata: { method: req.method, path, status: response.status },
+      });
+
       return response;
     } catch (error) {
+      const durationMs = Date.now() - startedAt;
+      const described = describeError(error);
+
       // Log the error with context
-      console.error({ 
+      console.error({
         msg: 'Error caught in asyncHandler',
         url: req.url,
         method: req.method,
+        requestId,
         error: error instanceof Error ? {
           name: error.name,
           message: error.message,
           stack: error.stack
         } : String(error)
       });
-      
+
+      // Durable record. This is the only error tracking we have — there is no
+      // external error tracker — so every failure must land here.
+      void eventLog.logEvent({
+        eventType: described.eventType,
+        category: 'HTTP',
+        severity: described.severity,
+        requestId,
+        message: `${req.method} ${path} — ${described.message}`,
+        durationMs,
+        metadata: { method: req.method, path, ...described.metadata },
+      });
+
       // Always return a valid response, never throw
       try {
-        return errorHandler(error);
+        const errResponse = errorHandler(error);
+        errResponse.headers.set('x-request-id', requestId);
+        return errResponse;
       } catch (handlerError) {
         // Fallback if error handler itself fails
         console.error({ 
@@ -382,5 +513,6 @@ export function asyncHandler<T = any>(
         );
       }
     }
+    });
   };
 }

@@ -8,60 +8,60 @@ datasource db {
 }
 
 model User {
-  id                   String                @id @default(uuid()) @db.Char(36)
-  email                String                @unique @db.VarChar(255)
-  phone                String?               @unique @db.VarChar(20)
-  password             String?               @db.VarChar(255)
-  role                 UserRole
-  fullName             String                @db.VarChar(255)
-  firstName            String?               @db.VarChar(100)
-  lastName             String?               @db.VarChar(100)
-  middleName           String?               @db.VarChar(100)
-  dob                  DateTime?             @db.Date
-  address              String?               @db.VarChar(500)
-  city                 String?               @db.VarChar(100)
+  id                       String                @id @default(uuid()) @db.Char(36)
+  email                    String                @unique @db.VarChar(255)
+  phone                    String?               @unique @db.VarChar(20)
+  password                 String?               @db.VarChar(255)
+  role                     UserRole
+  fullName                 String                @db.VarChar(255)
+  firstName                String?               @db.VarChar(100)
+  lastName                 String?               @db.VarChar(100)
+  middleName               String?               @db.VarChar(100)
+  dob                      DateTime?             @db.Date
+  address                  String?               @db.VarChar(500)
+  city                     String?               @db.VarChar(100)
   // NIN and BVN are NOT stored raw — they are passed through to Embedly for
   // verification only, then discarded. Only the verified status is persisted.
   // This is required for compliance with the Nigeria Data Protection Act 2023
   // and CBN KYC guidelines (biometric data minimisation principle).
-  ninVerified          Boolean               @default(false)
-  bvnVerified          Boolean               @default(false)
-  kycVerifiedAt        DateTime?
-  bankCode             String?               @db.VarChar(20)
-  bankAccountNumber    String?               @db.VarChar(20)
-  bankAccountName      String?               @db.VarChar(255)
-  profileImage         String?               @db.VarChar(500)
-  emailVerified        Boolean               @default(false)
-  phoneVerified        Boolean               @default(false)
-  isActive             Boolean               @default(true)
-  isFirstTime          Boolean               @default(true)
-  twoFactorEnabled          Boolean               @default(false)
-  twoFactorSecret           String?               @db.VarChar(255)
-  lastLogin                 DateTime?
-  embedlyCustomerId         String?               @db.VarChar(255)
-  googleId                  String?               @unique @db.VarChar(255)
-  googleProfileComplete     Boolean               @default(false)
-  loanEligibilitySuspended  Boolean               @default(false)
-  frozenUntil               DateTime?
-  createdAt                 DateTime              @default(now())
-  updatedAt                 DateTime              @updatedAt
-  country                   String                @db.VarChar(255)
-  residencyStatus           ResidencyStatus       @default(LOCAL)
-  gender                    Gender?
-  auditLogs            AuditLog[]
-  documents            Document[]
-  loans                Loan[]
-  notificationSettings NotificationSettings?
-  notifications        Notification[]
-  parentProfile        ParentProfile?
-  studentProfiles      StudentProfile[]
-  teacherProfile       TeacherProfile?
-  payments             Payment[]
-  schoolProfile        SchoolProfile[]
-  supportTickets       SupportTicket[]
-  transactions         Transaction[]
-  verificationTokens   VerificationToken[]
-  wallet               Wallet?
+  ninVerified              Boolean               @default(false)
+  bvnVerified              Boolean               @default(false)
+  kycVerifiedAt            DateTime?
+  bankCode                 String?               @db.VarChar(20)
+  bankAccountNumber        String?               @db.VarChar(20)
+  bankAccountName          String?               @db.VarChar(255)
+  profileImage             String?               @db.VarChar(500)
+  emailVerified            Boolean               @default(false)
+  phoneVerified            Boolean               @default(false)
+  isActive                 Boolean               @default(true)
+  isFirstTime              Boolean               @default(true)
+  twoFactorEnabled         Boolean               @default(false)
+  twoFactorSecret          String?               @db.VarChar(255)
+  lastLogin                DateTime?
+  embedlyCustomerId        String?               @db.VarChar(255)
+  googleId                 String?               @unique @db.VarChar(255)
+  googleProfileComplete    Boolean               @default(false)
+  loanEligibilitySuspended Boolean               @default(false)
+  frozenUntil              DateTime?
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+  country                  String                @db.VarChar(255)
+  residencyStatus          ResidencyStatus       @default(LOCAL)
+  gender                   Gender?
+  auditLogs                AuditLog[]
+  documents                Document[]
+  loans                    Loan[]
+  notificationSettings     NotificationSettings?
+  notifications            Notification[]
+  parentProfile            ParentProfile?
+  studentProfiles          StudentProfile[]
+  teacherProfile           TeacherProfile?
+  payments                 Payment[]
+  schoolProfile            SchoolProfile[]
+  supportTickets           SupportTicket[]
+  transactions             Transaction[]
+  verificationTokens       VerificationToken[]
+  wallet                   Wallet?
 
   @@index([email])
   @@index([phone])
@@ -111,15 +111,15 @@ model ParentProfile {
 }
 
 model StudentProfile {
-  id           String    @id @default(uuid()) @db.Char(36)
-  parentId     String    @db.Char(36)
-  studentName  String    @db.VarChar(255)
-  dateOfBirth  DateTime? @db.Date
-  relationship String?   @db.VarChar(100)
-  classLevel   String?   @db.VarChar(100)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  parent       User      @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  id           String     @id @default(uuid()) @db.Char(36)
+  parentId     String     @db.Char(36)
+  studentName  String     @db.VarChar(255)
+  dateOfBirth  DateTime?  @db.Date
+  relationship String?    @db.VarChar(100)
+  classLevel   String?    @db.VarChar(100)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  parent       User       @relation(fields: [parentId], references: [id], onDelete: Cascade)
   loans        Loan[]
   documents    Document[]
 
@@ -128,18 +128,18 @@ model StudentProfile {
 }
 
 model TeacherProfile {
-  id               String    @id @default(uuid()) @db.Char(36)
-  userId           String    @unique @db.Char(36)
-  schoolName       String?   @db.VarChar(255)
-  schoolEmail      String?   @db.VarChar(255)
-  schoolAddress    String?   @db.VarChar(500)
-  registrationNumber String? @db.VarChar(100)
-  subject          String?   @db.VarChar(255)
-  employmentStatus String?   @db.VarChar(100)
-  staffId          String?   @db.VarChar(100)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String   @id @default(uuid()) @db.Char(36)
+  userId             String   @unique @db.Char(36)
+  schoolName         String?  @db.VarChar(255)
+  schoolEmail        String?  @db.VarChar(255)
+  schoolAddress      String?  @db.VarChar(500)
+  registrationNumber String?  @db.VarChar(100)
+  subject            String?  @db.VarChar(255)
+  employmentStatus   String?  @db.VarChar(100)
+  staffId            String?  @db.VarChar(100)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("teacher_profiles")
@@ -455,27 +455,27 @@ model SchoolVerification {
 }
 
 model Document {
-  id           String         @id @default(uuid()) @db.Char(36)
-  userId       String?        @db.Char(36)
-  parentId     String?        @db.Char(36)
-  schoolId         String?        @db.Char(36)
-  loanId           String?        @db.Char(36)
-  studentProfileId String?        @db.Char(36)
-  documentType DocumentType
-  fileName     String         @db.VarChar(255)
-  fileUrl      String         @db.VarChar(500)
-  fileSize     Int
-  mimeType     String         @db.VarChar(100)
-  isVerified   Boolean        @default(false)
-  verifiedAt   DateTime?
-  verifiedBy   String?        @db.Char(36)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  loan         Loan?          @relation(fields: [loanId], references: [id], onDelete: Cascade)
-  parent       ParentProfile? @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  school         SchoolProfile?  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  studentProfile StudentProfile? @relation(fields: [studentProfileId], references: [id], onDelete: SetNull)
-  user           User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String          @id @default(uuid()) @db.Char(36)
+  userId           String?         @db.Char(36)
+  parentId         String?         @db.Char(36)
+  schoolId         String?         @db.Char(36)
+  loanId           String?         @db.Char(36)
+  studentProfileId String?         @db.Char(36)
+  documentType     DocumentType
+  fileName         String          @db.VarChar(255)
+  fileUrl          String          @db.VarChar(500)
+  fileSize         Int
+  mimeType         String          @db.VarChar(100)
+  isVerified       Boolean         @default(false)
+  verifiedAt       DateTime?
+  verifiedBy       String?         @db.Char(36)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  loan             Loan?           @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  parent           ParentProfile?  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  school           SchoolProfile?  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  studentProfile   StudentProfile? @relation(fields: [studentProfileId], references: [id], onDelete: SetNull)
+  user             User?           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([parentId])
@@ -500,8 +500,8 @@ model Wallet {
   virtualAccountBank   String?       @db.VarChar(100)
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
-  transactions     Transaction[]
-  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions         Transaction[]
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("wallets")
@@ -601,24 +601,24 @@ model SmsLog {
 }
 
 model SupportTicket {
-  id                String                @id @default(uuid()) @db.Char(36)
-  ticketNumber      String                @unique @db.VarChar(50)
-  userId            String                @db.Char(36)
-  subject           String                @db.VarChar(500)
-  category          String                @db.VarChar(100)
-  channel           String                @default("In-App") @db.VarChar(50)
-  priority          SupportTicketPriority @default(MEDIUM)
-  status            SupportTicketStatus   @default(OPEN)
-  description       String
-  assignedTo        String?               @db.Char(36)
-  firstResponseAt   DateTime?
-  resolvedAt        DateTime?
-  closedAt          DateTime?
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
-  attachments       SupportAttachment[]
-  messages          SupportMessage[]
-  user              User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String                @id @default(uuid()) @db.Char(36)
+  ticketNumber    String                @unique @db.VarChar(50)
+  userId          String                @db.Char(36)
+  subject         String                @db.VarChar(500)
+  category        String                @db.VarChar(100)
+  channel         String                @default("In-App") @db.VarChar(50)
+  priority        SupportTicketPriority @default(MEDIUM)
+  status          SupportTicketStatus   @default(OPEN)
+  description     String
+  assignedTo      String?               @db.Char(36)
+  firstResponseAt DateTime?
+  resolvedAt      DateTime?
+  closedAt        DateTime?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  attachments     SupportAttachment[]
+  messages        SupportMessage[]
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
@@ -731,6 +731,64 @@ model PaymentReminder {
   @@index([installmentId])
   @@index([status])
   @@map("payment_reminders")
+}
+
+/// One row per auto-debit attempt, per installment, per day.
+/// Doubles as the idempotency guard (see @@unique), the retry record,
+/// the email-dedupe key, and the audit trail for the auto-debit cron.
+model AutoDebitAttempt {
+  id                   String   @id @default(uuid()) @db.Char(36)
+  installmentId        String   @db.Char(36)
+  userId               String   @db.Char(36)
+  loanId               String   @db.Char(36)
+  /// UTC day bucket — paired with installmentId to make a re-run a no-op
+  attemptDate          DateTime @db.Date
+  /// SUCCESS | INSUFFICIENT_FUNDS | NO_VIRTUAL_ACCOUNT | TRANSFER_FAILED | ERROR
+  status               String   @db.VarChar(30)
+  amountAttempted      Decimal  @db.Decimal(15, 2)
+  walletBalance        Decimal  @db.Decimal(15, 2)
+  shortfall            Decimal? @db.Decimal(15, 2)
+  failureReason        String?  @db.VarChar(500)
+  transactionReference String?  @db.VarChar(100)
+  userEmailSent        Boolean  @default(false)
+  supportNotified      Boolean  @default(false)
+  createdAt            DateTime @default(now())
+
+  @@unique([installmentId, attemptDate])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("auto_debit_attempts")
+}
+
+/// Durable, queryable application event trail — the "user journey".
+/// Deliberately has NO foreign key on userId: a log row must survive user
+/// deletion and must never fail to write because of a bad id.
+model EventLog {
+  id         String   @id @default(uuid()) @db.Char(36)
+  /// Dotted event name, e.g. "auto_debit.insufficient_funds"
+  eventType  String   @db.VarChar(100)
+  /// AUTH | WALLET | LOAN | REPAYMENT | AUTO_DEBIT | EMBEDLY | EMAIL | HTTP | CLIENT | SYSTEM
+  category   String   @db.VarChar(50)
+  /// debug | info | warn | error
+  severity   String   @default("info") @db.VarChar(20)
+  userId     String?  @db.Char(36)
+  entityType String?  @db.VarChar(50)
+  entityId   String?  @db.Char(36)
+  /// Correlation id shared by every event from one request
+  requestId  String?  @db.VarChar(64)
+  message    String   @db.VarChar(500)
+  /// Always passed through EventLogService.redact() before writing
+  metadata   Json?
+  durationMs Int?
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([category, createdAt])
+  @@index([eventType])
+  @@index([requestId])
+  @@index([severity, createdAt])
+  @@map("event_logs")
 }
 
 model VerificationToken {

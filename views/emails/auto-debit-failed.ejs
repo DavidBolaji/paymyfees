@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>
+        <%= appName %> - Action Needed
+    </title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f3f6fb;
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+            font-family: Manrope, "Segoe UI", Arial, sans-serif;
+        }
+
+        table {
+            border-spacing: 0;
+            border-collapse: collapse;
+        }
+
+        .wrapper {
+            width: 100%;
+            background-color: #f3f6fb;
+            padding: 24px 12px;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 640px;
+            background-color: #ffffff;
+            border-radius: 18px;
+            overflow: hidden;
+            margin: 0 auto;
+        }
+
+        .header-image {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .content {
+            padding: 36px 42px 24px;
+            color: #292929;
+            text-align: center;
+            max-width: 471px;
+        }
+
+        .heading {
+            margin: 0 0 18px;
+            font-family: Manrope, "Segoe UI", Arial, sans-serif;
+            font-size: 22px;
+            line-height: 120%;
+            font-weight: 800;
+            letter-spacing: 0;
+            color: #292929;
+            text-align: center;
+        }
+
+        .body {
+            margin: 0 0 16px;
+            font-family: Manrope, "Segoe UI", Arial, sans-serif;
+            font-size: 18px;
+            line-height: 120%;
+            font-weight: 500;
+            letter-spacing: 0;
+            color: #292929;
+            text-align: left;
+        }
+
+        .amount-box {
+            margin: 8px 0 18px;
+            padding: 18px;
+            border-radius: 12px;
+            background-color: #fff4ed;
+            text-align: center;
+            color: #b23c17;
+            font-family: Manrope, "Segoe UI", Arial, sans-serif;
+            line-height: 120%;
+        }
+
+        .amount-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .amount-value {
+            display: block;
+            font-size: 28px;
+            font-weight: 800;
+        }
+
+        .detail-table {
+            width: 100%;
+            margin: 0 0 20px;
+            font-family: Manrope, "Segoe UI", Arial, sans-serif;
+            font-size: 15px;
+            line-height: 140%;
+        }
+
+        .detail-table td {
+            padding: 10px 0;
+            border-bottom: 1px solid #eef1f6;
+            text-align: left;
+            color: #292929;
+        }
+
+        .detail-table td.label {
+            color: #6c7480;
+            font-weight: 500;
+        }
+
+        .detail-table td.value {
+            text-align: right;
+            font-weight: 700;
+        }
+
+        .note {
+            margin: 0 0 16px;
+            padding: 14px 16px;
+            border-radius: 10px;
+            background-color: #edf2fa;
+            font-family: Manrope, "Segoe UI", Arial, sans-serif;
+            font-size: 15px;
+            line-height: 140%;
+            font-weight: 500;
+            color: #00296b;
+            text-align: left;
+        }
+
+        .button-wrap {
+            text-align: center;
+            padding: 12px 0 16px;
+        }
+
+        .button {
+            display: inline-block;
+            background-color: #00296b;
+            color: #ffffff !important;
+            text-decoration: none;
+            font-family: Manrope, "Segoe UI", Arial, sans-serif;
+            font-size: 16px;
+            line-height: 120%;
+            font-weight: 700;
+            letter-spacing: 0;
+            padding: 14px 24px;
+            border-radius: 10px;
+        }
+
+        .footer {
+            padding: 0 42px 30px;
+            text-align: center;
+            font-family: Manrope, "Segoe UI", Arial, sans-serif;
+            font-size: 14px;
+            line-height: 140%;
+            font-weight: 500;
+            color: #6c7480;
+        }
+
+        .footer p {
+            margin: 0 0 8px;
+        }
+
+        @media only screen and (max-width: 640px) {
+
+            .content,
+            .footer {
+                padding-left: 20px !important;
+                padding-right: 20px !important;
+            }
+
+            .heading {
+                font-size: 20px !important;
+            }
+
+            .body {
+                font-size: 16px !important;
+            }
+
+            .amount-value {
+                font-size: 24px !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <table role="presentation" width="100%" class="wrapper">
+        <tr>
+            <td align="center">
+                <table role="presentation" class="card" width="640">
+                    <tr>
+                        <td>
+                            <img src="https://res.cloudinary.com/dpi44zxlw/image/upload/v1772611742/header_hjx0ag.png"
+                                alt="<%= appName %>" class="header-image">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="content">
+                            <h1 class="heading">Action needed: top up your wallet</h1>
+
+                            <p class="body">Hi <%= fullName || 'there' %>,</p>
+                            <p class="body">We tried to collect your loan repayment automatically, but there
+                                wasn't enough in your wallet to cover it.</p>
+
+                            <div class="amount-box">
+                                <span class="amount-label">Top up at least</span>
+                                <span class="amount-value"><%= shortfall %></span>
+                            </div>
+
+                            <table role="presentation" class="detail-table">
+                                <tr>
+                                    <td class="label">Loan</td>
+                                    <td class="value"><%= loanNumber %></td>
+                                </tr>
+                                <tr>
+                                    <td class="label">Amount due</td>
+                                    <td class="value"><%= amountDue %></td>
+                                </tr>
+                                <tr>
+                                    <td class="label">Wallet balance</td>
+                                    <td class="value"><%= walletBalance %></td>
+                                </tr>
+                                <tr>
+                                    <td class="label">Due date</td>
+                                    <td class="value"><%= dueDate %></td>
+                                </tr>
+                                <% if (daysOverdue && daysOverdue > 0) { %>
+                                <tr>
+                                    <td class="label">Days overdue</td>
+                                    <td class="value"><%= daysOverdue %></td>
+                                </tr>
+                                <% } %>
+                            </table>
+
+                            <p class="note">Once your wallet is funded we'll collect the repayment automatically
+                                &mdash; you don't need to do anything else. There's no need to pay manually as well.</p>
+
+                            <div class="button-wrap">
+                                <a href="<%= dashboardUrl || (appUrl + '/dashboard/wallet') %>" class="button">Fund My
+                                    Wallet</a>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="footer">
+                            <p>Need help? <a href="mailto:support@paymyfees.co"
+                                    style="color: #00296b; text-decoration: none;">support@paymyfees.co</a></p>
+                            <p>© <%= new Date().getFullYear() %>
+                                    <%= appName %>. All rights reserved.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>
