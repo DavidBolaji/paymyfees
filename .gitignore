@@ -35,6 +35,9 @@ next-env.d.ts
 ui-reference/
 .env
 .kiro
+
+# raw database credentials — never commit
+cred.txt
 POSTGRESQL_MIGRATION_GUIDE.md
 ARCHITECTURE.md
 IMPLEMENTATION_GUIDE.md

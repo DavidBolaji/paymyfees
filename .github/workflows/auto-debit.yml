@@ -1,0 +1,41 @@
+name: Auto Debit Cron
+
+on:
+  schedule:
+    - cron: '0 9 * * *'   # Daily at 09:00 UTC (10:00 WAT), after the 07:00 reminders run
+  workflow_dispatch:      # Manual trigger for testing
+    inputs:
+      dryRun:
+        description: 'Run without moving money'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+jobs:
+  auto-debit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Trigger auto-debit cron
+        run: |
+          DRY_RUN="${{ github.event.inputs.dryRun || 'false' }}"
+          URL="${{ secrets.APP_URL }}/api/cron/auto-debit"
+          if [ "$DRY_RUN" = "true" ]; then
+            URL="${URL}?dryRun=1"
+            echo "Running in DRY RUN mode — no money will move."
+          fi
+
+          STATUS=$(curl -s --max-time 300 -o /tmp/response.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "$URL")
+          echo "HTTP status: $STATUS"
+          cat /tmp/response.json
+          echo ""
+          if [ "$STATUS" != "200" ]; then
+            echo "Auto-debit cron failed with status $STATUS"
+            exit 1
+          fi

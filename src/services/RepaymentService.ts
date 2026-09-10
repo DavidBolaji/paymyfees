@@ -24,6 +24,7 @@ import { executeWalletOperation, prisma } from '@/src/database/prisma';
 import { ValidationError, NotFoundError, PaymentError } from '@/src/types/errors';
 import { EmbedlyPayoutService } from '@/src/services/EmbedlyPayoutService';
 import { EmbedlyService } from '@/src/services/EmbedlyService';
+import { eventLog } from '@/src/services/EventLogService';
 
 import { 
   TransactionType, 
@@ -315,6 +316,25 @@ export class RepaymentService implements IRepaymentService {
 
       console.log({ msg: 'Repayment completed', userId: input.userId, txReference, amount: amountToPay });
 
+      // Logged AFTER the transaction settles, never inside executeWalletOperation
+      // — a rollback would take the audit row with it.
+      void eventLog.logEvent({
+        eventType: 'repayment.completed',
+        category: 'REPAYMENT',
+        severity: 'info',
+        userId: input.userId,
+        entityType: 'installment',
+        entityId: installment.id,
+        message: `Repayment of ₦${amountToPay.toLocaleString()} completed for ${installment.loan.loanNumber} installment #${installment.installmentNumber}`,
+        metadata: {
+          transactionReference: txReference,
+          amount: amountToPay,
+          balanceAfter,
+          loanNumber: installment.loan.loanNumber,
+          installmentNumber: installment.installmentNumber,
+        },
+      });
+
       return {
         success: true,
         installmentId: installment.id,
@@ -326,14 +346,42 @@ export class RepaymentService implements IRepaymentService {
       };
     } catch (error) {
       // Transfer failed — rollback wallet debit
+      const reason = error instanceof Error ? error.message : 'Transfer failed';
       console.error('Wallet-to-wallet transfer failed, rolling back:', error);
+
+      let rollbackOk = true;
       await this.performRollback(
         input.userId,
         txReference,
         installment.id,
         amountToPay,
-        error instanceof Error ? error.message : 'Transfer failed'
-      ).catch((rbErr) => console.error('Rollback also failed:', rbErr));
+        reason
+      ).catch((rbErr) => {
+        rollbackOk = false;
+        console.error('Rollback also failed:', rbErr);
+      });
+
+      // A failed rollback means the user is debited with nothing to show for
+      // it — the single worst state this system can reach. Log it loudly.
+      void eventLog.logEvent({
+        eventType: rollbackOk ? 'repayment.transfer_failed' : 'repayment.rollback_failed',
+        category: 'REPAYMENT',
+        severity: 'error',
+        userId: input.userId,
+        entityType: 'installment',
+        entityId: installment.id,
+        message: rollbackOk
+          ? `Transfer failed and was rolled back: ${reason}`
+          : `CRITICAL: transfer failed AND rollback failed — wallet may be debited without settlement: ${reason}`,
+        metadata: {
+          transactionReference: txReference,
+          amount: amountToPay,
+          rollbackOk,
+          loanNumber: installment.loan.loanNumber,
+          reason,
+        },
+      });
+
       throw error;
     }
   }

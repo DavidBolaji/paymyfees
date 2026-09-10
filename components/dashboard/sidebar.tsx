@@ -16,6 +16,7 @@ import {
   Building2,
   FileText,
   Users,
+  ScrollText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Logo from "@/assets/images/logo/logo.png";
@@ -177,6 +178,12 @@ const adminNavigationGroups: NavGroup[] = [
     items: [
       { icon: HelpCircle, label: 'Support Tickets', href: '/admin/support' },
       // { icon: UserCircleIcon, label: 'Account', href: '/admin/account' }
+    ]
+  },
+  {
+    title: 'SYSTEM',
+    items: [
+      { icon: ScrollText, label: 'Event Logs', href: '/admin/logs' },
     ]
   },
 ];

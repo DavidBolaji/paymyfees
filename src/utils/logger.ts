@@ -22,10 +22,23 @@ const safeSerializers = {
  * Create logger instance with appropriate configuration
  * Using synchronous logging to avoid worker thread issues
  */
+/**
+ * pino-pretty runs in a worker thread, which breaks under Next's bundling on
+ * serverless. Only load it in local development on the Node runtime; in
+ * production we emit plain structured JSON to stdout, which is what Vercel's
+ * live tail reads.
+ *
+ * Note this is the real-time view only. The durable record is EventLogService,
+ * which writes to the event_logs table.
+ */
+const usePrettyTransport =
+  env.isDevelopment() &&
+  typeof process !== 'undefined' &&
+  process.env.NEXT_RUNTIME !== 'edge';
+
 export const logger = pino({
   level: env.isDevelopment() ? 'debug' : 'info',
-  // Use synchronous transport to avoid worker thread issues
-  transport: env.isDevelopment()
+  transport: usePrettyTransport
     ? {
         target: 'pino-pretty',
         options: {
@@ -74,12 +87,7 @@ export function logRequest(
   userId?: string
 ): void {
   try {
-    console.log({
-      type: 'request',
-      method,
-      url,
-      userId,
-    });
+    logger.info({ type: 'request', method, url, userId }, `${method} ${url}`);
   } catch (error) {
     // Fallback to basic logging if structured logging fails
     console.log(`Request: ${method} ${url} ${userId ? `User: ${userId}` : ''}`);
@@ -97,13 +105,10 @@ export function logResponse(
   duration: number
 ): void {
   try {
-    console.log({
-      type: 'response',
-      method,
-      url,
-      statusCode,
-      duration,
-    });
+    logger.info(
+      { type: 'response', method, url, statusCode, duration },
+      `${method} ${url} → ${statusCode} (${duration}ms)`
+    );
   } catch (error) {
     // Fallback to basic logging if structured logging fails
     console.log(`Response: ${method} ${url} Status: ${statusCode} Duration: ${duration}ms`);
@@ -121,13 +126,8 @@ export function logError(
   try {
     // Create a safe copy of the context to avoid circular references
     const safeContext = context ? JSON.parse(JSON.stringify(context)) : {};
-    
-    console.error({
-      type: 'error',
-      message: error.message,
-      stack: error.stack,
-      ...safeContext,
-    });
+
+    logger.error({ type: 'error', err: error, ...safeContext }, error.message);
   } catch (serializationError) {
     // If JSON serialization fails, log with minimal context
     console.error({

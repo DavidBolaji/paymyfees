@@ -10,6 +10,7 @@ import { RepaymentService } from '@/src/services/RepaymentService';
 import { paginationSchema } from '@/src/validation/schemas';
 import { ApiResponse } from '@/src/types';
 import { AuthUser } from '@/src/middleware/auth';
+import { eventLog } from '@/src/services/EventLogService';
 import crypto from 'crypto';
 
 /**
@@ -82,10 +83,14 @@ export class WalletController {
 
     console.log({ msg: '[webhook] Raw body received', requestId, bodyLength: rawBody.length, bodyPreview: rawBody.slice(0, 300) });
 
-    // ── Log all headers to identify the exact signature header name ────────────
-    const allHeaders: Record<string, string> = {};
-    req.headers.forEach((value, key) => { allHeaders[key] = key.toLowerCase().includes('sig') || key.toLowerCase().includes('auth') || key.toLowerCase().includes('hash') ? value : value.slice(0, 30); });
-    console.log({ msg: '[webhook] Incoming headers', requestId, headers: allHeaders });
+    // ── Log header NAMES only ─────────────────────────────────────────────────
+    // This previously logged full values for any header containing "sig",
+    // "auth" or "hash" — which wrote bearer tokens and signatures in cleartext.
+    // Harmless-ish while it only reached Vercel's rolling buffer, but these
+    // events are now persisted to event_logs, which would make the leak
+    // permanent and queryable. Names are enough to identify a header.
+    const headerNames = Array.from(req.headers.keys()).sort();
+    console.log({ msg: '[webhook] Incoming header names', requestId, headerNames });
 
     // ── Verify HMAC signature ────────────────────────────────────────────
     // Embedly signs with: HMAC-SHA512(rawBody, apiKey)
@@ -125,6 +130,18 @@ export class WalletController {
           expectedLength: expectedSig.length,
           receivedLength: signature.length,
         });
+
+        // Persisted: a rejected webhook is exactly the kind of thing that gets
+        // disputed later, and Vercel's log buffer will have rolled over.
+        void eventLog.logEvent({
+          eventType: 'embedly.webhook_rejected',
+          category: 'EMBEDLY',
+          severity: 'error',
+          requestId,
+          message: 'Embedly webhook rejected: HMAC signature mismatch',
+          metadata: { expectedLength: expectedSig.length, receivedLength: signature.length, bodyLength: rawBody.length },
+        });
+
         return NextResponse.json({ success: false, message: 'Invalid signature' }, { status: 401 });
       }
 
@@ -154,6 +171,27 @@ export class WalletController {
       accountNumber: data.beneficiaryAccountNumber ?? data.accountNumber ?? data.virtualAccountNumber ?? '(none)',
       amount: data.amount ?? '(none)',
       reference: data.transactionReference ?? data.reference ?? data.sessionId ?? '(none)',
+    });
+
+    // Durable record of what the provider actually sent, before we act on it.
+    // If an inflow is ever disputed this is the only queryable evidence.
+    // Account numbers are masked and signatures stripped by the redactor.
+    void eventLog.logEvent({
+      eventType: 'embedly.webhook_received',
+      category: 'EMBEDLY',
+      severity: 'info',
+      requestId,
+      entityType: 'transaction',
+      entityId: (data.transactionReference ?? data.reference ?? data.sessionId ?? null) as string | null,
+      message: `Embedly webhook received: ${eventType || '(no event type)'}`,
+      metadata: {
+        embedlyEventType: eventType,
+        signatureVerified: !skipSigVerification && !!apiKey,
+        accountNumber: data.beneficiaryAccountNumber ?? data.accountNumber ?? data.virtualAccountNumber ?? null,
+        amount: data.amount ?? null,
+        reference: data.transactionReference ?? data.reference ?? data.sessionId ?? null,
+        dataKeys: Object.keys(data),
+      },
     });
 
     try {
@@ -195,6 +233,17 @@ export class WalletController {
         error: errorMsg,
         stack: errorStack,
         data,
+      });
+
+      void eventLog.logEvent({
+        eventType: 'embedly.webhook_failed',
+        category: 'EMBEDLY',
+        severity: 'error',
+        requestId,
+        entityType: 'transaction',
+        entityId: (data.transactionReference ?? data.reference ?? data.sessionId ?? null) as string | null,
+        message: `Embedly webhook processing failed (${eventType}): ${errorMsg}`,
+        metadata: { embedlyEventType: eventType, isKnownError, error: errorMsg, stack: errorStack, data },
       });
 
       return NextResponse.json(
