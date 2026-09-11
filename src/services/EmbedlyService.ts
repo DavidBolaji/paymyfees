@@ -6,6 +6,7 @@
  */
 
 import { ExternalServiceError } from '@/src/types/errors';
+import { extractStreetAddress } from '@/lib/utils';
 
 // ─── Response Types ───────────────────────────────────────────────────────────
 
@@ -278,7 +279,7 @@ export class EmbedlyService implements IEmbedlyService {
       mobileNumber: this.normalizeMobile(input.mobileNumber),
       dob: input.dob,
       customerTypeId: input.customerTypeId,
-      address: input.address || 'Nigeria',
+      address: input.address ? extractStreetAddress(input.address) : 'Nigeria',
       city: input.city || 'Lagos',
       countryId: input.countryId,
     };

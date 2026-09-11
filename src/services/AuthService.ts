@@ -31,6 +31,7 @@ import { UserRole } from '@prisma/client';
 import { MailService, IMailService } from '@/src/services/MailService';
 import { createVerification, getUserByToken, verifyToken, createPasswordResetToken, verifyPasswordResetToken } from '@/src/utils/verification';
 import { EmbedlyService } from '@/src/services/EmbedlyService';
+import { eventLog } from '@/src/services/EventLogService';
 
 /**
  * Auth Service Interface
@@ -168,6 +169,34 @@ export class AuthService implements IAuthService {
         await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
         const detail = err instanceof Error ? err.message : String(err);
         console.error({ message: 'Embedly provisioning failed — user rolled back', userId: user.id, detail });
+
+        // Durable record — asyncHandler also logs the generic HTTP failure, but
+        // that entry loses the Embedly-specific detail (email, provider reason).
+        // Never throws, so it can't shadow the InternalServerError below.
+        await eventLog.logEvent({
+          eventType: 'embedly.provisioning_failed',
+          category: 'EMBEDLY',
+          severity: 'error',
+          userId: user.id,
+          entityType: 'User',
+          entityId: user.id,
+          message: `Embedly provisioning failed for ${user.email}: ${detail}`,
+          metadata: { email: user.email, role: user.role, detail },
+        });
+
+        // Best-effort admin alert. Awaited (not fire-and-forget) because Vercel
+        // may freeze the function the instant this handler returns; sendSimple
+        // swallows its own errors and never throws, so this can't block the
+        // rollback response either way.
+        try {
+          await this.mailService.sendRegistrationFailedAlertEmail(
+            process.env.SUPPORT_EMAIL || 'support@paymyfees.co',
+            { email: user.email, fullName: user.fullName, role: user.role, reason: detail }
+          );
+        } catch (mailErr) {
+          console.error({ message: 'Failed to send registration-failure admin alert', error: mailErr instanceof Error ? mailErr.message : String(mailErr) });
+        }
+
         throw new InternalServerError('We could not create your payment wallet right now. Please try again.');
       }
     }
