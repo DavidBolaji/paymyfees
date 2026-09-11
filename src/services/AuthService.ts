@@ -32,6 +32,7 @@ import { MailService, IMailService } from '@/src/services/MailService';
 import { createVerification, getUserByToken, verifyToken, createPasswordResetToken, verifyPasswordResetToken } from '@/src/utils/verification';
 import { EmbedlyService } from '@/src/services/EmbedlyService';
 import { eventLog } from '@/src/services/EventLogService';
+import { redact } from '@/src/utils/redact';
 
 /**
  * Auth Service Interface
@@ -170,9 +171,15 @@ export class AuthService implements IAuthService {
         const detail = err instanceof Error ? err.message : String(err);
         console.error({ message: 'Embedly provisioning failed — user rolled back', userId: user.id, detail });
 
+        // Redact once, reuse for both the durable log row and the admin email —
+        // strips password/token/bvn/nin/etc, so the raw registration payload is
+        // safe to persist and to send over email.
+        const redactedPayload = redact(input) as Record<string, unknown>;
+
         // Durable record — asyncHandler also logs the generic HTTP failure, but
-        // that entry loses the Embedly-specific detail (email, provider reason).
-        // Never throws, so it can't shadow the InternalServerError below.
+        // that entry loses the Embedly-specific detail (email, provider reason,
+        // and the request payload that triggered it). Never throws, so it can't
+        // shadow the InternalServerError below.
         await eventLog.logEvent({
           eventType: 'embedly.provisioning_failed',
           category: 'EMBEDLY',
@@ -181,7 +188,7 @@ export class AuthService implements IAuthService {
           entityType: 'User',
           entityId: user.id,
           message: `Embedly provisioning failed for ${user.email}: ${detail}`,
-          metadata: { email: user.email, role: user.role, detail },
+          metadata: { email: user.email, role: user.role, detail, payload: redactedPayload },
         });
 
         // Best-effort admin alert. Awaited (not fire-and-forget) because Vercel
@@ -191,7 +198,7 @@ export class AuthService implements IAuthService {
         try {
           await this.mailService.sendRegistrationFailedAlertEmail(
             process.env.SUPPORT_EMAIL || 'support@paymyfees.co',
-            { email: user.email, fullName: user.fullName, role: user.role, reason: detail }
+            { email: user.email, fullName: user.fullName, role: user.role, reason: detail, payload: redactedPayload }
           );
         } catch (mailErr) {
           console.error({ message: 'Failed to send registration-failure admin alert', error: mailErr instanceof Error ? mailErr.message : String(mailErr) });

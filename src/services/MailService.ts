@@ -80,6 +80,8 @@ export interface RegistrationFailedAlertData {
   fullName: string;
   role: string;
   reason: string;
+  /** Already-redacted registration payload — password/bvn/nin/etc stripped by the caller. */
+  payload?: Record<string, unknown> | null;
 }
 
 /**
@@ -495,6 +497,7 @@ export class MailService implements IMailService {
         userFullName: data.fullName,
         role: data.role,
         reason: data.reason,
+        payloadJson: data.payload ? JSON.stringify(data.payload, null, 2) : null,
         occurredAt: new Date().toLocaleString('en-NG', { timeZone: 'Africa/Lagos' }),
       }
     );
