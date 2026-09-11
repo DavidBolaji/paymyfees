@@ -25,6 +25,31 @@ export function normalizeText(value: string): string {
   return toTitleCase(value);
 }
 
+const STREET_TYPE_WORDS = [
+  'street', 'road', 'avenue', 'close', 'crescent', 'drive', 'lane', 'way', 'estate', 'boulevard',
+];
+
+/**
+ * Reduce a full free-text address ("3, Bisi Olayeni Street, Ketu - Alapere, Lagos")
+ * down to just the house number + street ("3, Bisi Olayeni Street"). Embedly's
+ * customer address field is documented as "the customer's residential street"
+ * (example: "20 Marina") and rejects the extra area/city segments and punctuation
+ * with a 400 "Invalid Address entered".
+ */
+export function extractStreetAddress(fullAddress: string): string {
+  if (!fullAddress) return fullAddress;
+
+  const parts = fullAddress.split(',').map(p => p.trim()).filter(Boolean);
+  if (parts.length <= 1) return fullAddress.trim();
+
+  const streetIdx = parts.findIndex(p =>
+    STREET_TYPE_WORDS.some(word => p.toLowerCase().includes(word))
+  );
+  const endIdx = streetIdx >= 0 ? streetIdx : 0;
+
+  return parts.slice(0, endIdx + 1).join(', ');
+}
+
 export function formatCurrency(amount: number, currency = 'NGN'): string {
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency, minimumFractionDigits: 0 }).format(amount);
 }

@@ -41,6 +41,8 @@ export interface IMailService {
   // Auto-debit
   sendAutoDebitFailedEmail(to: string, fullName: string, data: AutoDebitFailedEmailData): Promise<boolean>;
   sendSupportAutoDebitAlertEmail(to: string, data: SupportAutoDebitAlertData): Promise<boolean>;
+  // Registration
+  sendRegistrationFailedAlertEmail(to: string, data: RegistrationFailedAlertData): Promise<boolean>;
 }
 
 /**
@@ -67,6 +69,17 @@ export interface SupportAutoDebitAlertData {
   /** Run counters, rendered as a stat row. Kept loose so AutoDebitService's
    *  summary type can be passed straight through without importing it here. */
   summary?: object;
+}
+
+/**
+ * Payload for the internal "registration failed" alert, sent the moment a
+ * user's Embedly provisioning fails and their account is rolled back.
+ */
+export interface RegistrationFailedAlertData {
+  email: string;
+  fullName: string;
+  role: string;
+  reason: string;
 }
 
 /**
@@ -461,6 +474,28 @@ export class MailService implements IMailService {
         failures: data.failures,
         stuck: data.stuck,
         summary: data.summary ?? null,
+      }
+    );
+  }
+
+  /**
+   * Internal alert sent the moment a registration fails Embedly provisioning
+   * and the user record is rolled back. One email per failure — unlike the
+   * auto-debit digest, this isn't batched, since it signals someone couldn't
+   * sign up at all.
+   */
+  async sendRegistrationFailedAlertEmail(to: string, data: RegistrationFailedAlertData): Promise<boolean> {
+    return this.sendSimple(
+      to,
+      `[${this.appName}] Registration Failed — ${data.email}`,
+      'registration-failed-alert',
+      {
+        fullName: 'Support',
+        userEmail: data.email,
+        userFullName: data.fullName,
+        role: data.role,
+        reason: data.reason,
+        occurredAt: new Date().toLocaleString('en-NG', { timeZone: 'Africa/Lagos' }),
       }
     );
   }
