@@ -494,7 +494,7 @@ model Wallet {
   currency             String        @default("NGN") @db.VarChar(3)
   dailyLimit           Decimal?      @db.Decimal(15, 2)
   monthlyLimit         Decimal?      @db.Decimal(15, 2)
-  autoDebitEnabled     Boolean       @default(false)
+  autoDebitEnabled     Boolean       @default(true)
   isActive             Boolean       @default(true)
   embedlyWalletId      String?       @db.VarChar(255)
   virtualAccountNumber String?       @db.VarChar(20)
