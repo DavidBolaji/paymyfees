@@ -496,6 +496,33 @@ export class AutoDebitService {
         },
       });
 
+      // Send success notification to user
+      try {
+        await this.notifyService.send({
+          userId: user.id,
+          type: NotificationType.SUCCESS,
+          title: 'Loan payment successful',
+          message: `Your payment of ₦${result.amountPaid.toLocaleString()} for ${inst.loan.loanNumber} (Installment #${inst.installmentNumber}) has been deducted and processed successfully.`,
+          actionUrl: '/dashboard/loans',
+          category: 'repayment',
+          email: {
+            to: user.email,
+            fullName: user.fullName,
+            method: (mail) =>
+              mail.sendAutoDebitSuccessEmail(user.email, user.fullName, {
+                loanNumber: inst.loan.loanNumber,
+                schoolName: inst.loan.school?.name || 'Your School',
+                amountPaid: result.amountPaid,
+                installmentNumber: inst.installmentNumber,
+                transactionReference: result.transactionReference,
+                newWalletBalance: result.newWalletBalance,
+              }),
+          },
+        });
+      } catch (err) {
+        summary.errors.push(`success notification ${user.id}: ${this.errMsg(err)}`);
+      }
+
       return null;
     } catch (err) {
       const message = this.errMsg(err);

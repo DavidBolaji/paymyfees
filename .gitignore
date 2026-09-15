@@ -53,3 +53,5 @@ docs
 
 ignore
 REGISTRATION_ERROR_REFERENCE.md
+# Local Netlify folder
+.netlify

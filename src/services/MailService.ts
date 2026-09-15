@@ -40,6 +40,7 @@ export interface IMailService {
   sendDocumentRequestEmail(to: string, fullName: string, documentType: string, instructions: string): Promise<boolean>;
   // Auto-debit
   sendAutoDebitFailedEmail(to: string, fullName: string, data: AutoDebitFailedEmailData): Promise<boolean>;
+  sendAutoDebitSuccessEmail(to: string, fullName: string, data: AutoDebitSuccessEmailData): Promise<boolean>;
   sendSupportAutoDebitAlertEmail(to: string, data: SupportAutoDebitAlertData): Promise<boolean>;
 }
 
@@ -54,6 +55,18 @@ export interface AutoDebitFailedEmailData {
   shortfall: number;
   dueDate: string;
   daysOverdue?: number;
+}
+
+/**
+ * Payload for the user-facing "your payment was successful" email.
+ */
+export interface AutoDebitSuccessEmailData {
+  loanNumber: string;
+  schoolName: string;
+  amountPaid: number;
+  installmentNumber: number;
+  transactionReference: string;
+  newWalletBalance: number;
 }
 
 /**
@@ -442,6 +455,22 @@ export class MailService implements IMailService {
       walletBalance: this.formatNaira(data.walletBalance),
       shortfall: this.formatNaira(data.shortfall),
       dashboardUrl: `${this.appUrl}/dashboard/wallet`,
+    });
+  }
+
+  /**
+   * Auto-debit succeeded — payment was collected and processed.
+   */
+  async sendAutoDebitSuccessEmail(to: string, fullName: string, data: AutoDebitSuccessEmailData): Promise<boolean> {
+    return this.sendSimple(to, `${this.appName} — Loan Payment Received ✓`, 'auto-debit-success', {
+      fullName,
+      loanNumber: data.loanNumber,
+      schoolName: data.schoolName,
+      amountPaid: this.formatNaira(data.amountPaid),
+      installmentNumber: data.installmentNumber,
+      transactionReference: data.transactionReference,
+      newWalletBalance: this.formatNaira(data.newWalletBalance),
+      dashboardUrl: `${this.appUrl}/dashboard/loans`,
     });
   }
 
